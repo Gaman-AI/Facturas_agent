@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>API Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+        
+        // Create axios instance
+        const apiClient = axios.create({
+            baseURL: `${API_BASE_URL}/api/v1`,
+            timeout: 30000,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        
+        // Add interceptors
+        apiClient.interceptors.request.use(
+            (config) => {
+                console.log('🚀 API Request:', config.method?.toUpperCase(), config.url, config.data);
+                return config;
+            },
+            (error) => {
+                console.error('❌ API Request Error:', error);
+                return Promise.reject(error);
+            }
+        );
+        
+        apiClient.interceptors.response.use(
+            (response) => {
+                console.log('✅ API Response:', response.status, response.config.url, response.data);
+                return response;
+            },
+            (error) => {
+                console.error('❌ API Error Details:');
+                console.error('   - URL:', error.config?.url);
+                console.error('   - Method:', error.config?.method);
+                console.error('   - Status:', error.response?.status);
+                console.error('   - Status Text:', error.response?.statusText);
+                console.error('   - Data:', error.response?.data);
+                console.error('   - Message:', error.message);
+                console.error('   - Code:', error.code);
+                return Promise.reject(error);
+            }
+        );
+        
+        async function testHealth() {
+            try {
+                const response = await apiClient.get('/health');
+                document.getElementById('results').innerHTML += `
+                    <p>✅ Health check: ${JSON.stringify(response.data)}</p>
+                `;
+            } catch (error) {
+                document.getElementById('results').innerHTML += `
+                    <p>❌ Health check failed: ${error.message}</p>
+                `;
+            }
+        }
+        
+        async function testBrowserTask() {
+            try {
+                const response = await apiClient.post('/browser-agent/realtime', {
+                    task_description: "Go to google.com and search for 'hello world'",
+                    llm_provider: "openai",
+                    model: "gpt-4o-mini"
+                });
+                document.getElementById('results').innerHTML += `
+                    <p>✅ Browser task: ${JSON.stringify(response.data)}</p>
+                `;
+            } catch (error) {
+                document.getElementById('results').innerHTML += `
+                    <p>❌ Browser task failed: ${error.message}</p>
+                `;
+            }
+        }
+        
+        // Auto-run tests
+        testHealth();
+        setTimeout(testBrowserTask, 2000);
+    </script>
+</body>
+</html> 

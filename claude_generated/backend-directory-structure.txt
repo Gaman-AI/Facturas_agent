@@ -1,0 +1,55 @@
+backend/
+├── main.py                     # FastAPI app entry point
+├── requirements.txt            # Python dependencies
+├── .env.example               # Environment variables template
+├── start_backend.py           # Startup script
+├── browser_agent.db           # SQLite database (created automatically)
+└── src/
+    ├── __init__.py
+    ├── core/
+    │   ├── __init__.py
+    │   ├── config.py          # Configuration settings
+    │   └── security.py        # Security utilities (future)
+    ├── db/
+    │   ├── __init__.py
+    │   ├── database.py        # Database session management
+    │   └── models.py          # SQLAlchemy ORM models
+    ├── api/
+    │   ├── __init__.py
+    │   ├── deps.py            # FastAPI dependencies (future)
+    │   └── endpoints/
+    │       ├── __init__.py
+    │       ├── health.py      # Health check endpoints
+    │       └── tasks.py       # Task management endpoints
+    ├── services/
+    │   ├── __init__.py
+    │   └── task_service.py    # Task business logic
+    ├── agent/
+    │   ├── __init__.py
+    │   ├── agent_manager.py   # Agent lifecycle management
+    │   └── socket_manager.py  # WebSocket connection management
+    └── schemas/
+        ├── __init__.py
+        └── schemas.py         # Pydantic data models
+
+# How to setup and run:
+
+1. Create the backend directory structure as shown above
+2. Copy each file to its respective location
+3. Create empty __init__.py files in each directory
+4. Run the setup:
+
+cd backend
+python start_backend.py
+
+# Or manually:
+pip install -r requirements.txt
+cp .env.example .env
+python main.py
+
+# The backend will:
+- Start on http://localhost:8000
+- Create SQLite database automatically
+- Provide API endpoints at /api/v1/
+- Handle WebSocket connections at /ws/{task_id}
+- Serve API documentation at http://localhost:8000/docs
