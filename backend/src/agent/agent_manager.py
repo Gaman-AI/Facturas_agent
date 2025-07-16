@@ -13,7 +13,8 @@ import traceback
 import os
 
 # Browser-use imports
-from browser_use import Agent, Browser, BrowserConfig, ChatOpenAI, ChatAnthropic
+from browser_use import Agent, BrowserSession, BrowserProfile
+from browser_use import ChatOpenAI, ChatAnthropic
 
 # Local imports
 from src.db.database import get_db_session
@@ -29,16 +30,21 @@ class AgentSession:
     task_id: str
     status: str
     agent: Optional[Agent] = None
-    browser: Optional[Browser] = None
+    browser_session: Optional[BrowserSession] = None
+    browser_profile: Optional[BrowserProfile] = None
     thread: Optional[threading.Thread] = None
     stop_event: Optional[threading.Event] = None
     pause_event: Optional[threading.Event] = None
     loop: Optional[asyncio.AbstractEventLoop] = None
 
-class BrowserUseAgentManager:
+class AgentManager:
     def __init__(self):
         self.active_sessions: Dict[str, AgentSession] = {}
         self._setup_llm()
+
+class BrowserUseAgentManager(AgentManager):
+    def __init__(self):
+        super().__init__()
     
     def _setup_llm(self):
         """Setup the LLM based on available API keys"""
@@ -134,8 +140,8 @@ class BrowserUseAgentManager:
                 session.loop.close()
     
     async def _execute_agent_async(self, task_id: str, prompt: str, session: AgentSession):
-        """Execute the browser-use agent asynchronously"""
-        browser = None
+        """Execute the browser-use agent asynchronously with new API"""
+        browser_session = None
         agent = None
         
         try:
@@ -146,21 +152,29 @@ class BrowserUseAgentManager:
                 {"message": f"Initializing browser automation for task: {prompt}"}
             )
             
-            # Configure browser
-            browser_config = BrowserConfig(
-                headless=settings.HEADLESS_BROWSER,
+            # Create browser profile with NEW API
+            browser_profile = BrowserProfile(
+                headless=settings.BROWSER_HEADLESS,
                 browser_type=settings.BROWSER_TYPE.lower() if hasattr(settings, 'BROWSER_TYPE') else "chromium",
+                viewport={'width': 1920, 'height': 1080},
+                wait_for_network_idle_page_load_time=3.0,
+                downloads_path='./tmp/downloads/',
+                trace_path='./tmp/traces/',
+                slow_mo=1000 if not settings.BROWSER_HEADLESS else 0
             )
+            session.browser_profile = browser_profile
             
-            # Initialize browser
+            # Initialize browser session
             await self._send_step_update(
                 task_id, 
                 StepType.ACTION, 
                 {"message": "Starting browser session..."}
             )
             
-            browser = Browser(config=browser_config)
-            session.browser = browser
+            browser_session = BrowserSession(
+                browser_profile=browser_profile
+            )
+            session.browser_session = browser_session
             
             await self._send_step_update(
                 task_id, 
@@ -168,7 +182,7 @@ class BrowserUseAgentManager:
                 {"message": "Browser session started successfully"}
             )
             
-            # Initialize agent
+            # Initialize agent with NEW API
             await self._send_step_update(
                 task_id, 
                 StepType.ACTION, 
@@ -178,10 +192,10 @@ class BrowserUseAgentManager:
             agent = Agent(
                 task=prompt,
                 llm=self.llm,
-                browser=browser,
-                max_actions_per_step=10,
+                browser_session=browser_session,
+                use_vision=True,
                 max_failures=3,
-                validate_output=True
+                save_conversation_path='./tmp/conversations/'
             )
             session.agent = agent
             
@@ -234,14 +248,14 @@ class BrowserUseAgentManager:
             
         finally:
             # Cleanup browser
-            if browser:
+            if browser_session:
                 try:
                     await self._send_step_update(
                         task_id, 
                         StepType.ACTION, 
                         {"message": "Closing browser session..."}
                     )
-                    await browser.close()
+                    await browser_session.close()
                     await self._send_step_update(
                         task_id, 
                         StepType.OBSERVATION, 
@@ -256,24 +270,14 @@ class BrowserUseAgentManager:
         max_steps = 50  # Prevent infinite loops
         
         try:
-            # Get the agent's history to monitor steps
-            history = agent.history
-            last_history_length = 0
-            
-            # Start the agent execution in a task
-            agent_task = asyncio.create_task(agent.run())
-            
-            # Monitor the agent's progress
-            while not agent_task.done():
+            # Define hook function for monitoring agent steps
+            async def step_hook(agent_obj):
+                nonlocal step_count
+                step_count += 1
+                
                 # Check for stop signal
                 if session.stop_event.is_set():
-                    agent_task.cancel()
-                    await self._send_step_update(
-                        task_id, 
-                        StepType.OBSERVATION, 
-                        {"message": "Task stopped by user request"}
-                    )
-                    return None
+                    return
                 
                 # Handle pause
                 while session.pause_event.is_set() and not session.stop_event.is_set():
@@ -281,117 +285,58 @@ class BrowserUseAgentManager:
                 
                 # Check if stop was requested during pause
                 if session.stop_event.is_set():
-                    agent_task.cancel()
-                    return None
+                    return
                 
-                # Monitor new history entries
-                current_history_length = len(history.history)
-                if current_history_length > last_history_length:
-                    # Process new history entries
-                    for i in range(last_history_length, current_history_length):
-                        if i < len(history.history):
-                            await self._process_history_entry(task_id, history.history[i], step_count + i)
-                    
-                    last_history_length = current_history_length
-                
-                # Prevent excessive steps
-                step_count += 1
-                if step_count > max_steps:
-                    agent_task.cancel()
-                    await self._send_step_update(
-                        task_id, 
-                        StepType.ERROR, 
-                        {"message": f"Task exceeded maximum steps ({max_steps}). Stopping execution."}
-                    )
-                    return None
-                
-                # Small delay to prevent busy waiting
-                await asyncio.sleep(1)
-            
-            # Get the result
-            try:
-                result = await agent_task
-                return result
-            except asyncio.CancelledError:
-                return None
-            
-        except Exception as e:
-            logger.error(f"Error in agent monitoring for task {task_id}: {e}")
-            raise e
-    
-    async def _process_history_entry(self, task_id: str, entry: Any, step_number: int):
-        """Process a single history entry and send appropriate updates"""
-        try:
-            # Parse the history entry based on browser-use structure
-            if hasattr(entry, 'model_output'):
-                model_output = entry.model_output
-                
-                # Handle thinking/reasoning
-                if hasattr(model_output, 'current_state') and model_output.current_state:
-                    await self._send_step_update(
-                        task_id,
-                        StepType.THINKING,
-                        {
-                            "message": f"Step {step_number + 1}: Analyzing current state",
-                            "current_state": model_output.current_state.model_dump() if hasattr(model_output.current_state, 'model_dump') else str(model_output.current_state)
-                        }
-                    )
-                
-                # Handle actions
-                if hasattr(model_output, 'action') and model_output.action:
-                    action = model_output.action
-                    action_description = f"Executing action: {action.__class__.__name__}"
-                    
-                    if hasattr(action, 'text'):
-                        action_description += f" - {action.text}"
-                    elif hasattr(action, 'coordinate'):
-                        action_description += f" at {action.coordinate}"
+                # Send step update
+                try:
+                    # Get current page info if available
+                    current_url = "unknown"
+                    if hasattr(agent_obj, 'browser_session') and agent_obj.browser_session:
+                        try:
+                            current_page = await agent_obj.browser_session.get_current_page()
+                            if current_page:
+                                current_url = current_page.url
+                        except Exception:
+                            pass
                     
                     await self._send_step_update(
                         task_id,
                         StepType.ACTION,
                         {
-                            "message": action_description,
-                            "action_type": action.__class__.__name__,
-                            "action_details": action.model_dump() if hasattr(action, 'model_dump') else str(action)
+                            "message": f"Step {step_count}: Agent is working...",
+                            "current_url": current_url,
+                            "step_number": step_count
                         }
                     )
+                    
+                    # Prevent excessive steps
+                    if step_count > max_steps:
+                        await self._send_step_update(
+                            task_id, 
+                            StepType.ERROR, 
+                            {"message": f"Task exceeded maximum steps ({max_steps}). Stopping execution."}
+                        )
+                        session.stop_event.set()
+                        return
+                        
+                except Exception as e:
+                    logger.error(f"Error in step hook for task {task_id}: {e}")
             
-            # Handle results/observations
-            if hasattr(entry, 'result'):
-                result = entry.result
-                if result:
-                    await self._send_step_update(
-                        task_id,
-                        StepType.OBSERVATION,
-                        {
-                            "message": f"Step {step_number + 1} completed",
-                            "result": result.model_dump() if hasattr(result, 'model_dump') else str(result)
-                        }
-                    )
-            
-            # Handle errors
-            if hasattr(entry, 'error') and entry.error:
-                await self._send_step_update(
-                    task_id,
-                    StepType.ERROR,
-                    {
-                        "message": f"Error in step {step_number + 1}: {entry.error}",
-                        "error": str(entry.error)
-                    }
-                )
-                
-        except Exception as e:
-            logger.error(f"Error processing history entry for task {task_id}: {e}")
-            # Send a generic update if we can't parse the entry
-            await self._send_step_update(
-                task_id,
-                StepType.OBSERVATION,
-                {
-                    "message": f"Agent executed step {step_number + 1}",
-                    "raw_entry": str(entry)
-                }
+            # Run the agent with the step hook
+            result = await agent.run(
+                on_step_start=step_hook,
+                max_steps=max_steps
             )
+            
+            # Check if execution was stopped
+            if session.stop_event.is_set():
+                return None
+                
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error in agent monitoring for task {task_id}: {e}")
+            raise e
     
     async def pause_agent_session(self, task_id: str) -> bool:
         """Pause an active agent session"""
@@ -455,12 +400,12 @@ class BrowserUseAgentManager:
             session.pause_event.clear()  # Clear pause if set
             
             # Close browser if it exists
-            if session.browser:
+            if session.browser_session:
                 try:
                     if session.loop and not session.loop.is_closed():
                         # Run browser close in the session's event loop
                         future = asyncio.run_coroutine_threadsafe(
-                            session.browser.close(), 
+                            session.browser_session.close(), 
                             session.loop
                         )
                         future.result(timeout=10)  # Wait up to 10 seconds

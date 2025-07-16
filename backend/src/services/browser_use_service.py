@@ -9,6 +9,9 @@ from browser_use import Agent, BrowserSession, BrowserProfile
 from browser_use.llm import ChatOpenAI, ChatAnthropic, ChatGoogle
 from src.core.config import settings
 
+# Semaphore to limit concurrent browser instances
+browser_semaphore = asyncio.Semaphore(1)  # Only 1 browser at a time
+
 class BrowserUseService:
     """Service for real browser automation using browser-use library"""
     
@@ -57,61 +60,62 @@ class BrowserUseService:
     ) -> Dict[str, Any]:
         """Execute a browser automation task"""
         
-        try:
-            # Get LLM client
-            llm = self._get_llm_client(llm_provider, model)
+        async with browser_semaphore:
+            try:
+                # Get LLM client
+                llm = self._get_llm_client(llm_provider, model)
+                
+                # Create browser profile with configuration
+                config = browser_config or {}
+                self.browser_profile = BrowserProfile(
+                    headless=config.get('headless', settings.BROWSER_HEADLESS),
+                    storage_state=config.get('storage_state', None),
+                    wait_for_network_idle_page_load_time=config.get('wait_for_network_idle', 3.0),
+                    viewport={'width': 1920, 'height': 1080},
+                    user_agent=config.get('user_agent', None),
+                    allowed_domains=config.get('allowed_domains', None),
+                    downloads_path=config.get('downloads_path', './tmp/downloads/'),
+                    trace_path=config.get('trace_path', './tmp/traces/'),
+                    slow_mo=config.get('slow_mo', 1000) if not config.get('headless', True) else 0
+                )
+                
+                # Create browser session with profile
+                self.browser_session = BrowserSession(
+                    browser_profile=self.browser_profile
+                )
+                
+                # Create agent with the new API
+                self.current_agent = Agent(
+                    task=task_description,
+                    llm=llm,
+                    use_vision=config.get('use_vision', True),
+                    browser_session=self.browser_session,
+                    max_failures=config.get('max_failures', 5),
+                    save_conversation_path=config.get('save_conversation_path', './tmp/conversations/')
+                )
+                
+                # Execute the task
+                result = await self.current_agent.run()
+                
+                return {
+                    "success": True,
+                    "result": str(result) if result else "Task completed successfully",
+                    "task": task_description,
+                    "provider": llm_provider or settings.DEFAULT_LLM_PROVIDER,
+                    "model": model or settings.DEFAULT_LLM_MODEL
+                }
+                
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "task": task_description,
+                    "provider": llm_provider or settings.DEFAULT_LLM_PROVIDER,
+                    "model": model or settings.DEFAULT_LLM_MODEL
+                }
             
-            # Create browser profile with configuration
-            config = browser_config or {}
-            self.browser_profile = BrowserProfile(
-                headless=config.get('headless', settings.BROWSER_HEADLESS),
-                storage_state=config.get('storage_state', None),
-                wait_for_network_idle_page_load_time=config.get('wait_for_network_idle', 3.0),
-                viewport={'width': 1920, 'height': 1080},
-                user_agent=config.get('user_agent', None),
-                allowed_domains=config.get('allowed_domains', None),
-                downloads_path=config.get('downloads_path', './tmp/downloads/'),
-                trace_path=config.get('trace_path', './tmp/traces/'),
-                slow_mo=config.get('slow_mo', 1000) if not config.get('headless', True) else 0
-            )
-            
-            # Create browser session with profile
-            self.browser_session = BrowserSession(
-                browser_profile=self.browser_profile
-            )
-            
-            # Create agent with the new API
-            self.current_agent = Agent(
-                task=task_description,
-                llm=llm,
-                use_vision=config.get('use_vision', True),
-                browser_session=self.browser_session,
-                max_failures=config.get('max_failures', 5),
-                save_conversation_path=config.get('save_conversation_path', './tmp/conversations/')
-            )
-            
-            # Execute the task
-            result = await self.current_agent.run()
-            
-            return {
-                "success": True,
-                "result": str(result) if result else "Task completed successfully",
-                "task": task_description,
-                "provider": llm_provider or settings.DEFAULT_LLM_PROVIDER,
-                "model": model or settings.DEFAULT_LLM_MODEL
-            }
-            
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "task": task_description,
-                "provider": llm_provider or settings.DEFAULT_LLM_PROVIDER,
-                "model": model or settings.DEFAULT_LLM_MODEL
-            }
-        
-        finally:
-            await self.cleanup()
+            finally:
+                await self.cleanup()
     
     async def cleanup(self):
         """Clean up browser resources"""

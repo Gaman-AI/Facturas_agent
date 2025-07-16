@@ -117,7 +117,19 @@ export class ApiService {
   // Task Management
   static async createTask(prompt: string): Promise<Task> {
     const response = await apiClient.post('/tasks', { prompt });
-    return response.data as Task;
+    const data = response.data;
+    
+    // Ensure the response matches our Task interface
+    return {
+      id: data.id || data.task_id,
+      prompt: data.prompt,
+      status: data.status,
+      created_at: data.created_at,
+      completed_at: data.completed_at,
+      error_message: data.error_message,
+      result: data.result,
+      steps: data.steps || []
+    } as Task;
   }
 
   static async getTasks(skip: number = 0, limit: number = 100): Promise<Task[]> {

@@ -5,9 +5,18 @@ from contextlib import asynccontextmanager
 import uvicorn
 import logging
 from src.core.config import settings
-from src.api.endpoints import tasks, health, browser_agent_realtime
+from src.api.endpoints import tasks, health, browser_agent_realtime, agent
 from src.agent.socket_manager import socket_manager
 from src.db.database import create_tables
+
+
+
+import asyncio
+import sys
+
+if sys.platform.startswith('win'):
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 
 # Configure logging
 logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL))
@@ -62,6 +71,7 @@ async def global_exception_handler(request, exc):
 app.include_router(health.router, prefix=settings.API_V1_STR, tags=["health"])
 app.include_router(tasks.router, prefix=settings.API_V1_STR, tags=["tasks"])
 app.include_router(browser_agent_realtime.router, prefix=settings.API_V1_STR, tags=["browser-agent-realtime"])
+app.include_router(agent.router, prefix=settings.API_V1_STR, tags=["agent"])
 
 # Legacy WebSocket endpoint for backward compatibility
 @app.websocket("/ws/{task_id}")

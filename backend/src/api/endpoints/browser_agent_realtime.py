@@ -241,7 +241,7 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     finally:
         await agent_manager.disconnect_websocket(websocket)
 
-@router.post("/browser-agent/realtime", response_model=BrowserTaskResponse)
+@router.post("/browser-agent-realtime", response_model=BrowserTaskResponse)
 async def execute_browser_task_realtime(
     task_request: BrowserTaskRequest,
     background_tasks: BackgroundTasks,

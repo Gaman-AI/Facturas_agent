@@ -76,9 +76,15 @@ class AgentStepUpdate(BaseModel):
 # Browser Agent Schemas
 class BrowserTaskRequest(BaseModel):
     task_description: str = Field(..., min_length=1, max_length=2000, description="Browser task description")
+    prompt: Optional[str] = Field(None, description="Alternative field name for task description")
     llm_provider: str = Field(default="openai", description="LLM provider to use")
     model: str = Field(default="gpt-4o", description="Model to use")
     browser_config: Optional[Dict[str, Any]] = Field(default=None, description="Browser configuration")
+    session_id: Optional[str] = Field(None, description="Session ID for WebSocket connection")
+    
+    def get_task_description(self) -> str:
+        """Get task description from either field"""
+        return self.task_description or self.prompt or ""
 
 class BrowserTaskResponse(BaseModel):
     task_id: str
