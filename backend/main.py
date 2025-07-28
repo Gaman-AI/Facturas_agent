@@ -6,6 +6,7 @@ import uvicorn
 import logging
 from src.core.config import settings
 from src.api.endpoints import tasks, health, browser_agent_realtime, agent
+from src.api.endpoints.mcp_auth import router as mcp_auth_router
 from src.agent.socket_manager import socket_manager
 from src.db.database import create_tables
 
@@ -72,6 +73,7 @@ app.include_router(health.router, prefix=settings.API_V1_STR, tags=["health"])
 app.include_router(tasks.router, prefix=settings.API_V1_STR, tags=["tasks"])
 app.include_router(browser_agent_realtime.router, prefix=settings.API_V1_STR, tags=["browser-agent-realtime"])
 app.include_router(agent.router, prefix=settings.API_V1_STR, tags=["agent"])
+app.include_router(mcp_auth_router, prefix=settings.API_V1_STR)
 
 # Legacy WebSocket endpoint for backward compatibility
 @app.websocket("/ws/{task_id}")
