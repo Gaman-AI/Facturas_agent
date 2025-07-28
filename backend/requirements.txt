@@ -14,6 +14,7 @@ pydantic-settings>=2.1.0
 playwright>=1.40.0
 browser-use>=0.1.48  # Compatible with web-ui version
 patchright>=1.0.0
+browserbase>=0.2.0
 
 # HTTP client
 httpx>=0.25.2
@@ -65,3 +66,10 @@ isort==5.12.0
 
 # Additional utilities found in codebase
 # uuid and pathlib are built-in Python modules 
+
+# PyQt5 for embedded browser
+PyQt5>=5.15.9
+PyQtWebEngine>=5.15.6
+
+# BrowserBase integration
+browserbase>=0.2.0 
