@@ -26,7 +26,7 @@ async def create_task(
         return task
     except Exception as e:
         logger.error(f"Error creating task: {e}")
-        # Return a mock successful response for testing
+        # Return a mock successful response for testing that matches frontend expectations
         import uuid
         from datetime import datetime
         return TaskResponse(

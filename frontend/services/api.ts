@@ -93,6 +93,10 @@ export interface BrowserTaskResponse {
   task_id: string;
   status: string;
   message: string;
+  result?: any;
+  actions?: string[];
+  execution_time?: number;
+  logs?: Array<{timestamp: string; message: string}>;
 }
 
 // API Service Class

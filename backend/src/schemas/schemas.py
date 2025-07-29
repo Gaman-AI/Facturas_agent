@@ -89,6 +89,7 @@ class BrowserTaskRequest(BaseModel):
 class BrowserTaskResponse(BaseModel):
     task_id: str
     status: str
+    message: str = Field(default="Task processed successfully", description="Status message for frontend")
     result: Optional[Dict[str, Any]] = None
     actions: Optional[List[str]] = []
     execution_time: Optional[float] = None

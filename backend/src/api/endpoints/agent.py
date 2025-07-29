@@ -49,7 +49,8 @@ async def execute_agent_task_simple(request: AgentTaskRequest):
         return BrowserTaskResponse(
             task_id=task_id,
             status="completed",
-            result={"success": True, "message": f"Task '{task_description}' executed successfully"},
+            message=f"Task '{task_description}' executed successfully",
+            result={"success": True, "task_completed": True},
             execution_time=1.5,
             logs=[
                 {"timestamp": datetime.now().isoformat(), "message": f"Starting task: {task_description}"},
@@ -86,7 +87,8 @@ async def execute_agent_task(request: BrowserTaskRequest):
         return BrowserTaskResponse(
             task_id=task_id,
             status="completed",
-            result={"success": True, "message": f"Task '{request.task_description}' executed successfully"},
+            message=f"Task '{request.task_description}' executed successfully",
+            result={"success": True, "task_completed": True},
             execution_time=1.5,
             logs=[
                 {"timestamp": datetime.now().isoformat(), "message": f"Starting task: {request.task_description}"},
@@ -169,6 +171,7 @@ async def execute_cfdi_invoice(request: CFDIInvoiceRequest):
         return BrowserTaskResponse(
             task_id=task_id,
             status="completed",
+            message="Factura CFDI procesada exitosamente",
             result={
                 "success": True, 
                 "cfdi_status": "Factura enviada exitosamente",
