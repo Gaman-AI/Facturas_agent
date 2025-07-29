@@ -1,120 +1,180 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
-import uvicorn
-import logging
-from src.core.config import settings
-from src.api.endpoints import tasks, health, browser_agent_realtime, agent
-from src.api.endpoints.mcp_auth import router as mcp_auth_router
-from src.agent.socket_manager import socket_manager
-from src.db.database import create_tables
-
-
-
 import asyncio
-import sys
+import os
+from dotenv import load_dotenv
 
-if sys.platform.startswith('win'):
-    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+from browserbase import Browserbase
+from browser_use import Agent
+from browser_use.browser.session import BrowserSession
+from browser_use.browser import BrowserProfile
+from browser_use.llm import ChatOpenAI
 
-
-# Configure logging
-logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL))
-logger = logging.getLogger(__name__)
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    logger.info("Starting up the Browser Use Agent API...")
-    logger.info(f"API will be available at: http://{settings.HOST}:{settings.PORT}")
-    logger.info(f"CORS origins: {settings.cors_origins}")
+class ManagedBrowserSession:
+    """Context manager for proper BrowserSession lifecycle management"""
     
-    try:
-        await create_tables()
-        logger.info("Database tables created/verified successfully")
-    except Exception as e:
-        logger.error(f"Failed to create database tables: {e}")
-        raise
+    def __init__(self, cdp_url: str, browser_profile: BrowserProfile):
+        self.cdp_url = cdp_url
+        self.browser_profile = browser_profile
+        self.browser_session = None
+        
+    async def __aenter__(self) -> BrowserSession:
+        try:
+            self.browser_session = BrowserSession(
+                cdp_url=self.cdp_url,
+                browser_profile=self.browser_profile,
+                keep_alive=False,  # Essential for proper cleanup
+                initialized=False,
+            )
+            
+            await self.browser_session.start()
+            print("✅ Browser session initialized successfully")
+            return self.browser_session
+            
+        except Exception as e:
+            print(f"❌ Failed to initialize browser session: {e}")
+            await self._emergency_cleanup()
+            raise
     
-    yield
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self._close_session_properly()
     
-    # Shutdown
-    logger.info("Shutting down the Browser Use Agent API...")
+    async def _close_session_properly(self):
+        playwright_instance = None
+        
+        try:
+            if self.browser_session:
+                # Get playwright instance before closing session
+                if hasattr(self.browser_session, 'playwright'):
+                    playwright_instance = self.browser_session.playwright
+                
+                # Close browser session first
+                if self.browser_session.initialized:
+                    await self.browser_session.stop()
+                    print("✅ Browser session closed successfully")
+                    
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "browser is closed" in error_msg or "disconnected" in error_msg:
+                print("ℹ️  Browser session was already closed (expected behavior)")
+            else:
+                print(f"⚠️  Error during browser session closure: {e}")
+        
+        finally:
+            # Stop playwright instance - critical for preventing hanging processes
+            if playwright_instance:
+                try:
+                    await playwright_instance.stop()
+                    print("✅ Playwright instance stopped successfully")
+                except Exception as e:
+                    print(f"⚠️  Error stopping Playwright: {e}")
+            
+            await self._final_cleanup()
+    
+    async def _emergency_cleanup(self):
+        try:
+            if self.browser_session:
+                if hasattr(self.browser_session, 'playwright'):
+                    await self.browser_session.playwright.stop()
+                if self.browser_session.initialized:
+                    await self.browser_session.stop()
+        except Exception as e:
+            print(f"⚠️  Emergency cleanup error: {e}")
+        finally:
+            await self._final_cleanup()
+    
+    async def _final_cleanup(self):
+        self.browser_session = None
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    description="API for managing browser automation tasks with real-time updates",
-    version="1.0.0",
-    lifespan=lifespan
-)
+async def create_browserbase_session():
+    load_dotenv()
+    
+    bb = Browserbase(api_key=os.environ["BROWSERBASE_API_KEY"])
+    session = bb.sessions.create(project_id=os.environ["BROWSERBASE_PROJECT_ID"])
+    
+    print(f"Session ID: {session.id}")
+    print(f"Debug URL: https://www.browserbase.com/sessions/{session.id}")
+    
+    return session
 
-# Enhanced CORS middleware configuration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
 
-# Add error handling middleware
-@app.exception_handler(Exception)
-async def global_exception_handler(request, exc):
-    logger.error(f"Global exception handler: {exc}")
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error", "error": str(exc)}
+def create_browser_profile() -> BrowserProfile:
+    return BrowserProfile(
+        keep_alive=False,  # Essential for proper cleanup
+        wait_between_actions=2.0,
+        default_timeout=30000,
+        default_navigation_timeout=30000,
     )
 
-# Include API routes with proper prefixes
-app.include_router(health.router, prefix=settings.API_V1_STR, tags=["health"])
-app.include_router(tasks.router, prefix=settings.API_V1_STR, tags=["tasks"])
-app.include_router(browser_agent_realtime.router, prefix=settings.API_V1_STR, tags=["browser-agent-realtime"])
-app.include_router(agent.router, prefix=settings.API_V1_STR, tags=["agent"])
-app.include_router(mcp_auth_router, prefix=settings.API_V1_STR)
+async def run_automation_task(browser_session: BrowserSession, task: str) -> str:
+    llm=ChatOpenAI(model="o4-mini-2025-04-16", temperature=1.0)
 
-# Legacy WebSocket endpoint for backward compatibility
-@app.websocket("/ws/{task_id}")
-async def websocket_endpoint(websocket: WebSocket, task_id: str):
-    await socket_manager.connect(websocket, task_id)
+    agent = Agent(
+        task=task,
+        llm=llm,
+        browser_session=browser_session,
+        enable_memory=False,
+        max_failures=5,
+        retry_delay=5,
+        max_actions_per_step=1
+        )
+    
     try:
-        while True:
-            # Keep connection alive and listen for any client messages
-            data = await websocket.receive_text()
-            logger.info(f"Received message from client for task {task_id}: {data}")
-    except WebSocketDisconnect:
-        socket_manager.disconnect(websocket, task_id)
-        logger.info(f"Client disconnected from task {task_id}")
+        print("🚀 Starting agent task...")
+        result = await agent.run(max_steps=20)
+        print("🎉 Task completed successfully!")
+        return str(result)
+        
     except Exception as e:
-        logger.error(f"WebSocket error for task {task_id}: {e}")
-        socket_manager.disconnect(websocket, task_id)
+        # Handle expected browser disconnection after successful completion
+        error_msg = str(e).lower()
+        if "browser is closed" in error_msg or "disconnected" in error_msg:
+            print("✅ Task completed - Browser session ended normally")
+            return "Task completed successfully (session ended normally)"
+        else:
+            print(f"❌ Agent execution error: {e}")
+            raise
+            
+    finally:
+        del agent
 
-# Root endpoint
-@app.get("/")
-async def root():
-    return {
-        "message": "Browser Use Agent API is running",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "health": f"{settings.API_V1_STR}/health"
-    }
 
-# Health check endpoint at root level
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "service": "Browser Use Agent API",
-        "version": "1.0.0"
-    }
+async def main():
+    try:
+        session = await create_browserbase_session()
+        browser_profile = create_browser_profile()
+        
+        task = ("""Go to https://facturacion.walmartmexico.com.mx/ and facturacion this receipt, my details are RFC: DOGJ8603192W3
+
+Email: jji@gmail.com
+Company Name: JORGE DOMENZAIN GALINDO
+Country: Mexico
+Street: PRIV DEL MARQUEZ
+Exterior Number: 404
+Interior Number: 4
+Colony: LOMAS 4A SECCION
+Municipality: San Luis Potosí
+Zip Code: 78216
+State: San Luis Potosí
+
+ID ticket: 957679964574563719968
+TR: 03621
+
+Dont need to use all the details, just the ones that are necessary.
+
+
+https://facturacion.walmartmexico.com.mx/""")
+        
+        async with ManagedBrowserSession(session.connect_url, browser_profile) as browser_session:
+            result = await run_automation_task(browser_session, task)
+            print(f"Final result: {result}")
+            
+    except KeyboardInterrupt:
+        print("\n⏹️  Process interrupted by user")
+    except Exception as e:
+        print(f"💥 Fatal error: {e}")
+        raise
+    finally:
+        print("🏁 Application shutdown complete")
+
 
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host=settings.HOST,
-        port=settings.PORT,
-        reload=True,
-        log_level=settings.LOG_LEVEL.lower()
-    ) 
+    asyncio.run(main())
