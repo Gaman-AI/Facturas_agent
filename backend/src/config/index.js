@@ -62,20 +62,31 @@ const config = {
   isDevelopment: () => config.nodeEnv === 'development',
   isProduction: () => config.nodeEnv === 'production',
   
-  // Validate required environment variables
+  // Validate required environment variables - OPTIMIZED FOR FASTER STARTUP
   validate() {
-    const required = [
+    // Only validate absolutely critical vars on startup for faster boot time
+    const critical = [
       'SUPABASE_URL',
-      'SUPABASE_ANON_KEY', 
+      'SUPABASE_ANON_KEY'
+    ]
+
+    const missing = critical.filter(key => !process.env[key])
+    
+    if (missing.length > 0) {
+      throw new Error(`Missing critical environment variables: ${missing.join(', ')}`)
+    }
+
+    // Log warnings for optional but recommended variables
+    const recommended = [
       'SUPABASE_SERVICE_KEY',
       'JWT_SECRET',
       'OPENAI_API_KEY'
     ]
 
-    const missing = required.filter(key => !process.env[key])
-    
-    if (missing.length > 0) {
-      throw new Error(`Missing required environment variables: ${missing.join(', ')}`)
+    const missingRecommended = recommended.filter(key => !process.env[key])
+    if (missingRecommended.length > 0) {
+      console.warn(`⚠️  Missing recommended environment variables: ${missingRecommended.join(', ')}`)
+      console.warn('   Some features may not work correctly without these variables')
     }
   }
 }

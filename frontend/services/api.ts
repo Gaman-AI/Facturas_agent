@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { supabase } from '@/lib/supabase';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '30000');
@@ -12,9 +13,23 @@ const apiClient = axios.create({
   },
 });
 
-// Request interceptor for debugging
+// Authentication interceptor - adds Supabase JWT token to requests
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    try {
+      // Get current session token from Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.access_token) {
+        config.headers.Authorization = `Bearer ${session.access_token}`;
+        console.log('🔐 Added Supabase token to request');
+      } else {
+        console.warn('⚠️  No Supabase session found for API request');
+      }
+    } catch (error) {
+      console.error('❌ Failed to get Supabase session:', error);
+    }
+
     console.log('🚀 API Request:', config.method?.toUpperCase(), config.url, config.data);
     return config;
   },
@@ -41,7 +56,9 @@ apiClient.interceptors.response.use(
     console.error('   - Code:', error.code);
     
     // Handle specific error cases
-    if (error.response?.status === 404) {
+    if (error.response?.status === 401) {
+      console.error('🔒 Authentication failed - token may be expired');
+    } else if (error.response?.status === 404) {
       console.error('🔍 API endpoint not found - check backend routes');
     } else if (error.response?.status === 500) {
       console.error('🔥 Backend server error');
@@ -95,6 +112,62 @@ export interface BrowserTaskResponse {
   message: string;
 }
 
+// CFDI Task Types to match backend validation
+export interface CFDITaskRequest {
+  customer_details: {
+    rfc: string;
+    email: string;
+    company_name: string;
+    fiscal_regime?: string;
+    address?: {
+      street: string;
+      exterior_number: string;
+      interior_number?: string;
+      colony: string;
+      municipality: string;
+      state: string;
+      postal_code: string;
+    };
+  };
+  invoice_details: {
+    ticket_id: string;
+    folio?: string;
+    transaction_date?: string;
+    subtotal?: number;
+    iva?: number;
+    total: number;
+    currency?: string;
+  };
+  vendor_url: string;
+  automation_config?: {
+    llm_provider?: 'openai' | 'anthropic' | 'google';
+    model?: string;
+    max_retries?: number;
+    timeout_minutes?: number;
+  };
+}
+
+export interface CFDITaskResponse {
+  success: boolean;
+  data?: {
+    task_id: string;
+    status: string;
+    result: any;
+    execution_time: number;
+    logs: any[];
+  };
+  error?: {
+    code: string;
+    message: string;
+    details?: any;
+  };
+  meta: {
+    timestamp: string;
+    requestId: string;
+    message?: string;
+  };
+}
+
 // API Service Class
 export class ApiService {
   // Connection Test
@@ -112,6 +185,12 @@ export class ApiService {
   static async healthCheck(): Promise<HealthResponse> {
     const response = await apiClient.get('/health');
     return response.data as HealthResponse;
+  }
+
+  // CFDI Task Execution - Main method for CFDI automation
+  static async executeCFDITask(taskData: CFDITaskRequest): Promise<CFDITaskResponse> {
+    const response = await apiClient.post('/tasks/execute', taskData);
+    return response.data as CFDITaskResponse;
   }
 
   // Task Management
@@ -170,7 +249,7 @@ export class ApiService {
     return response.data as { message: string; task_id: string };
   }
 
-  // Browser Agent Realtime
+  // Browser Agent Realtime (Legacy - kept for compatibility)
   static async createBrowserTask(request: BrowserTaskRequest): Promise<BrowserTaskResponse> {
     const response = await apiClient.post('/browser-agent/realtime', request);
     return response.data as BrowserTaskResponse;

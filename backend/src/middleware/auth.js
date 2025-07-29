@@ -1,9 +1,10 @@
 import jwt from 'jsonwebtoken'
 import config from '../config/index.js'
+import supabaseService from '../services/supabase.js'
 
 /**
- * JWT Authentication Middleware
- * Verifies JWT tokens and adds user info to request
+ * Supabase JWT Authentication Middleware
+ * Verifies Supabase JWT tokens and adds user info to request
  */
 export const authenticate = async (req, res, next) => {
   try {
@@ -34,40 +35,32 @@ export const authenticate = async (req, res, next) => {
       })
     }
 
-    // Verify JWT token
-    const decoded = jwt.verify(token, config.jwt.secret)
+    // Verify Supabase JWT token
+    const { user, error } = await supabaseService.verifyToken(token)
     
-    // Add user info to request
-    req.user = {
-      id: decoded.sub,
-      email: decoded.email,
-      role: decoded.role || 'authenticated',
-      iat: decoded.iat,
-      exp: decoded.exp
-    }
-
-    next()
-  } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
+    if (error || !user) {
       return res.status(401).json({
         success: false,
         error: {
           code: 'INVALID_TOKEN',
-          message: 'Invalid or malformed token'
+          message: error || 'Invalid or expired token'
         }
       })
     }
-
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        success: false,
-        error: {
-          code: 'TOKEN_EXPIRED',
-          message: 'Token has expired'
-        }
-      })
+    
+    // Add user info to request (compatible with existing backend code)
+    req.user = {
+      id: user.id,
+      email: user.email,
+      role: user.role || 'authenticated',
+      // Keep these for compatibility with existing code
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days from now
     }
 
+    next()
+  } catch (error) {
+    console.error('Authentication error:', error)
     return res.status(500).json({
       success: false,
       error: {
@@ -79,7 +72,7 @@ export const authenticate = async (req, res, next) => {
 }
 
 /**
- * Optional Authentication Middleware
+ * Optional Authentication Middleware for Supabase
  * Adds user info if token is present, but doesn't require it
  */
 export const optionalAuth = async (req, res, next) => {
@@ -92,13 +85,16 @@ export const optionalAuth = async (req, res, next) => {
         : authHeader
 
       if (token) {
-        const decoded = jwt.verify(token, config.jwt.secret)
-        req.user = {
-          id: decoded.sub,
-          email: decoded.email,
-          role: decoded.role || 'authenticated',
-          iat: decoded.iat,
-          exp: decoded.exp
+        const { user, error } = await supabaseService.verifyToken(token)
+        
+        if (!error && user) {
+          req.user = {
+            id: user.id,
+            email: user.email,
+            role: user.role || 'authenticated',
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)
+          }
         }
       }
     }
@@ -107,6 +103,7 @@ export const optionalAuth = async (req, res, next) => {
   } catch (error) {
     // In optional auth, we don't fail on invalid tokens
     // Just continue without user info
+    console.warn('Optional auth warning:', error.message)
     next()
   }
 }
