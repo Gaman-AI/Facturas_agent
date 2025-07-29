@@ -1,294 +1,232 @@
-'use client';
+'use client'
 
-import React, { createContext, useContext, useEffect, useReducer, ReactNode } from 'react';
-import { mcpSupabaseClient } from '@/lib/supabase';
-import { 
-  AuthState, 
-  LoginCredentials, 
-  RegisterData, 
-  UserProfile,
-  User,
-  AuthError 
-} from '@/types/auth';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
+import { User } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase'
 
-// AuthContextType interface
+interface UserProfile {
+  id?: string
+  user_id?: string
+  rfc: string
+  razon_social: string
+  calle: string
+  numero_ext: string
+  numero_int?: string
+  colonia: string
+  delegacion_municipio: string
+  codigo_postal: string
+  estado: string
+  regimen_fiscal: string
+  uso_cfdi: string
+  created_at?: string
+  updated_at?: string
+}
+
 export interface AuthContextType {
-  user: User | null;
-  profile: UserProfile | null;
-  loading: boolean;
-  error: string | null;
-  isAuthenticated: boolean;
-  isInitialized: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
-  logout: () => Promise<void>;
-  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
-  refreshSession: () => Promise<void>;
-  clearError: () => void;
+  user: User | null
+  profile: UserProfile | null
+  loading: boolean
+  isAuthenticated: boolean
+  isInitialized: boolean
+  error: string | null
+  login: (email: string, password: string) => Promise<void>
+  register: (email: string, password: string) => Promise<void>
+  logout: () => Promise<void>
+  updateProfile: (profile: Partial<UserProfile>) => Promise<void>
+  refreshSession: () => Promise<void>
+  clearError: () => void
 }
 
-// Initial state
-const initialState: AuthState = {
-  user: null,
-  profile: null,
-  loading: true,
-  error: null,
-};
+export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Action types
-type AuthAction =
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_USER'; payload: { user: User | null; profile: UserProfile | null } }
-  | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'CLEAR_ERROR' }
-  | { type: 'SET_INITIALIZED'; payload: boolean }
-  | { type: 'UPDATE_PROFILE'; payload: UserProfile };
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [isInitialized, setIsInitialized] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  
+  // Use ref to prevent multiple initializations
+  const initRef = useRef(false)
 
-// Reducer
-const authReducer = (state: AuthState, action: AuthAction): AuthState => {
-  switch (action.type) {
-    case 'SET_LOADING':
-      return { ...state, loading: action.payload };
-    
-    case 'SET_USER':
-      return {
-        ...state,
-        user: action.payload.user,
-        profile: action.payload.profile,
-        loading: false,
-        error: null,
-      };
-    
-    case 'SET_ERROR':
-      return { ...state, error: action.payload, loading: false };
-    
-    case 'CLEAR_ERROR':
-      return { ...state, error: null };
-    
-    case 'SET_INITIALIZED':
-      return { ...state, isInitialized: action.payload };
-    
-    case 'UPDATE_PROFILE':
-      return { ...state, profile: action.payload };
-    
-    default:
-      return state;
-  }
-};
+  const loadUserProfile = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
 
-// Create context
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+      if (error && error.code !== 'PGRST116') {
+        throw error
+      }
 
-// Provider component
-interface AuthProviderProps {
-  children: ReactNode;
-}
+      setProfile(data || null)
+    } catch (err) {
+      console.error('Error loading user profile:', err)
+    }
+  }, [])
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [state, dispatch] = useReducer(authReducer, initialState);
-
-  // Computed values
-  const isAuthenticated = !!state.user;
-  const isInitialized = true; // For now, we'll consider it always initialized
-
-  // Initialize authentication state
+  // Initialize auth only once
   useEffect(() => {
+    if (initRef.current) return
+    initRef.current = true
+
     const initializeAuth = async () => {
       try {
-        dispatch({ type: 'SET_LOADING', payload: true });
+        const { data: { session } } = await supabase.auth.getSession()
         
-        const session = await mcpSupabaseClient.getSession();
-        
-        if (session.user && session.profile) {
-          dispatch({ 
-            type: 'SET_USER', 
-            payload: { user: session.user, profile: session.profile } 
-          });
-        } else {
-          dispatch({ 
-            type: 'SET_USER', 
-            payload: { user: null, profile: null } 
-          });
+        if (session?.user) {
+          setUser(session.user)
+          await loadUserProfile(session.user.id)
         }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-        dispatch({ 
-          type: 'SET_ERROR', 
-          payload: error instanceof Error ? error.message : 'Error de inicialización' 
-        });
-        dispatch({ 
-          type: 'SET_USER', 
-          payload: { user: null, profile: null } 
-        });
+      } catch (err) {
+        console.error('Error initializing auth:', err)
+        setError(err instanceof Error ? err.message : 'Authentication error')
       } finally {
-        dispatch({ type: 'SET_INITIALIZED', payload: true });
-        dispatch({ type: 'SET_LOADING', payload: false });
+        setLoading(false)
+        setIsInitialized(true)
       }
-    };
+    }
 
-    initializeAuth();
-  }, []);
+    initializeAuth()
 
-  // Login function
-  const login = async (credentials: LoginCredentials): Promise<void> => {
-    try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      dispatch({ type: 'CLEAR_ERROR' });
-      
-      const response = await mcpSupabaseClient.signIn(credentials.email, credentials.password);
-      
-      if (response.user && response.profile) {
-        dispatch({ 
-          type: 'SET_USER', 
-          payload: { user: response.user, profile: response.profile } 
-        });
-      } else {
-        throw new Error('Invalid response from login');
+    // Auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          setUser(session.user)
+          setError(null)
+          await loadUserProfile(session.user.id)
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null)
+          setProfile(null)
+          setError(null)
+        }
+        setLoading(false)
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error de inicio de sesión';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      throw error;
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  };
+    )
 
-  // Register function - updated for full CFDI schema
-  const register = async (registerData: RegisterData): Promise<void> => {
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [loadUserProfile])
+
+  const login = useCallback(async (email: string, password: string) => {
     try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      dispatch({ type: 'CLEAR_ERROR' });
-      
-      const response = await mcpSupabaseClient.signUp(registerData.email, registerData.password);
-      
-      // Create user profile with all CFDI fields
-      const profileData = {
-        user_id: response.user.id,
-        rfc: registerData.rfc,
-        razon_social: registerData.razon_social,
-        calle: registerData.calle,
-        numero_ext: registerData.numero_ext,
-        numero_int: registerData.numero_int || null,
-        colonia: registerData.colonia,
-        delegacion_municipio: registerData.delegacion_municipio,
-        codigo_postal: registerData.codigo_postal,
-        estado: registerData.estado,
-        regimen_fiscal: registerData.regimen_fiscal,
-        uso_cfdi: registerData.uso_cfdi,
-      };
-      
-      const profile = await mcpSupabaseClient.insert('user_profiles', profileData);
-      
-      dispatch({ 
-        type: 'SET_USER', 
-        payload: { user: response.user, profile } 
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error de registro';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      throw error;
+      setError(null)
+      setLoading(true)
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (error) throw error
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Login failed'
+      setError(message)
+      throw err
     } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
+      setLoading(false)
     }
-  };
+  }, [])
 
-  // Logout function
-  const logout = async (): Promise<void> => {
+  const register = useCallback(async (email: string, password: string) => {
     try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      
-      await mcpSupabaseClient.signOut();
-      
-      dispatch({ 
-        type: 'SET_USER', 
-        payload: { user: null, profile: null } 
-      });
-    } catch (error) {
-      console.error('Logout error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Error al cerrar sesión';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
+      setError(null)
+      setLoading(true)
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      })
+      if (error) throw error
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Registration failed'
+      setError(message)
+      throw err
     } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
+      setLoading(false)
     }
-  };
+  }, [])
 
-  // Update profile function
-  const updateProfile = async (updates: Partial<UserProfile>): Promise<void> => {
-    if (!state.user?.id) {
-      throw new Error('No hay usuario autenticado');
+  const logout = useCallback(async () => {
+    try {
+      setError(null)
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Logout failed'
+      setError(message)
+      throw err
     }
+  }, [])
+
+  const updateProfile = useCallback(async (profileData: Partial<UserProfile>) => {
+    if (!user) throw new Error('No authenticated user')
 
     try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      dispatch({ type: 'CLEAR_ERROR' });
-      
-      const updatedProfile = await mcpSupabaseClient.update('user_profiles', state.profile!.id, updates);
-      
-      dispatch({ type: 'UPDATE_PROFILE', payload: updatedProfile });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error al actualizar perfil';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      throw error;
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  };
+      setError(null)
+      setLoading(true)
 
-  // Refresh session function
-  const refreshSession = async (): Promise<void> => {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .upsert({ 
+          user_id: user.id, 
+          ...profileData,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      setProfile(data)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Profile update failed'
+      setError(message)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }, [user])
+
+  const refreshSession = useCallback(async () => {
     try {
-      dispatch({ type: 'SET_LOADING', payload: true });
+      setError(null)
+      const { data, error } = await supabase.auth.refreshSession()
+      if (error) throw error
       
-      const session = await mcpSupabaseClient.getSession();
-      
-      if (session.user && session.profile) {
-        dispatch({ 
-          type: 'SET_USER', 
-          payload: { user: session.user, profile: session.profile } 
-        });
-      } else {
-        dispatch({ 
-          type: 'SET_USER', 
-          payload: { user: null, profile: null } 
-        });
+      if (data.user) {
+        setUser(data.user)
+        await loadUserProfile(data.user.id)
       }
-    } catch (error) {
-      console.error('Session refresh error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Error al refrescar sesión';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Session refresh failed'
+      setError(message)
+      throw err
     }
-  };
+  }, [loadUserProfile])
 
-  // Clear error function
-  const clearError = (): void => {
-    dispatch({ type: 'CLEAR_ERROR' });
-  };
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
 
-  // Context value
   const value: AuthContextType = {
-    user: state.user,
-    profile: state.profile,
-    loading: state.loading,
-    error: state.error,
-    isAuthenticated,
+    user,
+    profile,
+    loading,
+    isAuthenticated: !!user,
     isInitialized,
+    error,
     login,
     register,
     logout,
     updateProfile,
     refreshSession,
     clearError,
-  };
+  }
 
   return (
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
-  );
-};
-
-// Export the context for use in useAuth hook
-export { AuthContext }; 
+  )
+}

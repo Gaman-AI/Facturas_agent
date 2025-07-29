@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -17,7 +17,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 import { useAuth } from '@/hooks/useAuth';
 import { registerSchema, RegisterFormData, validateRFC } from '@/lib/validation';
-import { REGIMENES_FISCALES, USOS_CFDI, ESTADOS_MEXICANOS } from '@/types/cfdi';
+import { REGIMENES_FISCALES, USOS_CFDI } from '@/types/cfdi';
 
 export const RegisterForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -71,7 +71,7 @@ export const RegisterForm: React.FC = () => {
   const onSubmit = async (data: RegisterFormData) => {
     try {
       clearError();
-      await registerUser(data);
+      await registerUser(data.email, data.password);
       router.push('/dashboard');
     } catch (error) {
       console.error('Registration error:', error);
@@ -148,12 +148,12 @@ export const RegisterForm: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Contraseña</Label>
+                  <Label htmlFor="password">ContraseÃ±a</Label>
                   <div className="relative">
                     <Input
                       id="password"
                       type={showPassword ? 'text' : 'password'}
-                      placeholder="Tu contraseña"
+                      placeholder="Tu contraseÃ±a"
                       {...register('password')}
                       disabled={loading || isSubmitting}
                       className={errors.password ? 'border-red-500 pr-10' : 'pr-10'}
@@ -184,7 +184,7 @@ export const RegisterForm: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
                 <Building2 className="w-5 h-5 text-primary" />
-                <h3 className="text-lg font-semibold text-slate-900">Información Fiscal</h3>
+                <h3 className="text-lg font-semibold text-slate-900">InformaciÃ³n Fiscal</h3>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -203,13 +203,13 @@ export const RegisterForm: React.FC = () => {
                   )}
                   {rfcValidation.isValid && (
                     <p className="text-sm text-green-600">
-                      RFC válido - {rfcValidation.type === 'fisica' ? 'Persona Física' : 'Persona Moral'}
+                      RFC vÃ¡lido - {rfcValidation.type === 'fisica' ? 'Persona FÃ­sica' : 'Persona Moral'}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="razon_social">Razón Social</Label>
+                  <Label htmlFor="razon_social">RazÃ³n Social</Label>
                   <Input
                     id="razon_social"
                     placeholder="Nombre de la empresa"
@@ -228,7 +228,7 @@ export const RegisterForm: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
                 <MapPin className="w-5 h-5 text-primary" />
-                <h3 className="text-lg font-semibold text-slate-900">Dirección Fiscal</h3>
+                <h3 className="text-lg font-semibold text-slate-900">DirecciÃ³n Fiscal</h3>
               </div>
               
               <div className="space-y-2">
@@ -247,7 +247,7 @@ export const RegisterForm: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="numero_ext">Número Exterior</Label>
+                  <Label htmlFor="numero_ext">NÃºmero Exterior</Label>
                   <Input
                     id="numero_ext"
                     placeholder="123"
@@ -261,7 +261,7 @@ export const RegisterForm: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="numero_int">Número Interior</Label>
+                  <Label htmlFor="numero_int">NÃºmero Interior</Label>
                   <Input
                     id="numero_int"
                     placeholder="4B (opcional)"
@@ -291,10 +291,10 @@ export const RegisterForm: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="delegacion_municipio">Delegación/Municipio</Label>
+                  <Label htmlFor="delegacion_municipio">DelegaciÃ³n/Municipio</Label>
                   <Input
                     id="delegacion_municipio"
-                    placeholder="Benito Juárez"
+                    placeholder="Benito JuÃ¡rez"
                     {...register('delegacion_municipio')}
                     disabled={loading || isSubmitting}
                     className={errors.delegacion_municipio ? 'border-red-500' : ''}
@@ -307,7 +307,7 @@ export const RegisterForm: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="codigo_postal">Código Postal</Label>
+                  <Label htmlFor="codigo_postal">CÃ³digo Postal</Label>
                   <Input
                     id="codigo_postal"
                     placeholder="03100"
@@ -322,21 +322,17 @@ export const RegisterForm: React.FC = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="estado">Estado</Label>
-                  <Select
-                    onValueChange={(value) => setValue('estado', value)}
+                  <Input
+                    id="estado"
+                    type="text"
+                    placeholder="Ingresa el estado (ej: Ciudad de México, Jalisco)"
+                    {...register('estado', { 
+                      required: 'El estado es requerido',
+                      minLength: { value: 2, message: 'El estado debe tener al menos 2 caracteres' }
+                    })}
+                    className={errors.estado ? 'border-red-500' : ''}
                     disabled={loading || isSubmitting}
-                  >
-                    <SelectTrigger className={errors.estado ? 'border-red-500' : ''}>
-                      <SelectValue placeholder="Selecciona un estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ESTADOS_MEXICANOS.map((estado) => (
-                        <SelectItem key={estado.code} value={estado.name}>
-                          {estado.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                   {errors.estado && (
                     <p className="text-sm text-red-600">{errors.estado.message}</p>
                   )}
@@ -348,18 +344,18 @@ export const RegisterForm: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center space-x-2">
                 <FileText className="w-5 h-5 text-primary" />
-                <h3 className="text-lg font-semibold text-slate-900">Configuración CFDI</h3>
+                <h3 className="text-lg font-semibold text-slate-900">ConfiguraciÃ³n CFDI</h3>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="regimen_fiscal">Régimen Fiscal</Label>
+                  <Label htmlFor="regimen_fiscal">RÃ©gimen Fiscal</Label>
                   <Select
                     onValueChange={(value) => setValue('regimen_fiscal', value)}
                     disabled={loading || isSubmitting || !rfcValidation.isValid}
                   >
                     <SelectTrigger className={errors.regimen_fiscal ? 'border-red-500' : ''}>
-                      <SelectValue placeholder="Selecciona un régimen fiscal" />
+                      <SelectValue placeholder="Selecciona un rÃ©gimen fiscal" />
                     </SelectTrigger>
                     <SelectContent>
                       {availableRegimens.map((regimen) => (
@@ -418,12 +414,12 @@ export const RegisterForm: React.FC = () => {
           {/* Login Link */}
           <div className="text-center">
             <p className="text-sm text-slate-600">
-              ¿Ya tienes cuenta?{' '}
+              Â¿Ya tienes cuenta?{' '}
               <Link
                 href="/login"
                 className="font-medium text-primary hover:underline"
               >
-                Inicia sesión
+                Inicia sesiÃ³n
               </Link>
             </p>
           </div>
@@ -442,9 +438,12 @@ export const RegisterForm: React.FC = () => {
           >
             Gaman.ai
           </a>{' '}
-          © 2025
+          Â© 2025
         </p>
       </div>
     </div>
   );
 }; 
+
+
+
