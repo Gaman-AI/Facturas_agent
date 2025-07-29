@@ -1,304 +1,345 @@
-# Technology Context: CFDI 4.0 Automation Stack
+# Technology Context
 
-## Technology Stack Overview
+## Core Technology Stack
 
-### Core Architecture
-**Modern SaaS Application** with AI automation, real-time streaming, and secure multi-tenant architecture.
+### **Frontend Technologies**
+- **React 19**: Modern UI framework with concurrent features, Suspense, and automatic batching
+- **TypeScript**: End-to-end type safety with strict configuration
+- **shadcn/ui**: Production-ready component library with accessibility compliance
+- **Tailwind CSS**: Utility-first CSS framework with custom design system
+- **TanStack Table**: High-performance data grid for task history management
+- **Zod**: TypeScript-first schema validation for forms and API responses
+- **react-hook-form**: Performance-focused form library with built-in validation
 
-### Technology Selection Rationale
-- **Performance**: Sub-200ms API response requirements
-- **Real-Time**: Live browser streaming and WebSocket updates
-- **Scalability**: Support 1,000+ concurrent users
-- **Security**: Mexican data protection compliance
-- **Developer Experience**: Modern tooling and frameworks
+### **Backend Technologies**
+- **Node.js 20.x LTS**: JavaScript runtime with latest performance improvements
+- **Express.js**: Web application framework with middleware ecosystem
+- **TypeScript**: Server-side type safety and better development experience
+- **JWT**: Stateless authentication tokens with automatic refresh
+- **WebSocket**: Real-time bidirectional communication for live updates
 
-## Frontend Technologies
+### **Database & Storage**
+- **Supabase PostgreSQL 15.x**: Primary database with ACID compliance
+- **Supabase Auth**: Managed authentication service with JWT integration
+- **Supabase Storage**: Secure file storage for documents and media
+- **Row-Level Security (RLS)**: Database-level multi-tenant isolation
+- **Redis 7.x**: In-memory data store for caching and job queuing
 
-### Primary Stack
-- **React 19**: Latest React features for optimal performance and developer experience
-- **shadcn/ui**: Consistent, accessible component library with Tailwind integration
-- **Tailwind CSS**: Utility-first styling for responsive design and rapid development
-- **TypeScript**: Type safety and improved developer experience
+### **Automation & AI Stack**
+- **Custom Browser-Use Agent**: Enhanced open-source library with CFDI-specific patterns
+- **Browserbase**: Serverless headless browser infrastructure with Live View iFrames
+- **Python 3.11+**: For Browser-Use agent development and AI model integration
+- **Multiple LLM Support**: OpenAI, Anthropic, Google, Groq for agent intelligence
 
-### Supporting Libraries
-- **Zod**: Runtime schema validation for forms and API responses
-- **react-hook-form**: Performance-focused form management
-- **TanStack Table**: Advanced table functionality for task history
-- **WebSocket Client**: Real-time communication with backend
+### **Queue & Task Management**
+- **bullmq**: Robust Redis-based task queue with retry logic
+- **Redis Clustering**: High-availability job processing infrastructure
+- **Task Scheduling**: Delayed jobs and cron-like scheduling capabilities
 
-### Frontend Architecture
-```
-React App
-├── Components (shadcn/ui)
-├── Pages (routing)
-├── Hooks (custom logic)
-├── Context (global state)
-├── Services (API calls)
-└── Utils (helpers)
-```
+## Development Environment Setup
 
-### Build & Development Tools
-- **Vite**: Fast development server and build tool
-- **ESLint + Prettier**: Code quality and formatting
-- **TypeScript**: Compile-time type checking
-
-## Backend Technologies
-
-### Primary Stack
-- **Node.js**: JavaScript runtime for server-side development
-- **Express.js**: Web framework for API development
-- **TypeScript**: Type safety across the entire stack
-
-### Key Dependencies
-```json
-{
-  "express": "Web server framework",
-  "@supabase/supabase-js": "Database and auth client",
-  "bullmq": "Redis-based task queue management",
-  "ws": "WebSocket server implementation",
-  "zod": "Schema validation",
-  "winston": "Structured logging",
-  "helmet": "Security headers",
-  "express-rate-limit": "API rate limiting"
-}
-```
-
-### Backend Architecture
-```
-src/
-├── api/           # Route handlers
-├── services/      # Business logic
-├── models/        # Data access layer
-├── middleware/    # Authentication, validation
-├── utils/         # Shared utilities
-├── config/        # Environment configuration
-└── websockets/    # Real-time communication
-```
-
-## Database Technologies
-
-### Primary Database
-- **Supabase PostgreSQL**: Managed PostgreSQL with built-in auth
-- **Row-Level Security (RLS)**: Multi-tenant data isolation
-- **Real-time Subscriptions**: Database change notifications
-
-### Database Features
-- **JSON/JSONB Support**: Flexible data storage for ticket details
-- **Full-text Search**: Task and log searching capabilities
-- **Automated Backups**: Point-in-time recovery
-- **Connection Pooling**: Concurrent request handling
-
-### Schema Design
-```sql
--- Core Tables
-users (Supabase Auth managed)
-user_profiles (RFC, tax regime, address)
-automation_tasks (task tracking)
-task_logs (automation logs)
-browser_sessions (live session management)
-user_vendor_credentials (encrypted credentials)
-```
-
-## Queue & Caching
-
-### Redis Implementation
-- **BullMQ**: Robust job queue with Redis backend
-- **Session Storage**: Browser session state caching
-- **Real-time Publishing**: WebSocket event distribution
-
-### Queue Architecture
-```
-Task Submission → Redis Queue → Worker Process → Browser-Use Agent
-                             ↓
-                    WebSocket Updates → Frontend
-```
-
-## AI & Automation Technologies
-
-### Browser Automation
-- **Browser-Use**: AI agent for intelligent browser automation
-- **Browserbase**: Live browser streaming and session management
-
-### Integration Pattern
-```javascript
-// Agent Service Pattern
-class AgentService {
-  async startAutomation(taskId, prompt, userData) {
-    const session = await browserbase.createSession();
-    const agent = new BrowserUseAgent(session, prompt);
-    
-    return agent.run(userData);
-  }
-}
-```
-
-### Automation Capabilities
-- **Form Recognition**: AI-powered field identification
-- **Error Handling**: Automatic retry with user intervention
-- **Session Control**: Pause/resume/takeover functionality
-- **Real-time Streaming**: Live browser view via Browserbase
-
-## Development Environment
-
-### Local Setup Requirements
+### **Local Development Requirements**
 ```bash
-# Required Software
-Node.js 20+
-Redis 7.2+
-Git
-Docker (optional)
+# Core runtime versions
+Node.js: 20.x LTS
+Python: 3.11+
+TypeScript: 5.x
+npm/yarn: Latest stable
 
-# Environment Variables
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-key
-REDIS_URL=redis://localhost:6379
-BROWSERBASE_API_KEY=your-browserbase-key
-JWT_SECRET=your-jwt-secret
+# Development databases
+PostgreSQL: 15.x (via Supabase local)
+Redis: 7.x (via Docker or local install)
 ```
 
-### Development Scripts
-```json
-{
-  "scripts": {
-    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
-    "dev:frontend": "cd frontend && npm run dev",
-    "dev:backend": "cd backend && npm run dev",
-    "build": "npm run build:frontend && npm run build:backend",
-    "test": "npm run test:frontend && npm run test:backend"
-  }
+### **Environment Configuration**
+```bash
+# Required environment variables
+DATABASE_URL=postgresql://...
+SUPABASE_URL=https://...
+SUPABASE_ANON_KEY=...
+REDIS_URL=redis://...
+BROWSERBASE_API_KEY=...
+JWT_SECRET=...
+ENCRYPTION_KEY=...
+```
+
+### **Development Tools**
+- **ESLint + Prettier**: Code quality and formatting standards
+- **Husky**: Git hooks for pre-commit validation
+- **Conventional Commits**: Standardized commit message format
+- **Docker**: Containerization for local Redis and development consistency
+- **VS Code**: Recommended IDE with TypeScript and React extensions
+
+## External Service Dependencies
+
+### **Critical External Services**
+
+#### **Supabase Ecosystem**
+- **Database**: PostgreSQL with auto-scaling and connection pooling
+- **Authentication**: Supabase Auth with social login support
+- **Storage**: File storage for user documents and session recordings
+- **Edge Functions**: Serverless functions for complex operations
+- **Real-time**: Database change subscriptions for live updates
+
+**Constraints:**
+- Connection limits based on pricing tier
+- Row-Level Security configuration required
+- Regional data residency considerations
+
+#### **Browserbase Infrastructure**
+- **Browser Sessions**: Isolated VM instances for each automation task
+- **Live View API**: Real-time browser session embedding
+- **Session Management**: Creation, control, and termination APIs
+- **Recording Capabilities**: Optional session recording and playback
+
+**Constraints:**
+- Session duration limits (configurable)
+- Concurrent session limits based on plan
+- Regional availability for optimal performance
+- Network latency considerations
+
+#### **Redis Infrastructure**
+- **Job Queue**: bullmq task processing and retry logic
+- **Session Cache**: Temporary data storage with TTL
+- **Rate Limiting**: API throttling and user limits
+- **Real-time State**: WebSocket connection management
+
+**Constraints:**
+- Memory limits based on Redis plan
+- Connection limits for concurrent operations
+- Persistence configuration for job reliability
+
+## Performance Requirements & Constraints
+
+### **Response Time Targets**
+```javascript
+const performanceTargets = {
+  // API Performance
+  apiResponseTime: 200,        // ms - standard operations
+  cachedResponseTime: 100,     // ms - cached data retrieval
+  
+  // Real-time Communication
+  webSocketLatency: 300,       // ms - status updates
+  liveViewLoadTime: 2000,      // ms - embedded browser iframe
+  
+  // Task Processing
+  taskSubmissionTime: 1000,    // ms - from submit to queue
+  globalTaskTimeout: 180000,   // ms - 3 minutes per task
+  browserActionTimeout: 10000, // ms - individual browser action
+  
+  // System Capacity
+  concurrentSessions: 50,      // simultaneous automation tasks
+  concurrentUsers: 1000,       // active users
+  databaseConnections: 100     // PostgreSQL connection pool
+};
+```
+
+### **Scalability Constraints**
+- **Database**: Supabase connection limits and query performance
+- **Redis**: Memory limits and connection pool size
+- **Browserbase**: Session limits and regional capacity
+- **Network**: WebSocket connection limits and bandwidth usage
+
+### **Browser Compatibility**
+```javascript
+// Supported browsers for Live View iFrame
+const browserSupport = {
+  chrome: '90+',
+  firefox: '88+', 
+  safari: '14+',
+  edge: '90+'
+};
+```
+
+## Security & Compliance
+
+### **Data Protection Implementation**
+- **Encryption at Rest**: AES-256 for sensitive fields (RFC, credentials)
+- **Encryption in Transit**: HTTPS/WSS for all communications
+- **Key Management**: Secure environment variable storage
+- **Data Anonymization**: No personally identifiable information in logs
+
+### **Authentication & Authorization**
+```javascript
+// JWT token structure
+const jwtPayload = {
+  sub: 'user_id',           // Supabase user ID
+  iat: 1234567890,          // Issued at timestamp
+  exp: 1234567890,          // Expiration timestamp
+  role: 'authenticated',     // Supabase role
+  email: 'user@example.com'  // User email
+};
+```
+
+### **Compliance Requirements**
+- **LFPDPPP**: Mexican data protection law compliance
+- **Data Residency**: User data stored in appropriate regions
+- **Audit Logging**: Comprehensive tracking of data access and modifications
+- **Right to Deletion**: User data removal capabilities
+
+## API Design Standards
+
+### **RESTful Endpoint Patterns**
+```javascript
+// Standardized API structure
+const apiEndpoints = {
+  // Authentication
+  'POST /api/v1/auth/register': 'User registration',
+  'POST /api/v1/auth/login': 'User authentication',
+  
+  // Task Management
+  'GET /api/v1/tasks': 'List user tasks with pagination',
+  'POST /api/v1/tasks': 'Create new automation task',
+  'GET /api/v1/tasks/:id': 'Get task details and step logs',
+  'PUT /api/v1/tasks/:id/pause': 'Pause running task',
+  'PUT /api/v1/tasks/:id/resume': 'Resume paused task',
+  
+  // WebSocket
+  'WS /ws/:taskId': 'Real-time task updates'
+};
+```
+
+### **Response Format Standards**
+```typescript
+// Standardized API response types
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: any;
+  };
+  meta?: {
+    timestamp: string;
+    requestId: string;
+    pagination?: PaginationMeta;
+  };
 }
 ```
 
-### Code Quality Tools
-- **ESLint**: Code linting with custom rules
-- **Prettier**: Code formatting
-- **TypeScript**: Compile-time type checking
-- **Jest**: Unit and integration testing
-- **Playwright**: End-to-end testing
+## Development Workflow
 
-## Security Technologies
-
-### Authentication & Authorization
-- **Supabase Auth**: Managed authentication service
-- **JWT Tokens**: Stateless authentication
-- **Row-Level Security**: Database-level access control
-
-### Data Protection
-```javascript
-// Encryption Utilities
-const encrypt = (data) => crypto.AES.encrypt(data, ENCRYPTION_KEY);
-const decrypt = (encryptedData) => crypto.AES.decrypt(encryptedData, ENCRYPTION_KEY);
+### **Code Quality Standards**
+```json
+// TypeScript configuration requirements
+{
+  "strict": true,
+  "noImplicitReturns": true,
+  "noUnusedLocals": true,
+  "noUnusedParameters": true
+}
 ```
 
-### Security Measures
-- **HTTPS/WSS**: Encrypted communication
-- **CORS Configuration**: Restricted to frontend domains
-- **Rate Limiting**: API abuse prevention
-- **Input Validation**: Zod schema validation
-- **SQL Injection Protection**: Parameterized queries
+### **Testing Requirements**
+- **Unit Tests**: >95% code coverage with Jest
+- **Integration Tests**: API endpoint testing with Supertest
+- **E2E Tests**: Complete user workflows with Playwright
+- **Performance Tests**: Load testing with k6 or Artillery
 
-## Monitoring & Observability
-
-### Logging
-```javascript
-// Winston Logger Configuration
-const logger = winston.createLogger({
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' })
-  ]
-});
-```
-
-### Health Monitoring
-- **Health Check Endpoints**: `/health`, `/health/db`, `/health/redis`
-- **Error Tracking**: Centralized error logging and alerting
-- **Performance Metrics**: Response times and queue lengths
-
-## Deployment Technologies
-
-### Containerization
-```dockerfile
-# Backend Dockerfile
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-EXPOSE 3000
-CMD ["node", "src/index.js"]
-```
-
-### Deployment Configuration
+### **CI/CD Pipeline**
 ```yaml
-# docker-compose.yml
-version: '3.8'
-services:
-  backend:
-    build: ./backend
-    environment:
-      - NODE_ENV=production
-    depends_on:
-      - redis
-  
-  redis:
-    image: redis:7.2.0-alpine
-    command: redis-server --appendonly yes
+# GitHub Actions workflow stages
+stages:
+  - lint_and_typecheck: ESLint + TypeScript validation
+  - unit_tests: Jest test suite execution
+  - integration_tests: API testing with test database
+  - build: TypeScript compilation and bundling
+  - deploy_staging: Automated staging deployment
+  - e2e_tests: Playwright testing against staging
+  - deploy_production: Manual production deployment
 ```
 
-### Infrastructure Requirements
-- **CPU**: 2+ cores for concurrent task processing
-- **Memory**: 4GB+ for Redis and application processes
-- **Storage**: SSD for optimal database performance
-- **Network**: High-speed internet for browser streaming
+## Deployment Architecture
 
-## Performance Considerations
+### **Hosting Infrastructure**
+- **Frontend**: Static site hosting (Vercel/Netlify) with global CDN
+- **Backend**: Containerized deployment (Railway/Render/Fly.io)
+- **Database**: Managed Supabase with automatic scaling
+- **Cache**: Redis Cloud with high availability
+- **Browser Infrastructure**: Browserbase global infrastructure
 
-### Optimization Strategies
-- **Connection Pooling**: Database and Redis connections
-- **Caching**: Frequently accessed user data and sessions
-- **Asset Optimization**: Frontend bundle size optimization
-- **CDN Integration**: Static asset delivery
-
-### Monitoring Targets
-- **API Response Time**: <200ms
-- **Task Processing**: <3 minutes per task
-- **Browser Actions**: <10 seconds per action
-- **Concurrent Users**: 1,000+ simultaneous sessions
-
-## Testing Strategy
-
-### Test Pyramid
+### **Environment Separation**
 ```
-E2E Tests (Automation Workflows)
-    ↑
-Integration Tests (API Endpoints)
-    ↑
-Unit Tests (Business Logic)
+Development → Staging → Production
+     ↓           ↓         ↓
+Local DB → Test DB → Production DB
+Local Redis → Test Redis → Production Redis
 ```
 
-### Testing Tools
-- **Jest**: Unit and integration testing
-- **Supertest**: API endpoint testing
-- **Playwright**: Browser automation testing
-- **Mock Services**: External dependency mocking
+### **Monitoring & Observability**
+- **Application Performance**: Response times, error rates, throughput
+- **Infrastructure Monitoring**: CPU, memory, database performance
+- **Real-time Metrics**: Active sessions, queue lengths, user activity
+- **Error Tracking**: Automated error detection and alerting
 
-## Documentation Requirements
+## Technical Constraints & Limitations
 
-### Technical Documentation
-- **API Documentation**: OpenAPI/Swagger specifications
-- **Database Schema**: ER diagrams and table documentation
-- **Deployment Guides**: Environment setup and configuration
-- **Architecture Decisions**: Technical decision documentation
+### **Browser Automation Constraints**
+- **Session Duration**: Maximum 30 minutes per automation task
+- **Concurrent Limits**: Based on Browserbase plan and user tier
+- **Geographic Restrictions**: Regional availability affects performance
+- **JavaScript Execution**: Complex SPAs may require additional handling
 
-### Code Documentation
-- **JSDoc Comments**: Function and class documentation
-- **README Files**: Setup and usage instructions
-- **Code Comments**: Complex logic explanation
-- **Type Definitions**: TypeScript interface documentation 
+### **Database Constraints**
+- **Connection Pooling**: Limited concurrent connections per plan
+- **Query Performance**: Complex joins may require optimization
+- **Storage Limits**: File storage quotas based on Supabase plan
+- **Real-time Limits**: Subscription limits for live updates
+
+### **Real-time Communication**
+- **WebSocket Limits**: Maximum concurrent connections per server
+- **Message Rate**: Throttling for high-frequency updates
+- **Connection Stability**: Handling network interruptions and reconnection
+
+## Integration Standards
+
+### **Error Handling Patterns**
+```typescript
+// Standardized error types
+enum ErrorType {
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  AUTHENTICATION_ERROR = 'AUTHENTICATION_ERROR',
+  AUTHORIZATION_ERROR = 'AUTHORIZATION_ERROR',
+  RESOURCE_NOT_FOUND = 'RESOURCE_NOT_FOUND',
+  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
+  INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR'
+}
+```
+
+### **Logging Standards**
+```typescript
+// Structured logging format
+interface LogEntry {
+  timestamp: string;
+  level: 'debug' | 'info' | 'warn' | 'error';
+  message: string;
+  context: {
+    userId?: string;
+    taskId?: string;
+    requestId: string;
+    sessionId?: string;
+  };
+  metadata?: Record<string, any>;
+}
+```
+
+## Future Technology Considerations
+
+### **Planned Upgrades**
+- **React 19 Concurrent Features**: Enhanced performance with Suspense
+- **Server Components**: Gradual adoption for better performance
+- **Edge Functions**: Supabase Edge Functions for complex operations
+- **Multi-region Deployment**: Geographic distribution for global users
+
+### **Technology Evolution**
+- **AI/ML Integration**: Enhanced form recognition and vendor adaptation
+- **Mobile SDK**: Native mobile applications for iOS and Android
+- **Microservices Migration**: Gradual service decomposition for scale
+- **Advanced Analytics**: Machine learning for automation optimization
+
+### **Performance Optimizations**
+- **CDN Strategy**: Global content delivery for static assets
+- **Database Sharding**: Horizontal scaling for high-volume users
+- **Caching Layers**: Multi-level caching for optimal performance
+- **Connection Optimization**: Advanced pooling and connection management 
