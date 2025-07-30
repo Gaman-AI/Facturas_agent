@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuth, useUserProfile } from '@/hooks/useAuth';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
@@ -19,6 +20,7 @@ export default function DashboardPage() {
 function DashboardContent() {
   const { logout, loading } = useAuth();
   const { profile, getDisplayName, getRFCMasked, getFullAddress, isPersonaFisica } = useUserProfile();
+  const { t } = useLanguage();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -58,7 +60,7 @@ function DashboardContent() {
                 <FileText className="w-5 h-5 text-white" />
               </div>
               <h1 className="text-xl font-semibold text-slate-900">
-                Sistema CFDI 4.0
+                {t('home.title')}
               </h1>
             </div>
             
@@ -73,7 +75,7 @@ function DashboardContent() {
                 disabled={loading}
               >
                 <LogOut className="w-4 h-4 mr-2" />
-                Cerrar Sesión
+                {t('auth.logout')}
               </Button>
             </div>
           </div>
@@ -84,10 +86,10 @@ function DashboardContent() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            Bienvenido al Dashboard
+            {t('dashboard.welcome')}
           </h2>
           <p className="text-slate-600">
-            Gestiona tus tareas de automatización CFDI desde aquí
+            {t('dashboard.title')}
           </p>
         </div>
 
@@ -97,50 +99,50 @@ function DashboardContent() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <User className="w-5 h-5" />
-                <span>Información del Usuario</span>
+                <span>{t('profile.title')}</span>
               </CardTitle>
               <CardDescription>
-                {hasProfile ? 'Información fiscal y de contacto' : 'Complete su perfil para acceder a todas las funciones'}
+                {hasProfile ? t('profile.companyInfo') : t('profile.edit')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {hasProfile ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-slate-700">Email</label>
+                    <label className="text-sm font-medium text-slate-700">{t('auth.email')}</label>
                     <p className="text-slate-900">{profile.email}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-slate-700">RFC</label>
+                    <label className="text-sm font-medium text-slate-700">{t('register.rfc.label')}</label>
                     <div className="flex items-center space-x-2">
                       <p className="text-slate-900">{getRFCMasked()}</p>
                       <Badge variant={isPersonaFisica() ? "default" : "secondary"}>
-                        {isPersonaFisica() ? "Persona Física" : "Persona Moral"}
+                        {isPersonaFisica() ? t('common.personaFisica', 'Persona Física') : t('common.personaMoral', 'Persona Moral')}
                       </Badge>
                     </div>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="text-sm font-medium text-slate-700">Razón Social</label>
+                    <label className="text-sm font-medium text-slate-700">{t('register.companyName.label')}</label>
                     <p className="text-slate-900">{profile.company_name || profile.razon_social}</p>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="text-sm font-medium text-slate-700">Dirección Fiscal</label>
+                    <label className="text-sm font-medium text-slate-700">{t('register.addressInfo')}</label>
                     <p className="text-slate-900">{getFullAddress()}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-slate-700">Régimen Fiscal</label>
+                    <label className="text-sm font-medium text-slate-700">{t('register.taxRegime.label')}</label>
                     <p className="text-slate-900">{profile.tax_regime || profile.regimen_fiscal}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-slate-700">Uso de CFDI</label>
+                    <label className="text-sm font-medium text-slate-700">{t('register.cfdiUse.label')}</label>
                     <p className="text-slate-900">{profile.cfdi_use || profile.uso_cfdi}</p>
                   </div>
                 </div>
               ) : (
                 <div className="text-center py-8">
                   <User className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                  <p className="text-slate-600 mb-4">No se ha encontrado información de perfil</p>
-                  <p className="text-sm text-slate-500">Puede usar las funciones básicas del sistema sin completar su perfil</p>
+                  <p className="text-slate-600 mb-4">{t('profile.noProfile', 'No se ha encontrado información de perfil')}</p>
+                  <p className="text-sm text-slate-500">{t('profile.basicFunctions', 'Puede usar las funciones básicas del sistema sin completar su perfil')}</p>
                 </div>
               )}
             </CardContent>
@@ -150,38 +152,38 @@ function DashboardContent() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Building2 className="w-5 h-5" />
-                  <span>Acciones Rápidas</span>
-                </CardTitle>
+                              <CardTitle className="flex items-center space-x-2">
+                <Building2 className="w-5 h-5" />
+                <span>{t('dashboard.quickActions', 'Acciones Rápidas')}</span>
+              </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button className="w-full" variant="outline" onClick={handleNewTask}>
                   <FileText className="w-4 h-4 mr-2" />
-                  Nueva Tarea CFDI
+                  {t('tasks.create')}
                 </Button>
                 <Button className="w-full" variant="outline" onClick={handleViewHistory}>
                   <BarChart3 className="w-4 h-4 mr-2" />
-                  Ver Historial
+                  {t('dashboard.viewHistory', 'Ver Historial')}
                 </Button>
                 <Button className="w-full" variant="outline" onClick={handleUpdateProfile}>
                   <User className="w-4 h-4 mr-2" />
-                  Actualizar Perfil
+                  {t('profile.edit')}
                 </Button>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Estado del Sistema</CardTitle>
+                <CardTitle>{t('dashboard.systemStatus', 'Estado del Sistema')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-slate-600">Sistema Operativo</span>
+                  <span className="text-sm text-slate-600">{t('dashboard.systemOperational', 'Sistema Operativo')}</span>
                 </div>
                 <p className="text-xs text-slate-500 mt-2">
-                  Todos los servicios funcionando correctamente
+                  {t('dashboard.allServicesWorking', 'Todos los servicios funcionando correctamente')}
                 </p>
               </CardContent>
             </Card>

@@ -2,13 +2,25 @@
 
 import { LanguageSwitcher, LanguageToggle } from '@/components/ui/LanguageSwitcher'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 export function LanguageSwitcherDemo() {
-  const { t, language } = useLanguage()
+  const { t, language, isLoading } = useLanguage()
+
+  // Show loading indicator in header while translations are being loaded
+  const loadingIndicator = isLoading && (
+    <div className="flex items-center justify-center mb-4">
+      <LoadingSpinner size="sm" />
+      <span className="ml-2 text-sm text-slate-500">
+        {language === 'es' ? 'Cargando traducciones...' : 'Loading translations...'}
+      </span>
+    </div>
+  )
 
   return (
     <div className="space-y-6 p-6">
+      {loadingIndicator}
       <div className="text-center">
         <h1 className="text-3xl font-bold mb-2">{t('language.switch')}</h1>
         <p className="text-slate-600">{t('language.current', { language: language === 'es' ? 'Español' : 'English' })}</p>
