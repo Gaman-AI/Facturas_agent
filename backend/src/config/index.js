@@ -54,8 +54,10 @@ const config = {
   // Python Service Configuration
   python: {
     servicePort: parseInt(process.env.PYTHON_SERVICE_PORT) || 8001,
-    executable: process.env.PYTHON_EXECUTABLE || 'python',
+    executable: process.env.PYTHON_EXECUTABLE || 'python3',
     browserUsePath: './browser-use',
+    timeout: parseInt(process.env.PYTHON_TASK_TIMEOUT) || 300000, // 5 minutes default
+    maxRetries: parseInt(process.env.PYTHON_MAX_RETRIES) || 3,
   },
 
   // Validation

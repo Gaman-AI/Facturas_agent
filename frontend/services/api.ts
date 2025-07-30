@@ -100,6 +100,147 @@ export interface HealthResponse {
   version: string;
 }
 
+// Browser-Use Integration Types
+export interface BrowserUseTaskRequest {
+  prompt?: string;
+  vendor_url?: string;
+  customer_details?: {
+    rfc?: string;
+    email?: string;
+    company_name?: string;
+    address?: {
+      street?: string;
+      exterior_number?: string;
+      interior_number?: string;
+      colony?: string;
+      municipality?: string;
+      zip_code?: string;
+      state?: string;
+      country?: string;
+    };
+  };
+  invoice_details?: {
+    ticket_id?: string;
+    folio?: string;
+    transaction_date?: string;
+    total?: number;
+    currency?: string;
+    subtotal?: number;
+    iva?: number;
+  };
+  model?: string;
+  temperature?: number;
+  max_steps?: number;
+  timeout_minutes?: number;
+}
+
+export interface BrowserUseTaskResponse {
+  success: boolean;
+  data: {
+    task_id: string;
+    status: string;
+    created_at: string;
+    prompt?: string;
+    vendor_url?: string;
+    model: string;
+    max_steps: number;
+  };
+  meta: {
+    timestamp: string;
+    requestId: string;
+  };
+}
+
+export interface BrowserUseTask {
+  success: boolean;
+  data: {
+    task_id: string;
+    status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+    created_at: string;
+    started_at?: string;
+    completed_at?: string;
+    execution_time_ms?: number;
+    model: string;
+    max_steps: number;
+    result?: string;
+    error?: string;
+    error_type?: string;
+    prompt?: string;
+  };
+  meta: {
+    timestamp: string;
+    requestId: string;
+  };
+}
+
+export interface BrowserUseTasksResponse {
+  success: boolean;
+  data: {
+    tasks: Array<{
+      task_id: string;
+      status: string;
+      created_at: string;
+      started_at?: string;
+      completed_at?: string;
+      execution_time_ms?: number;
+      model: string;
+      vendor_url?: string;
+      result?: string;
+      error?: string;
+      prompt_preview?: string;
+    }>;
+    total_count: number;
+    has_more: boolean;
+    limit: number;
+    offset: number;
+  };
+  meta: {
+    timestamp: string;
+    requestId: string;
+  };
+}
+
+export interface BrowserUseStats {
+  success: boolean;
+  data: {
+    totalTasks: number;
+    runningTasks: number;
+    statusCounts: {
+      pending: number;
+      running: number;
+      completed: number;
+      failed: number;
+      cancelled: number;
+    };
+    averageExecutionTime: number;
+    successRate: number;
+  };
+  meta: {
+    timestamp: string;
+    requestId: string;
+  };
+}
+
+export interface BrowserUseHealth {
+  success: boolean;
+  data: {
+    status: 'healthy' | 'unhealthy';
+    service: string;
+    totalTasks: number;
+    runningTasks: number;
+    pythonBridge: {
+      status: 'healthy' | 'unhealthy';
+      python_executable: string;
+      script_path: string;
+      error?: string;
+    };
+  };
+  meta: {
+    timestamp: string;
+    requestId: string;
+  };
+}
+
 export interface BrowserTaskRequest {
   task_description: string;
   llm_provider?: string;
@@ -258,6 +399,55 @@ export class ApiService {
   static async getBrowserTaskLogs(sessionId: string): Promise<any[]> {
     const response = await apiClient.get(`/browser-agent/logs/${sessionId}`);
     return response.data as any[];
+  }
+
+  // Browser-Use Integration (New)
+  static async createBrowserUseTask(request: BrowserUseTaskRequest): Promise<BrowserUseTaskResponse> {
+    const response = await apiClient.post('/tasks/browser-use', request);
+    return response.data as BrowserUseTaskResponse;
+  }
+
+  static async getBrowserUseTask(taskId: string): Promise<BrowserUseTask> {
+    const response = await apiClient.get(`/tasks/browser-use/${taskId}`);
+    return response.data as BrowserUseTask;
+  }
+
+  static async getBrowserUseTasks(options?: {
+    limit?: number;
+    offset?: number;
+    status?: string;
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
+  }): Promise<BrowserUseTasksResponse> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+    if (options?.status) params.append('status', options.status);
+    if (options?.sort_by) params.append('sort_by', options.sort_by);
+    if (options?.sort_order) params.append('sort_order', options.sort_order);
+
+    const response = await apiClient.get(`/tasks/browser-use?${params.toString()}`);
+    return response.data as BrowserUseTasksResponse;
+  }
+
+  static async cancelBrowserUseTask(taskId: string): Promise<{ message: string; task_id: string }> {
+    const response = await apiClient.post(`/tasks/browser-use/${taskId}/cancel`);
+    return response.data as { message: string; task_id: string };
+  }
+
+  static async deleteBrowserUseTask(taskId: string): Promise<{ message: string; task_id: string }> {
+    const response = await apiClient.delete(`/tasks/browser-use/${taskId}`);
+    return response.data as { message: string; task_id: string };
+  }
+
+  static async getBrowserUseStats(): Promise<BrowserUseStats> {
+    const response = await apiClient.get('/tasks/browser-use/stats');
+    return response.data as BrowserUseStats;
+  }
+
+  static async getBrowserUseHealth(): Promise<BrowserUseHealth> {
+    const response = await apiClient.get('/tasks/browser-use/health');
+    return response.data as BrowserUseHealth;
   }
 }
 
