@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, FileText, AlertCircle, CheckCircle, Play } from 'lucide-react'
 import { useAuth, useUserProfile } from '@/hooks/useAuth'
-import ApiService, { type CFDITaskRequest, type CFDITaskResponse } from '@/services/api'
+import ApiService, { type BrowserUseTaskRequest, type BrowserUseTaskResponse } from '@/services/api'
 
 // Form validation schema
 const cfdiTaskSchema = z.object({
@@ -91,6 +91,76 @@ export function CFDITaskForm() {
     testConnection()
   }, [])
 
+  // Poll task status function
+  const pollTaskStatus = (taskId: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const taskResponse = await ApiService.getBrowserUseTask(taskId)
+        
+        if (taskResponse.success) {
+          const task = taskResponse.data
+          
+          // Update task result with current status
+          setTaskResult({
+            success: true,
+            data: {
+              task_id: task.task_id,
+              status: task.status,
+              result: task.result || null,
+              execution_time: task.execution_time_ms || 0,
+              logs: [] // Browser-use doesn't provide logs in this format
+            }
+          })
+          
+          // Stop polling if task is completed or failed
+          if (task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled') {
+            clearInterval(interval)
+            setIsExecuting(false)
+            
+            if (task.status === 'failed') {
+              setTaskResult({
+                success: false,
+                error: {
+                  code: 'TASK_EXECUTION_FAILED',
+                  message: task.error || 'La tarea falló durante la ejecución',
+                  details: task.error_type
+                }
+              })
+            }
+            
+            console.log(`🏁 Tarea ${task.status}: ${task.task_id}`)
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error polling task status:', error)
+        clearInterval(interval)
+        setIsExecuting(false)
+        setTaskResult({
+          success: false,
+          error: {
+            code: 'POLLING_ERROR',
+            message: 'Error al verificar el estado de la tarea'
+          }
+        })
+      }
+    }, 2000) // Poll every 2 seconds
+
+    // Set a maximum polling time of 10 minutes
+    setTimeout(() => {
+      clearInterval(interval)
+      if (isExecuting) {
+        setIsExecuting(false)
+        setTaskResult({
+          success: false,
+          error: {
+            code: 'TIMEOUT_ERROR',
+            message: 'La tarea ha excedido el tiempo máximo de ejecución'
+          }
+        })
+      }
+    }, 600000) // 10 minutes
+  }
+
   const onSubmit = async (formData: CFDITaskFormData) => {
     if (!profile || !user) {
       setTaskResult({
@@ -108,13 +178,13 @@ export function CFDITaskForm() {
     setConnectionError(null)
 
     try {
-      // Prepare CFDI task data using user profile and form data
-      const taskData: CFDITaskRequest = {
+      // Prepare browser-use task data using user profile and form data
+      const taskData: BrowserUseTaskRequest = {
+        vendor_url: formData.vendor_url,
         customer_details: {
           rfc: profile.rfc,
           email: user.email || profile.email,
           company_name: profile.company_name || profile.razon_social,
-          fiscal_regime: profile.tax_regime || profile.regimen_fiscal,
           address: {
             street: profile.street || profile.calle,
             exterior_number: profile.exterior_number || profile.numero_ext,
@@ -122,7 +192,8 @@ export function CFDITaskForm() {
             colony: profile.colony || profile.colonia,
             municipality: profile.municipality || profile.delegacion_municipio,
             state: profile.state || profile.estado,
-            postal_code: profile.zip_code || profile.codigo_postal
+            zip_code: profile.zip_code || profile.codigo_postal,
+            country: 'Mexico'
           }
         },
         invoice_details: {
@@ -134,28 +205,47 @@ export function CFDITaskForm() {
           total: formData.total,
           currency: formData.currency
         },
-        vendor_url: formData.vendor_url,
-        automation_config: {
-          llm_provider: formData.llm_provider,
-          model: formData.model || undefined,
-          max_retries: formData.max_retries,
-          timeout_minutes: formData.timeout_minutes
-        }
+        model: formData.model || 'gpt-4.1-mini',
+        temperature: 1.0,
+        max_steps: 50,
+        timeout_minutes: formData.timeout_minutes
       }
 
-      console.log('🚀 Enviando tarea CFDI:', taskData)
+      console.log('🚀 Enviando tarea Browser-Use:', taskData)
       
-      const result = await ApiService.executeCFDITask(taskData)
-      setTaskResult(result)
+      const result = await ApiService.createBrowserUseTask(taskData)
       
       if (result.success) {
-        console.log('✅ Tarea ejecutada exitosamente:', result.data?.task_id)
+        console.log('✅ Tarea creada exitosamente:', result.data.task_id)
+        
+        // Start polling for task status
+        pollTaskStatus(result.data.task_id)
+        
+        // Set initial result
+        setTaskResult({
+          success: true,
+          data: {
+            task_id: result.data.task_id,
+            status: result.data.status,
+            result: null,
+            execution_time: 0,
+            logs: []
+          }
+        })
       } else {
-        console.error('❌ Error en la ejecución:', result.error?.message)
+        console.error('❌ Error creando la tarea:', result)
+        setTaskResult({
+          success: false,
+          error: {
+            code: 'TASK_CREATION_ERROR',
+            message: 'Error al crear la tarea de automatización'
+          }
+        })
+        setIsExecuting(false)
       }
 
     } catch (error) {
-      console.error('❌ Error ejecutando tarea CFDI:', error)
+      console.error('❌ Error ejecutando tarea Browser-Use:', error)
       
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
       setTaskResult({
@@ -165,13 +255,12 @@ export function CFDITaskForm() {
           message: errorMessage
         }
       })
+      setIsExecuting(false)
 
       // Check for connection errors
       if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('Network Error')) {
         setConnectionError('No se puede conectar al backend. Verifique que esté ejecutándose en el puerto 8000.')
       }
-    } finally {
-      setIsExecuting(false)
     }
   }
 

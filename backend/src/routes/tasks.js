@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth.js'
 import { validateCreateTask, validateTaskQuery, validateTaskParams, validateCFDIData } from '../middleware/validation.js'
 import { asyncHandler } from '../middleware/errorHandler.js'
 import browserService from '../services/browserService.js'
+import browserAgentService from '../services/browserAgentService.js'
 
 const router = express.Router()
 
@@ -444,6 +445,424 @@ router.get('/browser/health', authenticate, asyncHandler(async (req, res) => {
       }
     })
   } catch (error) {
+    res.status(503).json({
+      success: false,
+      error: {
+        code: 'BROWSER_SERVICE_UNAVAILABLE',
+        message: 'Browser service health check failed',
+        details: error.message
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+}))
+
+/**
+ * ==========================================================================
+ * BROWSER-USE INTEGRATION ENDPOINTS
+ * ==========================================================================
+ */
+
+/**
+ * @route   POST /api/v1/tasks/browser-use
+ * @desc    Create and execute a browser automation task using local browser-use
+ * @access  Private
+ */
+router.post('/browser-use', authenticate, asyncHandler(async (req, res) => {
+  const userId = req.user.id
+  const {
+    prompt,
+    vendor_url,
+    customer_details,
+    invoice_details,
+    model,
+    temperature,
+    max_steps,
+    timeout_minutes
+  } = req.body
+
+  // Validate required fields
+  if (!prompt && !vendor_url) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Either prompt or vendor_url must be provided',
+        details: { fields: ['prompt', 'vendor_url'] }
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+
+  try {
+    // Create the browser task
+    const task = await browserAgentService.createTask(userId, {
+      prompt,
+      vendor_url,
+      customer_details,
+      invoice_details,
+      model,
+      temperature,
+      max_steps,
+      timeout_minutes,
+      request_id: req.id,
+      user_agent: req.headers['user-agent'],
+      ip_address: req.ip
+    })
+
+    res.status(201).json({
+      success: true,
+      data: {
+        task_id: task.id,
+        status: task.status,
+        created_at: task.createdAt,
+        prompt: task.prompt ? task.prompt.substring(0, 100) + '...' : null,
+        vendor_url: task.vendorUrl,
+        model: task.model,
+        max_steps: task.maxSteps
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ Browser task creation failed:', error)
+    
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'BROWSER_TASK_CREATION_FAILED',
+        message: 'Failed to create browser automation task',
+        details: error.message
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+}))
+
+/**
+ * @route   GET /api/v1/tasks/browser-use/:taskId
+ * @desc    Get browser task status and result
+ * @access  Private
+ */
+router.get('/browser-use/:taskId', authenticate, validateTaskParams, asyncHandler(async (req, res) => {
+  const { taskId } = req.params
+  const userId = req.user.id
+
+  try {
+    const task = browserAgentService.getTask(taskId, userId)
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'TASK_NOT_FOUND',
+          message: 'Browser task not found or access denied',
+          details: { task_id: taskId }
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: req.id
+        }
+      })
+    }
+
+    res.json({
+      success: true,
+      data: {
+        task_id: task.id,
+        status: task.status,
+        created_at: task.createdAt,
+        started_at: task.startedAt,
+        completed_at: task.completedAt,
+        execution_time_ms: task.executionTimeMs,
+        model: task.model,
+        max_steps: task.maxSteps,
+        result: task.result,
+        error: task.error,
+        error_type: task.errorType,
+        prompt: task.prompt
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ Failed to get browser task:', error)
+    
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'BROWSER_TASK_FETCH_FAILED',
+        message: 'Failed to retrieve browser task',
+        details: error.message
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+}))
+
+/**
+ * @route   GET /api/v1/tasks/browser-use
+ * @desc    Get all browser tasks for the authenticated user
+ * @access  Private
+ */
+router.get('/browser-use', authenticate, asyncHandler(async (req, res) => {
+  const userId = req.user.id
+  const { 
+    limit = 20, 
+    offset = 0, 
+    status = null,
+    sort_by = 'createdAt',
+    sort_order = 'desc'
+  } = req.query
+
+  try {
+    const result = browserAgentService.getUserTasks(userId, {
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      status,
+      sortBy: sort_by,
+      sortOrder: sort_order
+    })
+
+    res.json({
+      success: true,
+      data: {
+        tasks: result.tasks.map(task => ({
+          task_id: task.id,
+          status: task.status,
+          created_at: task.createdAt,
+          started_at: task.startedAt,
+          completed_at: task.completedAt,
+          execution_time_ms: task.executionTimeMs,
+          model: task.model,
+          vendor_url: task.vendorUrl,
+          result: task.status === 'completed' ? task.result : null,
+          error: task.error,
+          prompt_preview: task.prompt ? task.prompt.substring(0, 100) + '...' : null
+        })),
+        total_count: result.totalCount,
+        has_more: result.hasMore,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ Failed to get browser tasks:', error)
+    
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'BROWSER_TASKS_FETCH_FAILED',
+        message: 'Failed to retrieve browser tasks',
+        details: error.message
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+}))
+
+/**
+ * @route   POST /api/v1/tasks/browser-use/:taskId/cancel
+ * @desc    Cancel a running browser task
+ * @access  Private
+ */
+router.post('/browser-use/:taskId/cancel', authenticate, validateTaskParams, asyncHandler(async (req, res) => {
+  const { taskId } = req.params
+  const userId = req.user.id
+
+  try {
+    const cancelled = await browserAgentService.cancelTask(taskId, userId)
+
+    if (!cancelled) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'TASK_NOT_CANCELLABLE',
+          message: 'Task not found, not running, or access denied',
+          details: { task_id: taskId }
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: req.id
+        }
+      })
+    }
+
+    res.json({
+      success: true,
+      data: {
+        task_id: taskId,
+        status: 'cancelled',
+        message: 'Task cancelled successfully'
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ Failed to cancel browser task:', error)
+    
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'BROWSER_TASK_CANCEL_FAILED',
+        message: 'Failed to cancel browser task',
+        details: error.message
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+}))
+
+/**
+ * @route   DELETE /api/v1/tasks/browser-use/:taskId
+ * @desc    Delete a browser task
+ * @access  Private
+ */
+router.delete('/browser-use/:taskId', authenticate, validateTaskParams, asyncHandler(async (req, res) => {
+  const { taskId } = req.params
+  const userId = req.user.id
+
+  try {
+    const deleted = browserAgentService.deleteTask(taskId, userId)
+
+    if (!deleted) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'TASK_NOT_DELETABLE',
+          message: 'Task not found, still running, or access denied',
+          details: { task_id: taskId }
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: req.id
+        }
+      })
+    }
+
+    res.json({
+      success: true,
+      data: {
+        task_id: taskId,
+        message: 'Task deleted successfully'
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ Failed to delete browser task:', error)
+    
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'BROWSER_TASK_DELETE_FAILED',
+        message: 'Failed to delete browser task',
+        details: error.message
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+}))
+
+/**
+ * @route   GET /api/v1/tasks/browser-use/stats
+ * @desc    Get browser task statistics
+ * @access  Private
+ */
+router.get('/browser-use/stats', authenticate, asyncHandler(async (req, res) => {
+  const userId = req.user.id
+
+  try {
+    const stats = browserAgentService.getStats(userId)
+
+    res.json({
+      success: true,
+      data: stats,
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ Failed to get browser task stats:', error)
+    
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'BROWSER_STATS_FAILED',
+        message: 'Failed to retrieve browser task statistics',
+        details: error.message
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+}))
+
+/**
+ * @route   GET /api/v1/tasks/browser-use/health
+ * @desc    Check browser-use service health
+ * @access  Private
+ */
+router.get('/browser-use/health', authenticate, asyncHandler(async (req, res) => {
+  try {
+    const health = await browserAgentService.healthCheck()
+
+    const statusCode = health.status === 'healthy' ? 200 : 503
+
+    res.status(statusCode).json({
+      success: health.status === 'healthy',
+      data: health,
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ Browser service health check failed:', error)
+    
     res.status(503).json({
       success: false,
       error: {

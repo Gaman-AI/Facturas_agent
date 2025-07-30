@@ -58,36 +58,38 @@ class AuthService {
         throw new Error('No user data returned from registration');
       }
 
-      // Step 2: Create user profile with your required CFDI fields
-      const profileData = {
-        user_id: authData.user.id,
-        rfc: registerData.rfc,
-        country: registerData.country || 'México',
-        company_name: registerData.company_name,
-        street: registerData.street,
-        exterior_number: registerData.exterior_number,
-        interior_number: registerData.interior_number || null,
-        colony: registerData.colony,
-        municipality: registerData.municipality,
-        zip_code: registerData.zip_code,
-        state: registerData.state,
-        tax_regime: registerData.tax_regime,
-        cfdi_use: registerData.cfdi_use,
-      };
-
+      // Step 2: Create user profile using the safe database function
+      // This handles validation, RFC uniqueness, and atomic operations
       const { data: profileResult, error: profileError } = await this.supabase
-        .from(TABLES.USER_PROFILES)
-        .insert(profileData)
-        .select()
-        .single();
+        .rpc('create_user_profile', {
+          p_user_id: authData.user.id,
+          p_rfc: registerData.rfc.toUpperCase(),
+          p_country: registerData.country || 'México',
+          p_company_name: registerData.company_name,
+          p_street: registerData.street,
+          p_exterior_number: registerData.exterior_number,
+          p_interior_number: registerData.interior_number || null,
+          p_colony: registerData.colony,
+          p_municipality: registerData.municipality,
+          p_zip_code: registerData.zip_code,
+          p_state: registerData.state,
+          p_tax_regime: registerData.tax_regime,
+          p_cfdi_use: registerData.cfdi_use,
+        });
 
       if (profileError) {
-        // Clean up user account if profile creation fails
-        await this.supabase.auth.admin.deleteUser(authData.user.id);
+        console.error('Profile creation error:', profileError);
         throw this.formatAuthError(profileError);
       }
 
-      return { user: authData.user, profile: profileResult };
+      if (!profileResult || profileResult.length === 0) {
+        throw new Error('No profile data returned from creation');
+      }
+
+      // Return the first result from the function
+      const profile = Array.isArray(profileResult) ? profileResult[0] : profileResult;
+      
+      return { user: authData.user, profile };
     } catch (error) {
       console.error('Registration error:', error);
       throw this.formatAuthError(error);
@@ -232,21 +234,23 @@ class AuthService {
   }
 
   /**
-   * Check if email is already registered
+   * Check if email is already registered in auth.users
    */
   async isEmailRegistered(email: string): Promise<boolean> {
     try {
-      const { data, error } = await this.supabase
-        .from(TABLES.USER_PROFILES)
-        .select('id')
-        .eq('email', email.toLowerCase())
-        .single();
+      // Check if email exists in auth system by attempting a password reset
+      // This is a safe way to check email existence without exposing user data
+      const { error } = await this.supabase.auth.resetPasswordForEmail(
+        email.toLowerCase(),
+        { redirectTo: 'http://localhost:3000/auth/callback' }
+      );
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        throw this.formatAuthError(error);
+      // If no error, email exists; if error code is 'user_not_found', email doesn't exist
+      if (error && error.message.includes('user_not_found')) {
+        return false;
       }
 
-      return !!data;
+      return true;
     } catch (error) {
       console.error('Email check error:', error);
       return false;
@@ -270,11 +274,40 @@ class AuthService {
     let code = 'unknown_error';
 
     if (error instanceof Error) {
-      message = AUTH_ERROR_MESSAGES[error.message] || error.message;
-      code = error.message;
+      // Handle specific database function errors
+      if (error.message.includes('RFC') && error.message.includes('already registered')) {
+        message = 'Este RFC ya está registrado por otro usuario';
+        code = 'rfc_already_exists';
+      } else if (error.message.includes('User profile already exists')) {
+        message = 'El usuario ya tiene un perfil creado';
+        code = 'profile_already_exists';
+      } else if (error.message.includes('Invalid RFC format')) {
+        message = 'Formato de RFC inválido';
+        code = 'invalid_rfc_format';
+      } else {
+        message = AUTH_ERROR_MESSAGES[error.message] || error.message;
+        code = error.message;
+      }
     } else if (error?.message) {
-      message = AUTH_ERROR_MESSAGES[error.message] || error.message;
-      code = error.code || error.message;
+      // Handle Supabase specific errors
+      if (error.message.includes('duplicate key value violates unique constraint')) {
+        if (error.message.includes('rfc')) {
+          message = 'Este RFC ya está registrado';
+          code = 'rfc_already_exists';
+        } else if (error.message.includes('email')) {
+          message = 'Este email ya está registrado';
+          code = 'email_already_exists';
+        } else {
+          message = 'Ya existe un registro con estos datos';
+          code = 'duplicate_record';
+        }
+      } else if (error.code === '23505') { // PostgreSQL unique violation
+        message = 'Ya existe un registro con estos datos';
+        code = 'duplicate_record';
+      } else {
+        message = AUTH_ERROR_MESSAGES[error.message] || error.message;
+        code = error.code || error.message;
+      }
     }
 
     return {

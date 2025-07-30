@@ -9,6 +9,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Suppress punycode deprecation warning from Next.js
+  experimental: {
+    suppressDeprecationWarnings: true,
+  },
 }
 
 export default nextConfig
