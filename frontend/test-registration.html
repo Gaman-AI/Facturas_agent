@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Test</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .error { color: red; margin-top: 10px; }
+        .success { color: green; margin-top: 10px; }
+        .result { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9; }
+    </style>
+</head>
+<body>
+    <h1>Registration Test</h1>
+    <p><strong>Note:</strong> This is a test page to verify the registration flow works correctly.</p>
+    
+    <form id="registrationForm">
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" required value="test@example.com">
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" required value="TestPass123!">
+        </div>
+        
+        <div class="form-group">
+            <label for="rfc">RFC:</label>
+            <input type="text" id="rfc" required value="XAXX010101000" maxlength="13">
+        </div>
+        
+        <div class="form-group">
+            <label for="company_name">Company Name:</label>
+            <input type="text" id="company_name" required value="Test Company S.A. de C.V.">
+        </div>
+        
+        <div class="form-group">
+            <label for="street">Street:</label>
+            <input type="text" id="street" required value="Av. Insurgentes Sur">
+        </div>
+        
+        <div class="form-group">
+            <label for="exterior_number">Exterior Number:</label>
+            <input type="text" id="exterior_number" required value="1234">
+        </div>
+        
+        <div class="form-group">
+            <label for="interior_number">Interior Number (Optional):</label>
+            <input type="text" id="interior_number" value="4B">
+        </div>
+        
+        <div class="form-group">
+            <label for="colony">Colony:</label>
+            <input type="text" id="colony" required value="Del Valle">
+        </div>
+        
+        <div class="form-group">
+            <label for="municipality">Municipality:</label>
+            <input type="text" id="municipality" required value="Benito Juárez">
+        </div>
+        
+        <div class="form-group">
+            <label for="zip_code">Zip Code:</label>
+            <input type="text" id="zip_code" required value="03100" maxlength="5">
+        </div>
+        
+        <div class="form-group">
+            <label for="state">State:</label>
+            <input type="text" id="state" required value="Ciudad de México">
+        </div>
+        
+        <div class="form-group">
+            <label for="tax_regime">Tax Regime:</label>
+            <input type="text" id="tax_regime" required value="601">
+        </div>
+        
+        <div class="form-group">
+            <label for="cfdi_use">CFDI Use:</label>
+            <input type="text" id="cfdi_use" required value="G01">
+        </div>
+        
+        <button type="submit">Test Registration</button>
+    </form>
+    
+    <div id="result" class="result" style="display: none;"></div>
+
+    <script>
+        // Initialize Supabase client
+        // NOTE: Replace these with your actual Supabase credentials
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        
+        if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+            document.getElementById('result').innerHTML = '<div class="error">Please update the Supabase credentials in this test file first.</div>';
+            document.getElementById('result').style.display = 'block';
+        }
+        
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        document.getElementById('registrationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div>Testing registration...</div>';
+            resultDiv.style.display = 'block';
+            
+            try {
+                // Get form data
+                const formData = new FormData(e.target);
+                const registerData = {};
+                for (let [key, value] of formData.entries()) {
+                    registerData[key] = value;
+                }
+                
+                // Step 1: Create auth user
+                resultDiv.innerHTML += '<div>Step 1: Creating auth user...</div>';
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: registerData.email,
+                    password: registerData.password,
+                });
+                
+                if (authError) {
+                    throw new Error(`Auth error: ${authError.message}`);
+                }
+                
+                if (!authData.user) {
+                    throw new Error('No user data returned from registration');
+                }
+                
+                resultDiv.innerHTML += '<div class="success">✅ Auth user created successfully</div>';
+                
+                // Step 2: Create profile using RPC function
+                resultDiv.innerHTML += '<div>Step 2: Creating user profile...</div>';
+                const { data: profileResult, error: profileError } = await supabase.rpc('create_user_profile', {
+                    p_user_id: authData.user.id,
+                    p_rfc: registerData.rfc.toUpperCase(),
+                    p_country: registerData.country || 'México',
+                    p_company_name: registerData.company_name,
+                    p_street: registerData.street,
+                    p_exterior_number: registerData.exterior_number,
+                    p_interior_number: registerData.interior_number || null,
+                    p_colony: registerData.colony,
+                    p_municipality: registerData.municipality,
+                    p_zip_code: registerData.zip_code,
+                    p_state: registerData.state,
+                    p_tax_regime: registerData.tax_regime,
+                    p_cfdi_use: registerData.cfdi_use,
+                });
+                
+                if (profileError) {
+                    throw new Error(`Profile error: ${profileError.message}`);
+                }
+                
+                if (!profileResult || profileResult.length === 0) {
+                    throw new Error('No profile data returned from creation');
+                }
+                
+                const profile = Array.isArray(profileResult) ? profileResult[0] : profileResult;
+                
+                resultDiv.innerHTML += '<div class="success">✅ User profile created successfully</div>';
+                resultDiv.innerHTML += `<div class="success">✅ Registration completed for user: ${authData.user.email}</div>`;
+                resultDiv.innerHTML += `<div><strong>Profile ID:</strong> ${profile.id}</div>`;
+                resultDiv.innerHTML += `<div><strong>RFC:</strong> ${profile.rfc}</div>`;
+                resultDiv.innerHTML += `<div><strong>Company:</strong> ${profile.company_name}</div>`;
+                
+                // Clean up test user (optional)
+                resultDiv.innerHTML += '<div>Step 3: Cleaning up test user...</div>';
+                const { error: signOutError } = await supabase.auth.signOut();
+                if (signOutError) {
+                    console.warn('Sign out error:', signOutError);
+                }
+                
+                resultDiv.innerHTML += '<div class="success">✅ Test completed successfully!</div>';
+                
+            } catch (error) {
+                console.error('Registration test error:', error);
+                resultDiv.innerHTML += `<div class="error">❌ Test failed: ${error.message}</div>`;
+            }
+        });
+        
+        // Auto-generate unique test data
+        function generateTestData() {
+            const timestamp = Date.now();
+            document.getElementById('email').value = `test${timestamp}@example.com`;
+            document.getElementById('rfc').value = `XAXX${String(timestamp).slice(-6)}000`;
+        }
+        
+        // Generate unique test data on page load
+        generateTestData();
+    </script>
+</body>
+</html>

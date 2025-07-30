@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { AuthService } from '@/services/auth'
+import { authService } from '@/services/auth'
 import { RegisterData } from '@/types/auth'
 
 interface UserProfile {
@@ -51,9 +51,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
   // Use ref to prevent multiple initializations
   const initRef = useRef(false)
-  
-  // Initialize AuthService
-  const authService = useCallback(() => new AuthService(), [])
 
   const loadUserProfile = useCallback(async (userId: string) => {
     try {
@@ -146,8 +143,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null)
       setLoading(true)
       
-      // Use AuthService to create user AND profile in one transaction
-      const { user: newUser, profile: newProfile } = await authService().register(registerData)
+      // Use authService singleton to create user AND profile in one transaction
+      const { user: newUser, profile: newProfile } = await authService.register(registerData)
       
       // Update local state
       setUser(newUser)
@@ -159,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [authService])
+  }, [])
 
   const logout = useCallback(async () => {
     try {

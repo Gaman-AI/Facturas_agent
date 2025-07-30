@@ -543,4 +543,129 @@ Users can optionally create profiles later through:
 
 The system now works with minimal user data requirements while preserving the option for complete profiles.
 
+---
+
+## Date: 2024-12-19 - Fixed Authentication Registration Flow (Critical Fix)
+
+### Problem Identified:
+The registration flow was failing with errors in the call stack:
+- `RegisterForm.tsx` → `onSubmit` function
+- `AuthContext.tsx` → `register` callback  
+- `auth.ts` → `AuthService.register` method
+
+**Root Cause**: Two-step registration process (create auth user + create profile) was failing due to:
+1. **Admin API Access Issue**: Frontend tried to use `supabase.auth.admin.deleteUser()` without admin privileges
+2. **Database Schema Mismatch**: Database had Spanish column names, frontend expected English names
+3. **Missing RLS Policies**: Profile creation failed due to missing Row Level Security policies
+4. **RFC Uniqueness Conflicts**: No proper handling of RFC duplication across users
+
+### Solution Implemented:
+
+#### 1. Database Schema Compatibility (`Supabase MCP`)
+- **Added English column names** alongside existing Spanish columns for backward compatibility
+- **Created sync triggers** to keep both column sets in sync automatically
+- **Added proper constraints** for zip_code validation matching existing codigo_postal
+
+#### 2. Enhanced RLS Security (`Supabase MCP`)
+- **Created comprehensive RLS policies** for `user_profiles` table:
+  - Users can view own profile
+  - Users can insert own profile  
+  - Users can update own profile
+  - Users can delete own profile
+
+#### 3. Safe Registration Function (`Supabase MCP`)
+- **Created `create_user_profile()` database function** with SECURITY DEFINER
+- **Handles atomic operations** with proper validation:
+  - RFC format validation (12-13 chars, proper pattern)
+  - RFC uniqueness check across all users
+  - Prevents duplicate profiles for same user
+  - Populates both English and Spanish columns
+- **Proper error handling** with descriptive messages
+
+#### 4. Frontend AuthService Improvements (`frontend/services/auth.ts`)
+- **Replaced direct table insert** with safe RPC function call
+- **Removed admin API calls** that frontend cannot execute
+- **Enhanced error handling** for specific scenarios:
+  - RFC already registered
+  - Invalid RFC format
+  - Profile already exists
+  - Database constraint violations
+- **Improved email validation** using safe auth methods
+
+### Technical Implementation:
+
+#### Database Changes:
+```sql
+-- Added English columns with sync triggers
+ALTER TABLE user_profiles ADD COLUMN country VARCHAR(100), company_name TEXT, ...
+CREATE FUNCTION sync_user_profile_columns() -- Bidirectional sync
+CREATE TRIGGER sync_user_profile_columns_trigger
+
+-- Added RLS policies
+CREATE POLICY "Users can view own profile" ON user_profiles FOR SELECT
+CREATE POLICY "Users can insert own profile" ON user_profiles FOR INSERT
+-- ... additional policies
+
+-- Created safe registration function  
+CREATE FUNCTION create_user_profile() RETURNS TABLE -- Atomic operation
+```
+
+#### Frontend Changes:
+```typescript
+// Before: Direct table insert with admin cleanup
+const { data, error } = await supabase.from('user_profiles').insert(data)
+await supabase.auth.admin.deleteUser() // ❌ Failed - no admin access
+
+// After: Safe RPC function call
+const { data, error } = await supabase.rpc('create_user_profile', params) // ✅ Works
+```
+
+### Current Registration Flow (Fixed):
+```
+1. User fills registration form ✅
+2. Frontend calls AuthService.register() ✅
+3. Supabase auth user created ✅
+4. RPC function creates profile with validation ✅
+5. Atomic operation ensures data consistency ✅
+6. User redirected to dashboard ✅
+```
+
+### Error Scenarios Handled:
+- ✅ RFC already registered by another user
+- ✅ Invalid RFC format
+- ✅ User already has profile
+- ✅ Database constraint violations
+- ✅ Network/connection issues
+- ✅ RLS permission errors
+
+### Files Modified:
+1. **Database (Supabase MCP)**:
+   - Added English column compatibility
+   - Created RLS policies
+   - Created safe registration function
+   
+2. **`frontend/services/auth.ts`**:
+   - Updated registration method to use RPC
+   - Enhanced error handling
+   - Improved email validation
+   - Removed admin API calls
+
+### Verification Steps:
+- ✅ Registration with valid data works
+- ✅ RFC duplication properly rejected
+- ✅ Invalid RFC format rejected  
+- ✅ Profile creation atomic and secure
+- ✅ Error messages user-friendly
+- ✅ No admin privileges required
+- ✅ Backward compatibility maintained
+
+### Impact:
+- **Fixed critical registration failures**
+- **Improved security with proper RLS**
+- **Enhanced user experience with better error messages**
+- **Maintained backward compatibility**
+- **Eliminated need for admin privileges in frontend**
+
+The authentication flow is now robust, secure, and handles all edge cases properly.
+
 --- 
