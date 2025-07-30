@@ -54,7 +54,7 @@ private_example.py
 private_example
 CLAUDE.local.md
 
-# Data files (keep these local)
+# Data files (keep these local but allow important ones)
 *.gif
 *.txt
 *.pdf
@@ -66,6 +66,26 @@ CLAUDE.local.md
 
 # Allow documentation files
 !docs/docs.json
+
+# Allow important configuration files
+!pyproject.toml
+!README.md
+!LICENSE
+!setup.py
+!requirements.txt
+!requirements-dev.txt
+
+# Allow example files
+!examples/
+!examples/**
+
+# Allow test files
+!tests/
+!tests/**
+
+# Allow source code
+!browser_use/
+!browser_use/**
 
 # Lock files (keep these for dependency management)
 # uv.lock - REMOVED: This should be committed for reproducible builds
