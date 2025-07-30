@@ -19,6 +19,11 @@ const es: Translations = {
   'common.optional': 'Opcional',
   'common.yes': 'Sí',
   'common.no': 'No',
+  'common.personaFisica': 'Persona Física',
+  'common.personaMoral': 'Persona Moral',
+  'common.mexicanPeso': 'Peso Mexicano',
+  'common.usDollar': 'Dólar Americano',
+  'common.euro': 'Euro',
 
   // Navigation
   'nav.home': 'Inicio',
@@ -140,10 +145,15 @@ const es: Translations = {
 
   // Dashboard
   'dashboard.title': 'Dashboard',
-  'dashboard.welcome': 'Bienvenido',
+  'dashboard.welcome': 'Bienvenido al Dashboard',
   'dashboard.recentTasks': 'Tareas Recientes',
   'dashboard.statistics': 'Estadísticas',
   'dashboard.noTasks': 'No hay tareas disponibles',
+  'dashboard.quickActions': 'Acciones Rápidas',
+  'dashboard.viewHistory': 'Ver Historial',
+  'dashboard.systemStatus': 'Estado del Sistema',
+  'dashboard.systemOperational': 'Sistema Operativo',
+  'dashboard.allServicesWorking': 'Todos los servicios funcionando correctamente',
 
   // Language Switcher
   'language.switch': 'Cambiar idioma',
@@ -177,6 +187,25 @@ const es: Translations = {
   'tasks.status.cancelled': 'Cancelada',
   'tasks.noTasks': 'No hay tareas disponibles',
   'tasks.createFirst': 'Crea tu primera tarea CFDI',
+  'tasks.automationDescription': 'Automatice la solicitud de facturas CFDI en portales de proveedores de manera inteligente',
+  'tasks.createNewTask': 'Nueva Tarea de Automatización CFDI',
+  'tasks.formDescription': 'Complete los datos para automatizar la solicitud de facturación en el portal del proveedor',
+  'tasks.vendorInfo': 'Información del Proveedor',
+  'tasks.vendorUrl': 'URL del Portal de Facturación',
+  'tasks.vendorUrlPlaceholder': 'https://facturacion.proveedor.com',
+  'tasks.invoiceDetails': 'Detalles de la Factura',
+  'tasks.ticketId': 'ID del Ticket/Folio',
+  'tasks.ticketIdPlaceholder': 'TKT-123456',
+  'tasks.folio': 'Folio',
+  'tasks.folioPlaceholder': 'F-001234',
+  'tasks.transactionDate': 'Fecha de Transacción',
+  'tasks.currency': 'Moneda',
+  'tasks.subtotal': 'Subtotal',
+  'tasks.subtotalPlaceholder': '1000.00',
+  'tasks.iva': 'IVA',
+  'tasks.ivaPlaceholder': '160.00',
+  'tasks.total': 'Total',
+  'tasks.totalPlaceholder': '1160.00',
 
   // Profile
   'profile.title': 'Mi Perfil',
@@ -185,6 +214,8 @@ const es: Translations = {
   'profile.companyInfo': 'Información de la Empresa',
   'profile.addressInfo': 'Dirección Fiscal',
   'profile.taxInfo': 'Información Fiscal',
+  'profile.noProfile': 'No se ha encontrado información de perfil',
+  'profile.basicFunctions': 'Puede usar las funciones básicas del sistema sin completar su perfil',
 
   // Settings
   'settings.title': 'Configuración',

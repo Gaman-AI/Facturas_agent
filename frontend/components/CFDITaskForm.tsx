@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, FileText, AlertCircle, CheckCircle, Play } from 'lucide-react'
 import { useAuth, useUserProfile } from '@/hooks/useAuth'
+import { useLanguage } from '@/contexts/LanguageContext'
 import ApiService, { type BrowserUseTaskRequest, type BrowserUseTaskResponse } from '@/services/api'
 
 // Form validation schema
@@ -56,6 +57,7 @@ export function CFDITaskForm() {
   
   const { user } = useAuth()
   const { profile } = useUserProfile()
+  const { t } = useLanguage()
 
   const {
     register,
@@ -302,23 +304,23 @@ export function CFDITaskForm() {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <FileText className="w-5 h-5" />
-            <span>Nueva Tarea de Automatización CFDI</span>
+            <span>{t('tasks.createNewTask', 'Nueva Tarea de Automatización CFDI')}</span>
           </CardTitle>
           <CardDescription>
-            Complete los datos para automatizar la solicitud de facturación en el portal del proveedor
+            {t('tasks.formDescription', 'Complete los datos para automatizar la solicitud de facturación en el portal del proveedor')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Vendor Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Información del Proveedor</h3>
+              <h3 className="text-lg font-medium">{t('tasks.vendorInfo', 'Información del Proveedor')}</h3>
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <Label htmlFor="vendor_url">URL del Portal de Facturación *</Label>
+                  <Label htmlFor="vendor_url">{t('tasks.vendorUrl', 'URL del Portal de Facturación')} *</Label>
                   <Input
                     {...register('vendor_url')}
-                    placeholder="https://facturacion.proveedor.com"
+                    placeholder={t('tasks.vendorUrlPlaceholder', 'https://facturacion.proveedor.com')}
                     error={errors.vendor_url?.message}
                   />
                 </div>
@@ -327,68 +329,68 @@ export function CFDITaskForm() {
 
             {/* Invoice Details */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Detalles de la Factura</h3>
+              <h3 className="text-lg font-medium">{t('tasks.invoiceDetails', 'Detalles de la Factura')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="ticket_id">ID del Ticket/Folio *</Label>
+                  <Label htmlFor="ticket_id">{t('tasks.ticketId')} *</Label>
                   <Input
                     {...register('ticket_id')}
-                    placeholder="TKT-123456"
+                    placeholder={t('tasks.ticketIdPlaceholder')}
                     error={errors.ticket_id?.message}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="folio">Folio (Opcional)</Label>
+                  <Label htmlFor="folio">{t('tasks.folio')} ({t('common.optional')})</Label>
                   <Input
                     {...register('folio')}
-                    placeholder="F-001234"
+                    placeholder={t('tasks.folioPlaceholder')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="transaction_date">Fecha de Transacción (Opcional)</Label>
+                  <Label htmlFor="transaction_date">{t('tasks.transactionDate')} ({t('common.optional')})</Label>
                   <Input
                     type="date"
                     {...register('transaction_date')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="currency">Moneda</Label>
+                  <Label htmlFor="currency">{t('tasks.currency')}</Label>
                   <Select value={watch('currency')} onValueChange={(value) => setValue('currency', value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="MXN">MXN - Peso Mexicano</SelectItem>
-                      <SelectItem value="USD">USD - Dólar Americano</SelectItem>
-                      <SelectItem value="EUR">EUR - Euro</SelectItem>
+                      <SelectItem value="MXN">MXN - {t('common.mexicanPeso', 'Peso Mexicano')}</SelectItem>
+                      <SelectItem value="USD">USD - {t('common.usDollar', 'Dólar Americano')}</SelectItem>
+                      <SelectItem value="EUR">EUR - {t('common.euro', 'Euro')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="subtotal">Subtotal (Opcional)</Label>
+                  <Label htmlFor="subtotal">{t('tasks.subtotal')} ({t('common.optional')})</Label>
                   <Input
                     type="number"
                     step="0.01"
                     {...register('subtotal', { valueAsNumber: true })}
-                    placeholder="1000.00"
+                    placeholder={t('tasks.subtotalPlaceholder')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="iva">IVA (Opcional)</Label>
+                  <Label htmlFor="iva">{t('tasks.iva')} ({t('common.optional')})</Label>
                   <Input
                     type="number"
                     step="0.01"
                     {...register('iva', { valueAsNumber: true })}
-                    placeholder="160.00"
+                    placeholder={t('tasks.ivaPlaceholder')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="total">Total *</Label>
+                  <Label htmlFor="total">{t('tasks.total')} *</Label>
                   <Input
                     type="number"
                     step="0.01"
                     {...register('total', { valueAsNumber: true })}
-                    placeholder="1160.00"
+                    placeholder={t('tasks.totalPlaceholder')}
                     error={errors.total?.message}
                   />
                 </div>

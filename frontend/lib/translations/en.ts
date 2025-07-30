@@ -19,6 +19,11 @@ const en: Translations = {
   'common.optional': 'Optional',
   'common.yes': 'Yes',
   'common.no': 'No',
+  'common.personaFisica': 'Individual',
+  'common.personaMoral': 'Legal Entity',
+  'common.mexicanPeso': 'Mexican Peso',
+  'common.usDollar': 'US Dollar',
+  'common.euro': 'Euro',
 
   // Navigation
   'nav.home': 'Home',
@@ -140,10 +145,15 @@ const en: Translations = {
 
   // Dashboard
   'dashboard.title': 'Dashboard',
-  'dashboard.welcome': 'Welcome',
+  'dashboard.welcome': 'Welcome to Dashboard',
   'dashboard.recentTasks': 'Recent Tasks',
   'dashboard.statistics': 'Statistics',
   'dashboard.noTasks': 'No tasks available',
+  'dashboard.quickActions': 'Quick Actions',
+  'dashboard.viewHistory': 'View History',
+  'dashboard.systemStatus': 'System Status',
+  'dashboard.systemOperational': 'System Operational',
+  'dashboard.allServicesWorking': 'All services working correctly',
 
   // Language Switcher
   'language.switch': 'Switch language',
@@ -177,6 +187,25 @@ const en: Translations = {
   'tasks.status.cancelled': 'Cancelled',
   'tasks.noTasks': 'No tasks available',
   'tasks.createFirst': 'Create your first CFDI task',
+  'tasks.automationDescription': 'Automate CFDI invoice requests on vendor portals intelligently',
+  'tasks.createNewTask': 'New CFDI Automation Task',
+  'tasks.formDescription': 'Complete the data to automate the billing request on the vendor portal',
+  'tasks.vendorInfo': 'Vendor Information',
+  'tasks.vendorUrl': 'Billing Portal URL',
+  'tasks.vendorUrlPlaceholder': 'https://billing.vendor.com',
+  'tasks.invoiceDetails': 'Invoice Details',
+  'tasks.ticketId': 'Ticket/Folio ID',
+  'tasks.ticketIdPlaceholder': 'TKT-123456',
+  'tasks.folio': 'Folio',
+  'tasks.folioPlaceholder': 'F-001234',
+  'tasks.transactionDate': 'Transaction Date',
+  'tasks.currency': 'Currency',
+  'tasks.subtotal': 'Subtotal',
+  'tasks.subtotalPlaceholder': '1000.00',
+  'tasks.iva': 'VAT',
+  'tasks.ivaPlaceholder': '160.00',
+  'tasks.total': 'Total',
+  'tasks.totalPlaceholder': '1160.00',
 
   // Profile
   'profile.title': 'My Profile',
@@ -185,6 +214,8 @@ const en: Translations = {
   'profile.companyInfo': 'Company Information',
   'profile.addressInfo': 'Tax Address',
   'profile.taxInfo': 'Tax Information',
+  'profile.noProfile': 'No profile information found',
+  'profile.basicFunctions': 'You can use the basic system functions without completing your profile',
 
   // Settings
   'settings.title': 'Settings',

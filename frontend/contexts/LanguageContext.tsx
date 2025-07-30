@@ -48,6 +48,11 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
       const translationModule = await import(`@/lib/translations/${lang}`)
       const loadedTranslations = translationModule.default
       
+      // Validate that translations were loaded
+      if (!loadedTranslations || typeof loadedTranslations !== 'object') {
+        throw new Error(`Invalid translation module for ${lang}`)
+      }
+      
       // Cache the translations
       preloadedTranslations[lang] = loadedTranslations
       setTranslations(loadedTranslations)
@@ -58,11 +63,18 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
         try {
           const fallbackModule = await import(`@/lib/translations/es`)
           const fallbackTranslations = fallbackModule.default
-          preloadedTranslations['es'] = fallbackTranslations
-          setTranslations(fallbackTranslations)
+          if (fallbackTranslations && typeof fallbackTranslations === 'object') {
+            preloadedTranslations['es'] = fallbackTranslations
+            setTranslations(fallbackTranslations)
+          }
         } catch (fallbackError) {
           console.error('Failed to load fallback translations:', fallbackError)
+          // Set empty translations as last resort
+          setTranslations({})
         }
+      } else {
+        // For Spanish, set empty translations if failed
+        setTranslations({})
       }
     } finally {
       setIsLoading(false)
@@ -98,17 +110,57 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     initializeLanguage()
   }, [])
 
-  // Set language with caching
+  // Set language with caching and proper state synchronization
   const setLanguage = async (lang: Language) => {
-    setLanguageState(lang)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(LANGUAGE_STORAGE_KEY, lang)
+    try {
+      // Set loading state before changing language
+      setIsLoading(true)
+      setLanguageState(lang)
+      
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LANGUAGE_STORAGE_KEY, lang)
+      }
+      
+      await loadTranslations(lang)
+    } catch (error) {
+      console.error('Failed to set language:', error)
+      // Reset to previous language on error
+      setIsLoading(false)
+      throw error
     }
-    await loadTranslations(lang)
   }
 
-  // Translation function with parameter substitution
+  // Translation function with parameter substitution and better fallbacks
   const t = (key: string, params?: Record<string, string | number>): string => {
+    // If translations are empty (still loading), return a loading placeholder or the key
+    if (!translations || Object.keys(translations).length === 0) {
+      // During loading, return a more user-friendly placeholder for common keys
+      const loadingFallbacks: Record<string, string> = {
+        'language.switch': language === 'es' ? 'Cambiar idioma' : 'Switch language',
+        'language.current': language === 'es' ? 'Idioma actual: {{language}}' : 'Current language: {{language}}',
+        'common.loading': language === 'es' ? 'Cargando...' : 'Loading...',
+        'common.success': language === 'es' ? 'Éxito' : 'Success',
+        'auth.login': language === 'es' ? 'Iniciar Sesión' : 'Login',
+        'auth.register': language === 'es' ? 'Registrarse' : 'Register',
+        'login.title': language === 'es' ? 'Iniciar Sesión' : 'Login',
+        'register.title': language === 'es' ? 'Crear Cuenta' : 'Create Account',
+        'home.loadingApp': language === 'es' ? 'Cargando aplicación...' : 'Loading application...',
+        'features.secure': language === 'es' ? 'Seguro y Confiable' : 'Secure and Reliable',
+        'features.intelligent': language === 'es' ? 'Automatización Inteligente' : 'Intelligent Automation'
+      }
+      
+      let translation = loadingFallbacks[key] || key
+      
+      // Replace parameters in fallback translation
+      if (params) {
+        Object.entries(params).forEach(([param, value]) => {
+          translation = translation.replace(new RegExp(`{{${param}}}`, 'g'), String(value))
+        })
+      }
+      
+      return translation
+    }
+    
     let translation = translations[key] || key
     
     // Replace parameters in translation
