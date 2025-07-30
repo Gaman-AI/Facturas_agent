@@ -1,0 +1,71 @@
+# Environment variables and secrets (CRITICAL - never commit these)
+.env
+secrets.env
+credentials.json
+token.json
+browser_cookies.json
+cookies.json
+gcp-login.json
+
+# Python cache and build artifacts (keep these local)
+__pycache__/
+*.py[cod]
+*$py.class
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.ipynb_checkpoints
+
+# Virtual environments (keep these local)
+.venv*
+venv/
+
+# IDE and editor files (keep these local)
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build files (keep these local)
+dist/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Project specific sensitive files (keep these local)
+saved_trajectories/
+old_tests/
+AgentHistory.json
+AgentHistoryList.json
+private_example.py
+private_example
+CLAUDE.local.md
+
+# Data files (keep these local)
+*.gif
+*.txt
+*.pdf
+*.csv
+*.json
+*.jsonl
+*.log
+*.bak
+
+# Allow documentation files
+!docs/docs.json
+
+# Lock files (keep these for dependency management)
+# uv.lock - REMOVED: This should be committed for reproducible builds
