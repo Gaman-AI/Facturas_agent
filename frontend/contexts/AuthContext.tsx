@@ -4,26 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { authService } from '@/services/auth'
-import { RegisterData } from '@/types/auth'
-
-interface UserProfile {
-  id?: string
-  user_id?: string
-  rfc: string
-  country: string
-  company_name: string
-  street: string
-  exterior_number: string
-  interior_number?: string
-  colony: string
-  municipality: string
-  zip_code: string
-  state: string
-  tax_regime: string
-  cfdi_use: string
-  created_at?: string
-  updated_at?: string
-}
+import { RegisterData, UserProfile } from '@/types/auth'
 
 export interface AuthContextType {
   user: User | null
@@ -46,11 +27,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
-  const [isInitialized, setIsInitialized] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
-  // Use ref to prevent multiple initializations
-  const initRef = useRef(false)
+  const [isInitialized, setIsInitialized] = useState(false)
+  const mountedRef = useRef(true) // Add ref to track if component is mounted
+
+  // Safe state setters that check if component is mounted
+  const safeSetUser = useCallback((newUser: User | null) => {
+    if (mountedRef.current) {
+      setUser(newUser)
+    }
+  }, [])
+
+  const safeSetProfile = useCallback((newProfile: UserProfile | null) => {
+    if (mountedRef.current) {
+      setProfile(newProfile)
+    }
+  }, [])
+
+  const safeSetLoading = useCallback((newLoading: boolean) => {
+    if (mountedRef.current) {
+      setLoading(newLoading)
+    }
+  }, [])
+
+  const safeSetError = useCallback((newError: string | null) => {
+    if (mountedRef.current) {
+      setError(newError)
+    }
+  }, [])
+
+  const safeSetIsInitialized = useCallback((newInitialized: boolean) => {
+    if (mountedRef.current) {
+      setIsInitialized(newInitialized)
+    }
+  }, [])
 
   const loadUserProfile = useCallback(async (userId: string) => {
     try {
@@ -61,39 +71,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single()
 
       if (error && error.code !== 'PGRST116') {
-        throw error
+        console.error('Profile fetch error:', error)
+        return
       }
 
-      setProfile(data || null)
+      if (data) {
+        safeSetProfile(data)
+      }
     } catch (err) {
-      console.error('Error loading user profile:', err)
+      console.error('Profile loading error:', err)
     }
-  }, [])
+  }, [safeSetProfile])
 
-  // Initialize auth only once - OPTIMIZED FOR PERFORMANCE
   useEffect(() => {
-    if (initRef.current) return
-    initRef.current = true
+    mountedRef.current = true
 
     const initializeAuth = async () => {
       try {
-        // Get session and handle profile loading in parallel if user exists
         const { data: { session } } = await supabase.auth.getSession()
         
         if (session?.user) {
-          setUser(session.user)
-          // Load profile in background - don't block UI
-          loadUserProfile(session.user.id).catch(console.error)
+          safeSetUser(session.user)
+          await loadUserProfile(session.user.id)
         }
-        
-        // Mark as initialized immediately after session check
-        setIsInitialized(true)
-        setLoading(false)
       } catch (err) {
-        console.error('Error initializing auth:', err)
-        setError(err instanceof Error ? err.message : 'Authentication error')
-        setIsInitialized(true)
-        setLoading(false)
+        console.error('Auth initialization error:', err)
+        safeSetError('Failed to initialize authentication')
+      } finally {
+        safeSetLoading(false)
+        safeSetIsInitialized(true)
       }
     }
 
@@ -102,28 +108,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mountedRef.current) return // Don't update if unmounted
+        
         if (event === 'SIGNED_IN' && session?.user) {
-          setUser(session.user)
-          setError(null)
+          safeSetUser(session.user)
+          safeSetError(null)
           // Load profile in background - don't block UI
           loadUserProfile(session.user.id).catch(console.error)
         } else if (event === 'SIGNED_OUT') {
-          setUser(null)
-          setProfile(null)
-          setError(null)
+          safeSetUser(null)
+          safeSetProfile(null)
+          safeSetError(null)
         }
       }
     )
 
     return () => {
+      mountedRef.current = false
       subscription.unsubscribe()
     }
-  }, [loadUserProfile])
+  }, [loadUserProfile, safeSetUser, safeSetProfile, safeSetError, safeSetLoading, safeSetIsInitialized])
 
   const login = useCallback(async (email: string, password: string) => {
     try {
-      setError(null)
-      setLoading(true)
+      safeSetError(null)
+      safeSetLoading(true)
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -131,51 +140,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed'
-      setError(message)
+      safeSetError(message)
       throw err
     } finally {
-      setLoading(false)
+      safeSetLoading(false)
     }
-  }, [])
+  }, [safeSetError, safeSetLoading])
 
   const register = useCallback(async (registerData: RegisterData) => {
     try {
-      setError(null)
-      setLoading(true)
+      safeSetError(null)
+      safeSetLoading(true)
       
       // Use authService singleton to create user AND profile in one transaction
       const { user: newUser, profile: newProfile } = await authService.register(registerData)
       
-      // Update local state
-      setUser(newUser)
-      setProfile(newProfile)
+      // Update local state only if still mounted
+      if (mountedRef.current) {
+        safeSetUser(newUser)
+        safeSetProfile(newProfile)
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed'
-      setError(message)
+      safeSetError(message)
       throw err
     } finally {
-      setLoading(false)
+      safeSetLoading(false)
     }
-  }, [])
+  }, [safeSetError, safeSetLoading, safeSetUser, safeSetProfile])
 
   const logout = useCallback(async () => {
     try {
-      setError(null)
+      safeSetError(null)
       const { error } = await supabase.auth.signOut()
       if (error) throw error
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Logout failed'
-      setError(message)
+      safeSetError(message)
       throw err
     }
-  }, [])
+  }, [safeSetError])
 
   const updateProfile = useCallback(async (profileData: Partial<UserProfile>) => {
     if (!user) throw new Error('No authenticated user')
 
     try {
-      setError(null)
-      setLoading(true)
+      safeSetError(null)
+      safeSetLoading(true)
 
       const { data, error } = await supabase
         .from('user_profiles')
@@ -188,36 +199,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single()
 
       if (error) throw error
-      setProfile(data)
+      safeSetProfile(data)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Profile update failed'
-      setError(message)
+      safeSetError(message)
       throw err
     } finally {
-      setLoading(false)
+      safeSetLoading(false)
     }
-  }, [user])
+  }, [user, safeSetError, safeSetLoading, safeSetProfile])
 
   const refreshSession = useCallback(async () => {
     try {
-      setError(null)
       const { data, error } = await supabase.auth.refreshSession()
       if (error) throw error
       
-      if (data.user) {
-        setUser(data.user)
-        await loadUserProfile(data.user.id)
+      if (data.session?.user) {
+        safeSetUser(data.session.user)
+        await loadUserProfile(data.session.user.id)
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Session refresh failed'
-      setError(message)
+      console.error('Session refresh error:', err)
       throw err
     }
-  }, [loadUserProfile])
+  }, [safeSetUser, loadUserProfile])
 
   const clearError = useCallback(() => {
-    setError(null)
-  }, [])
+    safeSetError(null)
+  }, [safeSetError])
 
   const value: AuthContextType = {
     user,

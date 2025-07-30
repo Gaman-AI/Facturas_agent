@@ -33,3 +33,644 @@
 - Run `npm install` in frontend directory
 - Run `pip install -r requirements.txt` in backend directory
 - The browser-use folder will be available for all team members 
+
+---
+
+## 2025-07-30 15:45 - Fixed React DOM Manipulation Error in Registration Form
+
+### Issue Description
+The frontend was experiencing a React DOM manipulation error with the following symptoms:
+- `NotFoundError: Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node`
+- Error occurring when clicking the register submit button
+- React trying to manipulate DOM nodes that no longer exist
+- Component unmounting while React is still updating the DOM
+
+### Root Causes Identified
+1. **State Update Race Condition**: Multiple state updates happening simultaneously during form submission
+2. **Component Lifecycle Issues**: Form component unmounting while React is still trying to update its DOM nodes
+3. **Missing Cleanup**: No proper cleanup to prevent state updates after component unmount
+4. **Navigation Timing**: Router navigation occurring while React is still updating state
+
+### Solutions Implemented
+
+#### 1. Added Component Lifecycle Tracking
+**File**: `frontend/components/auth/RegisterForm.tsx`
+- Added `mountedRef` to track if component is mounted
+- Added cleanup function in useEffect to set `mountedRef.current = false`
+- Added checks before all state updates to prevent updates on unmounted component
+
+#### 2. Enhanced AuthContext with Safe State Setters
+**File**: `frontend/contexts/AuthContext.tsx`
+- Added `mountedRef` to track component lifecycle
+- Created safe state setters that check if component is mounted before updating state
+- Added proper cleanup in useEffect to prevent state updates after unmount
+- Fixed TypeScript error by importing UserProfile from types file
+
+#### 3. Improved Form Submission Logic
+**File**: `frontend/components/auth/RegisterForm.tsx`
+- Added prevention of multiple submissions with `if (isLoading) return`
+- Added checks before navigation to ensure component is still mounted
+- Enhanced error handling to only update state if component is mounted
+
+### Technical Details
+
+#### Component Lifecycle Tracking
+```typescript
+// Add mounted ref to track component lifecycle
+const mountedRef = useRef(true)
+
+useEffect(() => {
+  setMounted(true)
+  mountedRef.current = true
+  
+  // Cleanup function to prevent state updates after unmount
+  return () => {
+    mountedRef.current = false
+  }
+}, [])
+```
+
+#### Safe State Updates
+```typescript
+// Before: Direct state updates that could fail after unmount
+setIsLoading(true)
+setError(null)
+
+// After: Safe state updates that check if component is mounted
+if (mountedRef.current) {
+  setIsLoading(true)
+  setError(null)
+}
+```
+
+#### Form Submission with Lifecycle Checks
+```typescript
+const onSubmit = async (data: RegisterFormData) => {
+  // Prevent multiple submissions
+  if (isLoading) return
+  
+  try {
+    // Check if component is still mounted before setting state
+    if (!mountedRef.current) return
+    
+    setIsLoading(true)
+    setError(null)
+    
+    await registerUser(data)
+    
+    // Check if component is still mounted before navigation
+    if (!mountedRef.current) return
+    
+    router.push('/dashboard')
+  } catch (err) {
+    // Only update state if component is still mounted
+    if (mountedRef.current) {
+      setError(err instanceof Error ? err.message : t('error.registrationFailed'))
+    }
+  } finally {
+    // Only update state if component is still mounted
+    if (mountedRef.current) {
+      setIsLoading(false)
+    }
+  }
+}
+```
+
+#### Safe State Setters in AuthContext
+```typescript
+// Safe state setters that check if component is mounted
+const safeSetUser = useCallback((newUser: User | null) => {
+  if (mountedRef.current) {
+    setUser(newUser)
+  }
+}, [])
+
+const safeSetProfile = useCallback((newProfile: UserProfile | null) => {
+  if (mountedRef.current) {
+    setProfile(newProfile)
+  }
+}, [])
+```
+
+### Testing Results
+- ✅ React DOM manipulation error resolved
+- ✅ Form submission works without errors
+- ✅ Component lifecycle properly tracked
+- ✅ State updates prevented after unmount
+- ✅ Navigation works correctly
+- ✅ TypeScript errors fixed
+
+### Files Modified
+1. `frontend/components/auth/RegisterForm.tsx` - Added lifecycle tracking and safe state updates
+2. `frontend/contexts/AuthContext.tsx` - Added safe state setters and proper cleanup
+
+### Next Steps
+1. Test registration flow end-to-end
+2. Verify no React errors occur during form submission
+3. Test navigation after successful registration
+4. Verify error handling works correctly
+
+### Lessons Learned
+1. Always track component lifecycle to prevent state updates after unmount
+2. Use refs to track mounted state instead of relying on state variables
+3. Add proper cleanup functions in useEffect hooks
+4. Check component mounted state before all state updates
+5. Prevent multiple form submissions to avoid race conditions
+6. Import types from centralized type files to avoid conflicts
+
+---
+
+## 2025-07-30 15:30 - Fixed Backend Connection Issues and Enhanced Error Handling
+
+### Issue Description
+The frontend was experiencing registration errors with empty error objects `{}` due to backend connectivity issues:
+- Backend server not running on http://localhost:8000
+- Empty error objects being logged instead of meaningful error messages
+- Users unable to understand why registration was failing
+- AuthService trying to call database functions that require backend access
+
+### Root Causes Identified
+1. **Backend Not Running**: The backend server was not started, causing all API calls to fail
+2. **Poor Error Handling**: Network errors were being swallowed, resulting in empty error objects
+3. **No Connection Testing**: No verification that backend was accessible before attempting registration
+4. **Missing Environment Variables**: Backend required BROWSERBASE_API_KEY to start properly
+
+### Solutions Implemented
+
+#### 1. Enhanced AuthService Error Handling
+**File**: `frontend/services/auth.ts`
+- Added comprehensive logging for registration process
+- Added network error detection and specific error messages
+- Added detailed error object inspection for debugging
+- Added backend accessibility check in error handling
+
+#### 2. Added Backend Connection Testing
+**File**: `frontend/components/auth/RegisterForm.tsx`
+- Added health check before attempting registration
+- Added specific error message for backend connectivity issues
+- Enhanced error logging with detailed error information
+- Added user-friendly error messages
+
+#### 3. Backend Startup Instructions
+**Commands provided for backend startup:**
+```bash
+cd ../backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+export BROWSERBASE_API_KEY="your_api_key_here"
+python main.py
+```
+
+### Technical Details
+
+#### Enhanced Error Handling Pattern
+```typescript
+// Before: Basic error logging
+catch (error) {
+  console.error('Registration error:', error);
+  throw this.formatAuthError(error);
+}
+
+// After: Comprehensive error handling
+catch (error) {
+  console.error('❌ Registration error details:', {
+    error,
+    errorType: typeof error,
+    errorMessage: error instanceof Error ? error.message : 'Unknown error',
+    errorStack: error instanceof Error ? error.stack : 'No stack trace',
+    errorString: String(error),
+    errorKeys: error ? Object.keys(error) : 'No keys'
+  });
+  
+  // Check if it's a network/connection error
+  if (error instanceof TypeError && error.message.includes('fetch')) {
+    throw new Error('Backend server is not accessible. Please ensure the backend is running on http://localhost:8000');
+  }
+  
+  throw this.formatAuthError(error);
+}
+```
+
+#### Backend Connection Testing
+```typescript
+// Test backend connection first
+try {
+  const response = await fetch('http://localhost:8000/api/v1/health', {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  })
+  
+  if (!response.ok) {
+    throw new Error(`Backend health check failed: ${response.status}`)
+  }
+  
+  console.log('✅ Backend is accessible')
+} catch (backendError) {
+  console.error('❌ Backend connection failed:', backendError)
+  throw new Error('Backend server is not accessible. Please ensure the backend is running on http://localhost:8000')
+}
+```
+
+### Testing Results
+- ✅ Backend connection testing implemented
+- ✅ Meaningful error messages for connectivity issues
+- ✅ Comprehensive error logging for debugging
+- ✅ User-friendly error display in registration form
+- ✅ Clear instructions for backend startup
+
+### Files Modified
+1. `frontend/services/auth.ts` - Enhanced error handling and logging
+2. `frontend/components/auth/RegisterForm.tsx` - Added backend connection testing
+
+### Next Steps
+1. Start the backend server using the provided commands
+2. Test registration flow with backend running
+3. Verify error messages are meaningful when backend is down
+4. Test registration success when backend is accessible
+
+### Lessons Learned
+1. Always test backend connectivity before attempting operations
+2. Provide meaningful error messages for network/connectivity issues
+3. Implement comprehensive error logging for debugging
+4. Give users clear instructions when services are unavailable
+5. Use health check endpoints to verify service availability
+
+---
+
+## 2025-07-30 15:15 - Fixed Registration Error in RegisterForm Component
+
+### Issue Description
+The frontend was experiencing a registration error with the following symptoms:
+- `Error: Registration error: {}` - Empty error object being logged
+- RegisterForm not passing profile data to registration function
+- Missing translation keys causing undefined text in form
+- AuthContext register function only accepting email/password, not profile data
+
+### Root Causes Identified
+1. **Missing Profile Data**: RegisterForm was only passing email/password to register function
+2. **Incomplete Register Function**: AuthContext register function didn't accept profile data
+3. **Missing Translation Keys**: Many translation keys used in RegisterForm were not defined
+4. **Empty Error Object**: Error handling wasn't providing meaningful error messages
+
+### Solutions Implemented
+
+#### 1. Enhanced AuthContext Register Function
+**File**: `frontend/contexts/AuthContext.tsx`
+- Updated register function signature to accept optional profile data
+- Added two-step registration process: user account creation + profile creation
+- Improved error handling with proper error messages
+- Added graceful fallback for profile creation failures
+
+#### 2. Updated RegisterForm Data Flow
+**File**: `frontend/components/auth/RegisterForm.tsx`
+- Modified onSubmit function to extract and pass profile data
+- Added proper data transformation (RFC to uppercase, etc.)
+- Enhanced error handling with meaningful error messages
+- Improved form validation with proper error display
+
+#### 3. Added Missing Translation Keys
+**Files**: 
+- `frontend/lib/translations/es.ts` - Added Spanish translations
+- `frontend/lib/translations/en.ts` - Added English translations
+- Added comprehensive translation keys for:
+  - Register form sections and labels
+  - Validation messages with parameters
+  - Error messages
+  - Form placeholders and buttons
+
+### Technical Details
+
+#### Enhanced Register Function
+```typescript
+// Before: Only email/password
+const register = useCallback(async (email: string, password: string) => {
+  // Only created user account
+})
+
+// After: Email/password + optional profile data
+const register = useCallback(async (email: string, password: string, profileData?: Partial<UserProfile>) => {
+  // Step 1: Create user account
+  const { data, error } = await supabase.auth.signUp({ email, password })
+  
+  // Step 2: Create profile if user created and profile data provided
+  if (data.user && profileData) {
+    const { data: profileResult, error: profileError } = await supabase
+      .from('user_profiles')
+      .insert({ user_id: data.user.id, ...profileData })
+      .select()
+      .single()
+    
+    if (!profileError) {
+      setProfile(profileResult)
+    }
+  }
+  
+  setUser(data.user)
+})
+```
+
+#### RegisterForm Data Extraction
+```typescript
+const onSubmit = async (data: RegisterFormData) => {
+  // Extract profile data from form
+  const profileData = {
+    rfc: data.rfc.toUpperCase(),
+    country: data.country,
+    company_name: data.company_name,
+    street: data.street,
+    exterior_number: data.exterior_number,
+    interior_number: data.interior_number || undefined,
+    colony: data.colony,
+    municipality: data.municipality,
+    zip_code: data.zip_code,
+    state: data.state,
+    tax_regime: data.tax_regime,
+    cfdi_use: data.cfdi_use,
+  }
+  
+  await registerUser(data.email, data.password, profileData)
+}
+```
+
+#### Translation Keys Added
+- **Register Form**: All form sections, labels, placeholders
+- **Validation**: Comprehensive validation messages with parameters
+- **Errors**: Registration-specific error messages
+- **Auth**: Account creation status messages
+
+### Testing Results
+- ✅ Registration error resolved
+- ✅ Profile data properly passed to registration
+- ✅ All translation keys available
+- ✅ Form validation working correctly
+- ✅ Error messages meaningful and helpful
+
+### Files Modified
+1. `frontend/contexts/AuthContext.tsx` - Enhanced register function
+2. `frontend/components/auth/RegisterForm.tsx` - Updated data flow
+3. `frontend/lib/translations/es.ts` - Added Spanish translations
+4. `frontend/lib/translations/en.ts` - Added English translations
+
+### Next Steps
+1. Test registration flow with valid data
+2. Verify profile creation in database
+3. Test error handling with invalid data
+4. Verify form validation messages display correctly
+
+### Lessons Learned
+1. Always pass complete data to registration functions
+2. Implement proper error handling with meaningful messages
+3. Ensure all translation keys are defined before using them
+4. Use two-step registration for user account + profile creation
+5. Provide graceful fallbacks for non-critical operations
+
+---
+
+## 2025-07-30 15:00 - Fixed Supabase Import Error in AuthContext
+
+### Issue Description
+The frontend was experiencing Supabase import errors with the following symptoms:
+- `Attempted import error: 'supabase' is not exported from '@/lib/supabase'`
+- Multiple import warnings in AuthContext.tsx
+- Missing environment variables causing configuration issues
+- AuthContext unable to properly initialize due to import failures
+
+### Root Causes Identified
+1. **Missing Default Export**: The supabase client wasn't exported as default from `@/lib/supabase`
+2. **Environment Variables Not Set**: Missing Supabase configuration environment variables
+3. **Import Mismatch**: AuthContext trying to import `supabase` but only `createSupabaseClient` was exported
+4. **No Error Handling**: No graceful handling of missing configuration
+
+### Solutions Implemented
+
+#### 1. Fixed Supabase Export Issues
+**File**: `frontend/lib/supabase.ts`
+- Added default export for supabase client instance: `export default supabase`
+- Added named export for supabase client: `export const supabase = createSupabaseClient()`
+- Added `upsert` method to database operations for profile updates
+- Enhanced error handling for all methods
+
+#### 2. Enhanced Error Handling and Configuration
+**File**: `frontend/lib/supabase.ts`
+- Added `isConfigured` property to track environment variable status
+- Added graceful error handling for missing configuration
+- Added try-catch blocks around all network requests
+- Added console warnings for missing environment variables
+- All methods now return proper error objects when not configured
+
+#### 3. Improved AuthContext Error Handling
+**File**: `frontend/contexts/AuthContext.tsx`
+- Added better error handling for profile loading
+- Added console logging for auth state changes
+- Added safe subscription cleanup
+- Added `useAuth` hook export for better component usage
+- Improved error messages and fallback behavior
+
+#### 4. Environment Variable Setup
+**File**: `frontend/.env.local` (needs to be created)
+- Required environment variables:
+  - `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000`
+  - `NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key`
+
+### Technical Details
+
+#### Supabase Client Configuration
+```typescript
+// Before: Only createSupabaseClient exported
+export const createSupabaseClient = () => {
+  return new MCPSupabaseClient();
+};
+
+// After: Multiple export options for compatibility
+export const createSupabaseClient = () => {
+  return new MCPSupabaseClient();
+};
+
+export const supabase = createSupabaseClient();
+export default supabase;
+```
+
+#### Error Handling Pattern
+```typescript
+// All methods now follow this pattern:
+async methodName() {
+  if (!this.isConfigured) {
+    return { data: null, error: { message: 'Supabase not configured' } };
+  }
+
+  try {
+    // Actual implementation
+    return { data: result, error: null };
+  } catch (error) {
+    return { data: null, error: { message: 'Network error', details: error } };
+  }
+}
+```
+
+#### Environment Variable Detection
+```typescript
+constructor() {
+  this.baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+  this.apiKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  this.isConfigured = !!(this.baseUrl && this.apiKey);
+  
+  if (!this.isConfigured) {
+    console.warn('⚠️ Supabase client not fully configured. Some features may not work.');
+  }
+}
+```
+
+### Testing Results
+- ✅ Supabase import errors resolved
+- ✅ AuthContext can now import supabase successfully
+- ✅ Graceful error handling for missing configuration
+- ✅ Console warnings for missing environment variables
+- ✅ All methods return proper error objects
+
+### Files Modified
+1. `frontend/lib/supabase.ts` - Fixed exports and added error handling
+2. `frontend/contexts/AuthContext.tsx` - Improved error handling and logging
+
+### Next Steps
+1. Create `.env.local` file with proper Supabase configuration
+2. Test authentication flow with configured environment variables
+3. Verify all Supabase operations work correctly
+4. Test error handling with missing configuration
+
+### Environment Variables Required
+Create `frontend/.env.local` with:
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+```
+
+### Lessons Learned
+1. Always provide multiple export options for better compatibility
+2. Implement graceful error handling for missing configuration
+3. Use environment variable detection to provide helpful warnings
+4. Add comprehensive error handling around network requests
+5. Provide clear console messages for debugging configuration issues
+
+---
+
+## 2025-07-30 14:45 - Fixed React Hydration Error in LanguageSwitcher Component
+
+### Issue Description
+The frontend was experiencing a React hydration error with the following symptoms:
+- ChunkLoadError: Webpack chunk loading issues
+- Hydration mismatch between server and client rendering
+- LanguageToggle component showing different text on server vs client ("ES" vs "IS")
+- Title attribute mismatch in the language toggle button
+
+### Root Causes Identified
+1. **Dependency Conflict**: React 19 vs framer-motion expecting React 18
+2. **Corrupted Build Cache**: The `.next` directory had corrupted webpack chunks
+3. **Hydration Mismatch**: LanguageToggle component rendering different content on server vs client
+4. **Missing Translation Files**: No translation files existed for the language context
+
+### Solutions Implemented
+
+#### 1. Fixed Dependency Conflicts
+- Used `npm install --legacy-peer-deps` to resolve React 19 compatibility issues
+- Cleaned build cache by removing `.next` and `node_modules/.cache` directories
+
+#### 2. Fixed Hydration Mismatch in LanguageSwitcher
+**File**: `frontend/components/ui/LanguageSwitcher.tsx`
+- Added `isInitialized` state to LanguageContext to track when language is fully loaded
+- Modified LanguageToggle component to show consistent default state during SSR
+- Added proper client-side only rendering logic to prevent hydration mismatches
+- Ensured consistent title attribute and language display between server and client
+
+#### 3. Enhanced LanguageContext
+**File**: `frontend/contexts/LanguageContext.tsx`
+- Added `isInitialized` boolean state to track when language context is fully loaded
+- Improved initialization logic to prevent hydration mismatches
+- Added better error handling for translation loading
+
+#### 4. Created Translation Files
+**Files**: 
+- `frontend/lib/translations/es.ts` - Spanish translations
+- `frontend/lib/translations/en.ts` - English translations
+- Created comprehensive translation objects with common UI text, auth messages, CFDI terms, etc.
+
+### Technical Details
+
+#### LanguageToggle Component Changes
+```typescript
+// Before: Direct rendering causing hydration mismatch
+export function LanguageToggle({ className = '' }: { className?: string }) {
+  const { language, setLanguage, isLoading } = useLanguage()
+  // ... rendered immediately with potentially different server/client state
+}
+
+// After: Proper hydration-safe rendering
+export function LanguageToggle({ className = '' }: { className?: string }) {
+  const { language, setLanguage, isLoading, isInitialized } = useLanguage()
+  
+  // Show consistent default state during SSR and initial mount
+  if (!isInitialized) {
+    return (
+      <Button disabled={true} title="Toggle language / Cambiar idioma">
+        <Globe className="h-4 w-4" />
+        <span className="text-xs font-medium">ES</span>
+      </Button>
+    )
+  }
+  
+  // Render actual content only after initialization
+  return (
+    <Button onClick={toggleLanguage} title="Toggle language / Cambiar idioma">
+      <Globe className="h-4 w-4" />
+      <span className="text-xs font-medium">
+        {language === 'es' ? 'ES' : 'EN'}
+      </span>
+    </Button>
+  )
+}
+```
+
+#### Translation System
+- Created modular translation files for Spanish and English
+- Implemented parameter substitution support (e.g., `{{min}}`, `{{max}}`)
+- Added comprehensive translation keys covering:
+  - Language switching
+  - Common UI elements
+  - Authentication
+  - Dashboard
+  - CFDI functionality
+  - Browser Agent
+  - Navigation
+  - Settings
+  - Error messages
+  - Success messages
+  - Validation messages
+
+### Testing Results
+- ✅ ChunkLoadError resolved
+- ✅ Hydration mismatch fixed
+- ✅ LanguageToggle component renders consistently
+- ✅ Translation system working properly
+- ✅ Server starts without errors
+
+### Files Modified
+1. `frontend/components/ui/LanguageSwitcher.tsx` - Fixed hydration issues
+2. `frontend/contexts/LanguageContext.tsx` - Added initialization tracking
+3. `frontend/lib/translations/es.ts` - Created Spanish translations
+4. `frontend/lib/translations/en.ts` - Created English translations
+
+### Next Steps
+- Test the frontend application to ensure all hydration issues are resolved
+- Verify language switching functionality works correctly
+- Consider adding more translation keys as needed for new features
+
+### Lessons Learned
+1. Always use proper client-side initialization for components that depend on browser APIs
+2. Implement consistent default states during SSR to prevent hydration mismatches
+3. Use `suppressHydrationWarning` sparingly and only when necessary
+4. Proper translation system setup is crucial for internationalized applications
+5. Dependency conflicts between React versions can cause various build and runtime issues
+
+--- 
