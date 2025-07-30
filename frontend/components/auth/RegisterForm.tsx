@@ -99,7 +99,8 @@ export function RegisterForm() {
       setIsLoading(true)
       setError(null)
       
-      await registerUser(data.email, data.password)
+      // Pass all the collected form data to registration
+      await registerUser(data)
       router.push('/dashboard')
     } catch (err) {
       console.error('Registration error:', err)

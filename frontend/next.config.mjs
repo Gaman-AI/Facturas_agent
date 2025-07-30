@@ -9,15 +9,9 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  webpack: (config, { isServer }) => {
-    // Suppress punycode deprecation warning
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        punycode: false,
-      };
-    }
-    return config;
+  // Suppress punycode deprecation warning from Next.js
+  experimental: {
+    suppressDeprecationWarnings: true,
   },
 }
 

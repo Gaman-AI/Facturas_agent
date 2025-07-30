@@ -43,13 +43,9 @@ function DashboardContent() {
     console.log('Navigate to profile update');
   };
 
-  if (!profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Cargando perfil...</p>
-      </div>
-    );
-  }
+  // Show dashboard even without profile (profile is optional now)
+  const displayName = profile ? getDisplayName() : 'Usuario'
+  const hasProfile = !!profile
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -68,7 +64,7 @@ function DashboardContent() {
             
             <div className="flex items-center space-x-4">
               <span className="text-sm text-slate-600">
-                {getDisplayName()}
+                {displayName}
               </span>
               <Button
                 variant="outline"
@@ -104,41 +100,49 @@ function DashboardContent() {
                 <span>Información del Usuario</span>
               </CardTitle>
               <CardDescription>
-                Información fiscal y de contacto
+                {hasProfile ? 'Información fiscal y de contacto' : 'Complete su perfil para acceder a todas las funciones'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-slate-700">Email</label>
-                  <p className="text-slate-900">{profile.email}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-700">RFC</label>
-                  <div className="flex items-center space-x-2">
-                    <p className="text-slate-900">{getRFCMasked()}</p>
-                    <Badge variant={isPersonaFisica() ? "default" : "secondary"}>
-                      {isPersonaFisica() ? "Persona Física" : "Persona Moral"}
-                    </Badge>
+              {hasProfile ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Email</label>
+                    <p className="text-slate-900">{profile.email}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">RFC</label>
+                    <div className="flex items-center space-x-2">
+                      <p className="text-slate-900">{getRFCMasked()}</p>
+                      <Badge variant={isPersonaFisica() ? "default" : "secondary"}>
+                        {isPersonaFisica() ? "Persona Física" : "Persona Moral"}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium text-slate-700">Razón Social</label>
+                    <p className="text-slate-900">{profile.company_name || profile.razon_social}</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium text-slate-700">Dirección Fiscal</label>
+                    <p className="text-slate-900">{getFullAddress()}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Régimen Fiscal</label>
+                    <p className="text-slate-900">{profile.tax_regime || profile.regimen_fiscal}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Uso de CFDI</label>
+                    <p className="text-slate-900">{profile.cfdi_use || profile.uso_cfdi}</p>
                   </div>
                 </div>
-                <div className="md:col-span-2">
-                  <label className="text-sm font-medium text-slate-700">Razón Social</label>
-                  <p className="text-slate-900">{profile.company_name || profile.razon_social}</p>
+              ) : (
+                <div className="text-center py-8">
+                  <User className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                  <p className="text-slate-600 mb-4">No se ha encontrado información de perfil</p>
+                  <p className="text-sm text-slate-500">Puede usar las funciones básicas del sistema sin completar su perfil</p>
                 </div>
-                <div className="md:col-span-2">
-                  <label className="text-sm font-medium text-slate-700">Dirección Fiscal</label>
-                  <p className="text-slate-900">{getFullAddress()}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-700">Régimen Fiscal</label>
-                  <p className="text-slate-900">{profile.tax_regime || profile.regimen_fiscal}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-700">Uso de CFDI</label>
-                  <p className="text-slate-900">{profile.cfdi_use || profile.uso_cfdi}</p>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
