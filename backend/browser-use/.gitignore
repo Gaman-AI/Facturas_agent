@@ -1,5 +1,13 @@
-# Cache files
-.DS_Store
+# Environment variables and secrets (CRITICAL - never commit these)
+.env
+secrets.env
+credentials.json
+token.json
+browser_cookies.json
+cookies.json
+gcp-login.json
+
+# Python cache and build artifacts (keep these local)
 __pycache__/
 *.py[cod]
 *$py.class
@@ -7,20 +15,46 @@ __pycache__/
 .ruff_cache/
 .pytest_cache/
 .ipynb_checkpoints
-~/
 
-# Virtual Environments
+# Virtual environments (keep these local)
 .venv*
 venv/
 
-# IDEs
+# IDE and editor files (keep these local)
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# Build files
+# Build files (keep these local)
 dist/
 
-# Data files
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Project specific sensitive files (keep these local)
+saved_trajectories/
+old_tests/
+AgentHistory.json
+AgentHistoryList.json
+private_example.py
+private_example
+CLAUDE.local.md
+
+# Data files (keep these local)
 *.gif
 *.txt
 *.pdf
@@ -30,26 +64,8 @@ dist/
 *.log
 *.bak
 
-# Secrets and sensitive files
-secrets.env
-.env
-browser_cookies.json
-cookies.json
-gcp-login.json
-saved_trajectories/
-old_tests/
-AgentHistory.json
-AgentHistoryList.json
-private_example.py
-private_example
-CLAUDE.local.md
-
-uv.lock
-temp
-tmp
-
-# Google API credentials
-credentials.json
-token.json
-
+# Allow documentation files
 !docs/docs.json
+
+# Lock files (keep these for dependency management)
+# uv.lock - REMOVED: This should be committed for reproducible builds
