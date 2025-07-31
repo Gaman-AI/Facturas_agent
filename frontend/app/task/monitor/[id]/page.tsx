@@ -28,6 +28,16 @@ export default function TaskMonitorPage() {
         setIsLoading(true)
         setError(null)
 
+        // Check if this is a demo task
+        if (taskId.startsWith('demo_')) {
+          // Demo mode - create mock data
+          setTaskStatus('running')
+          setSessionId(`demo_session_${taskId}`)
+          setLiveViewUrl('https://www.browserbase.com/sessions/demo')
+          setIsLoading(false)
+          return
+        }
+
         // Fetch real task data from API
         const [taskResponse, sessionResponse] = await Promise.allSettled([
           ApiService.getBrowserUseTask(taskId),

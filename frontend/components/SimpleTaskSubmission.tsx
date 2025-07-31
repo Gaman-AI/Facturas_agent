@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Send, Zap, AlertCircle } from 'lucide-react'
+import { Loader2, Send, Zap, AlertCircle, Play } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useLanguage } from '@/contexts/LanguageContext'
 import ApiService from '@/services/api'
@@ -33,6 +33,7 @@ export function SimpleTaskSubmission({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [isDemoMode, setIsDemoMode] = useState(false)
 
   const characterLimit = 500
   const remainingChars = characterLimit - task.length
@@ -55,16 +56,28 @@ export function SimpleTaskSubmission({
     setSuccess(null)
 
     try {
-      // Create a simple browser automation task
-      const response = await ApiService.createBrowserTask({
-        task_description: task,
-        llm_provider: llmProvider,
+      if (isDemoMode) {
+        // Demo mode - create a fake task ID and redirect to monitoring
+        const demoTaskId = `demo_${Date.now()}`
+        setSuccess('Demo task created successfully!')
+        
+        setTimeout(() => {
+          router.push(`/task/monitor/${demoTaskId}`)
+        }, 1500)
+        return
+      }
+
+      // Create a simple browser automation task using the new BrowserUse API
+      const response = await ApiService.createBrowserUseTask({
+        prompt: task,
         model: llmProvider === 'openai' ? 'gpt-4o' : 
                llmProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' : 
-               'gemini-pro'
+               'gemini-pro',
+        max_steps: 50,
+        timeout_minutes: 30
       })
 
-      const taskId = response.task_id || response.id
+      const taskId = response.data.task_id
       setSuccess(t('tasks.success.created', 'Task created successfully!'))
       
       // Clear form
@@ -82,9 +95,9 @@ export function SimpleTaskSubmission({
         }, 1500)
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating task:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error occurred'
       setError(t('tasks.error.creation', `Failed to create task: ${errorMessage}`))
     } finally {
       setIsSubmitting(false)
@@ -115,6 +128,26 @@ export function SimpleTaskSubmission({
       </CardHeader>
       
       <CardContent>
+        {/* Demo Mode Toggle */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium text-blue-900">Demo Mode</h4>
+              <p className="text-sm text-blue-700">Test the dual-pane interface without API setup</p>
+            </div>
+            <Button
+              type="button"
+              variant={isDemoMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsDemoMode(!isDemoMode)}
+              className="flex items-center gap-2"
+            >
+              <Play className="w-4 h-4" />
+              {isDemoMode ? 'Demo Active' : 'Enable Demo'}
+            </Button>
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Task Description */}
           <div className="space-y-2">
@@ -207,26 +240,38 @@ export function SimpleTaskSubmission({
           )}
 
           {/* Submit Button */}
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={isSubmitting || !task.trim() || task.length > characterLimit}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {t('tasks.simple.creating', 'Creating Task...')}
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4 mr-2" />
-                {t('tasks.simple.submit', 'Start Task')}
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              type="submit" 
+              className="flex-1" 
+              disabled={isSubmitting || !task.trim() || task.length > characterLimit}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {isDemoMode ? 'Creating Demo Task...' : t('tasks.simple.creating', 'Creating Task...')}
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  {isDemoMode ? 'Start Demo Task' : t('tasks.simple.submit', 'Start Task')}
+                </>
+              )}
+            </Button>
+            
+            <Button 
+              type="button"
+              variant="outline"
+              onClick={() => router.push('/task/monitor/demo_task_456')}
+              className="px-4"
+              title="Try demo without API credentials"
+            >
+              <Zap className="w-4 h-4" />
+            </Button>
+          </div>
 
           {/* User Info */}
-          {user && (
+          {user && !isDemoMode && (
             <div className="text-xs text-muted-foreground text-center pt-2">
               {t('tasks.simple.userNote', 'Task will be executed as')}: {user.email}
             </div>

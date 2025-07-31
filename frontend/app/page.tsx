@@ -87,6 +87,16 @@ export default function HomePage() {
                   {getText('home.login', 'Iniciar Sesión')}
                 </Link>
               </Button>
+              
+              <Button 
+                variant="secondary" 
+                size="lg" 
+                className="px-8"
+                onClick={() => router.push('/task/monitor/demo_task_123')}
+              >
+                <Zap className="w-5 h-5 mr-2" />
+                {getText('home.tryDemo', 'Probar Demo')}
+              </Button>
             </div>
 
             <div className="flex items-center justify-center space-x-6 text-sm text-slate-500">
