@@ -16,15 +16,6 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --frozen-lockfile
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=dev-deps /app/node_modules ./node_modules
-COPY . .
-
-# Build the application
-RUN npm run build
-
 # Production image, copy all the files and run the app
 FROM base AS runner
 WORKDIR /app
@@ -34,22 +25,21 @@ ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 appuser
 
-# Copy the built application
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
+# Copy the application source
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
 
 # Create logs directory
 RUN mkdir -p /app/logs && chown -R appuser:nodejs /app/logs
 
 USER appuser
 
-EXPOSE 8000
+EXPOSE 5000
 
-ENV PORT=8000
+ENV PORT=5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:8000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
+  CMD node -e "require('http').get('http://localhost:5000/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })" || exit 1
 
-CMD ["node", "dist/index.js"] 
+CMD ["node", "src/index.js"] 
