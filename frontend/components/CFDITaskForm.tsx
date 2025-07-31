@@ -185,16 +185,16 @@ export function CFDITaskForm() {
         vendor_url: formData.vendor_url,
         customer_details: {
           rfc: profile.rfc,
-          email: user.email || profile.email,
-          company_name: profile.company_name || profile.razon_social,
+          email: user.email,
+          company_name: profile.company_name,
           address: {
-            street: profile.street || profile.calle,
-            exterior_number: profile.exterior_number || profile.numero_ext,
-            interior_number: profile.interior_number || profile.numero_int || undefined,
-            colony: profile.colony || profile.colonia,
-            municipality: profile.municipality || profile.delegacion_municipio,
-            state: profile.state || profile.estado,
-            zip_code: profile.zip_code || profile.codigo_postal,
+            street: profile.street,
+            exterior_number: profile.exterior_number,
+            interior_number: profile.interior_number || undefined,
+            colony: profile.colony,
+            municipality: profile.municipality,
+            state: profile.state,
+            zip_code: profile.zip_code,
             country: 'Mexico'
           }
         },
@@ -304,24 +304,23 @@ export function CFDITaskForm() {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <FileText className="w-5 h-5" />
-            <span>{t('tasks.createNewTask', 'Nueva Tarea de Automatización CFDI')}</span>
+            <span>{t('tasks.createNewTask')}</span>
           </CardTitle>
           <CardDescription>
-            {t('tasks.formDescription', 'Complete los datos para automatizar la solicitud de facturación en el portal del proveedor')}
+            {t('tasks.formDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Vendor Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">{t('tasks.vendorInfo', 'Información del Proveedor')}</h3>
+              <h3 className="text-lg font-medium">{t('tasks.vendorInfo')}</h3>
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <Label htmlFor="vendor_url">{t('tasks.vendorUrl', 'URL del Portal de Facturación')} *</Label>
+                  <Label htmlFor="vendor_url">{t('tasks.vendorUrl')} *</Label>
                   <Input
                     {...register('vendor_url')}
-                    placeholder={t('tasks.vendorUrlPlaceholder', 'https://facturacion.proveedor.com')}
-                    error={errors.vendor_url?.message}
+                    placeholder={t('tasks.vendorUrlPlaceholder')}
                   />
                 </div>
               </div>
@@ -329,14 +328,18 @@ export function CFDITaskForm() {
 
             {/* Invoice Details */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">{t('tasks.invoiceDetails', 'Detalles de la Factura')}</h3>
+              <h3 className="text-lg font-medium">{t('tasks.invoiceDetails')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="ticket_id">{t('tasks.ticketId')} *</Label>
                   <Input
                     {...register('ticket_id')}
                     placeholder={t('tasks.ticketIdPlaceholder')}
-                    error={errors.ticket_id?.message}
+                    onError={(e: React.SyntheticEvent<HTMLInputElement>) => {
+                      if (errors.ticket_id?.message) {
+                        (e.target as HTMLInputElement).setCustomValidity(errors.ticket_id.message)
+                      }
+                    }}
                   />
                 </div>
                 <div>
@@ -360,9 +363,9 @@ export function CFDITaskForm() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="MXN">MXN - {t('common.mexicanPeso', 'Peso Mexicano')}</SelectItem>
-                      <SelectItem value="USD">USD - {t('common.usDollar', 'Dólar Americano')}</SelectItem>
-                      <SelectItem value="EUR">EUR - {t('common.euro', 'Euro')}</SelectItem>
+                      <SelectItem value="MXN">MXN - Peso Mexicano</SelectItem>
+                      <SelectItem value="USD">USD - Dólar Americano</SelectItem>
+                      <SelectItem value="EUR">EUR - Euro</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -391,12 +394,32 @@ export function CFDITaskForm() {
                     step="0.01"
                     {...register('total', { valueAsNumber: true })}
                     placeholder={t('tasks.totalPlaceholder')}
-                    error={errors.total?.message}
+                    onError={(e: React.SyntheticEvent<HTMLInputElement>) => {
+                      if (errors.total?.message) {
+                        (e.target as HTMLInputElement).setCustomValidity(errors.total.message)
+                      }
+                    }}
                   />
                 </div>
               </div>
             </div>
-
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">{t('tasks.invoiceDetails')}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="ticket_id">{t('tasks.ticketId')} *</Label>
+                  <Input
+                    {...register('ticket_id')}
+                    placeholder={t('tasks.ticketIdPlaceholder')}
+                    onError={(e: React.SyntheticEvent<HTMLInputElement>) => {
+                      if (errors.ticket_id?.message) {
+                        (e.target as HTMLInputElement).setCustomValidity(errors.ticket_id.message)
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </div>  
             {/* Automation Configuration */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Configuración de Automatización</h3>
