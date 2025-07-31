@@ -1,0 +1,17 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "backend/Dockerfile.nodejs"
+
+[deploy]
+startCommand = "node dist/index.js"
+healthCheckPath = "/health"
+healthCheckTimeout = 300
+
+[[services]]
+name = "backend-api"
+plan = "Hobby"
+region = "California"
+port = 8000
+
+[env]
+NODE_ENV = "production" 

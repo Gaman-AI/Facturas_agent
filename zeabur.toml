@@ -1,0 +1,18 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "frontend/Dockerfile"
+
+[deploy]
+startCommand = "node server.js"
+healthCheckPath = "/"
+healthCheckTimeout = 300
+
+[[services]]
+name = "frontend"
+plan = "Hobby"
+region = "California"
+port = 3000
+
+[env]
+NODE_ENV = "production"
+NEXT_TELEMETRY_DISABLED = "1" 
