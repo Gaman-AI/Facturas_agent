@@ -241,6 +241,56 @@ export interface BrowserUseHealth {
   };
 }
 
+// Session Management Types for Real-time Monitoring
+export interface TaskSession {
+  success: boolean;
+  data: {
+    task_id: string;
+    session_id?: string;
+    live_view_url?: string;
+    browser_type?: 'browserbase' | 'local' | 'embedded';
+    status: 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
+    created_at: string;
+    connect_url?: string;
+    capabilities?: {
+      can_pause: boolean;
+      can_resume: boolean;
+      can_stop: boolean;
+      can_restart: boolean;
+      can_takeover: boolean;
+    };
+  };
+  meta: {
+    timestamp: string;
+    requestId: string;
+  };
+}
+
+export interface TaskLogEntry {
+  id: string;
+  task_id: string;
+  timestamp: string;
+  level: 'info' | 'warning' | 'error' | 'success' | 'thinking' | 'action';
+  message: string;
+  details?: any;
+  source?: 'agent' | 'system' | 'user';
+}
+
+export interface TaskLogsResponse {
+  success: boolean;
+  data: {
+    logs: TaskLogEntry[];
+    total_count: number;
+    has_more: boolean;
+    limit: number;
+    offset: number;
+  };
+  meta: {
+    timestamp: string;
+    requestId: string;
+  };
+}
+
 export interface BrowserTaskRequest {
   task_description: string;
   llm_provider?: string;
@@ -448,6 +498,46 @@ export class ApiService {
   static async getBrowserUseHealth(): Promise<BrowserUseHealth> {
     const response = await apiClient.get('/tasks/browser-use/health');
     return response.data as BrowserUseHealth;
+  }
+
+  // Session Management for Task Monitoring
+  static async getTaskSession(taskId: string): Promise<TaskSession> {
+    const response = await apiClient.get(`/tasks/browser-use/${taskId}/session`);
+    return response.data as TaskSession;
+  }
+
+  static async pauseTask(taskId: string): Promise<{ success: boolean; message: string }> {
+    const response = await apiClient.post(`/tasks/browser-use/${taskId}/pause`);
+    return response.data as { success: boolean; message: string };
+  }
+
+  static async resumeTask(taskId: string): Promise<{ success: boolean; message: string }> {
+    const response = await apiClient.post(`/tasks/browser-use/${taskId}/resume`);
+    return response.data as { success: boolean; message: string };
+  }
+
+  static async stopTask(taskId: string): Promise<{ success: boolean; message: string }> {
+    const response = await apiClient.post(`/tasks/browser-use/${taskId}/stop`);
+    return response.data as { success: boolean; message: string };
+  }
+
+  static async restartTask(taskId: string): Promise<BrowserUseTaskResponse> {
+    const response = await apiClient.post(`/tasks/browser-use/${taskId}/restart`);
+    return response.data as BrowserUseTaskResponse;
+  }
+
+  static async getTaskLogs(taskId: string, options?: {
+    limit?: number;
+    offset?: number;
+    level?: 'info' | 'warning' | 'error' | 'all';
+  }): Promise<TaskLogsResponse> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+    if (options?.level) params.append('level', options.level);
+
+    const response = await apiClient.get(`/tasks/browser-use/${taskId}/logs?${params.toString()}`);
+    return response.data as TaskLogsResponse;
   }
 }
 

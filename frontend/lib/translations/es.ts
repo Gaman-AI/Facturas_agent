@@ -1,4 +1,4 @@
-import { Translations } from '@/contexts/LanguageContext'
+import { Translations } from '@/types/translations'
 
 const es: Translations = {
   // Common

@@ -1,6 +1,6 @@
 'use client';
 
-import { LogOut, User, Building2, FileText, BarChart3 } from 'lucide-react';
+import { LogOut, User, Building2, FileText, BarChart3, Zap, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuth, useUserProfile } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
+import { SimpleTaskSubmission } from '@/components/SimpleTaskSubmission';
 
 export default function DashboardPage() {
   return (
@@ -33,6 +34,15 @@ function DashboardContent() {
 
   const handleNewTask = () => {
     router.push('/browser-agent-realtime');
+  };
+
+  const handleSimpleTask = () => {
+    router.push('/task/submit');
+  };
+
+  const handleTaskSubmit = (taskId: string) => {
+    // Redirect to monitoring page when task is submitted from dashboard
+    router.push(`/task/monitor/${taskId}`);
   };
 
   const handleViewHistory = () => {
@@ -91,6 +101,15 @@ function DashboardContent() {
           <p className="text-slate-600">
             {t('dashboard.title')}
           </p>
+        </div>
+
+        {/* Quick Task Submission */}
+        <div className="mb-8">
+          <SimpleTaskSubmission 
+            onTaskSubmit={handleTaskSubmit}
+            showRedirect={false}
+            className="mb-6"
+          />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -152,12 +171,16 @@ function DashboardContent() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                              <CardTitle className="flex items-center space-x-2">
-                <Building2 className="w-5 h-5" />
-                <span>{t('dashboard.quickActions', 'Acciones Rápidas')}</span>
-              </CardTitle>
+                <CardTitle className="flex items-center space-x-2">
+                  <Building2 className="w-5 h-5" />
+                  <span>{t('dashboard.quickActions', 'Acciones Rápidas')}</span>
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                <Button className="w-full" onClick={handleSimpleTask}>
+                  <Zap className="w-4 h-4 mr-2" />
+                  {t('tasks.simple.quickCreate', 'Quick Task')}
+                </Button>
                 <Button className="w-full" variant="outline" onClick={handleNewTask}>
                   <FileText className="w-4 h-4 mr-2" />
                   {t('tasks.create')}
