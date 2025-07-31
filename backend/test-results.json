@@ -1,0 +1,83 @@
+{
+  "startTime": 1753978849192,
+  "endTime": 1753978861310,
+  "totalTests": 0,
+  "passedTests": 0,
+  "failedTests": 0,
+  "skippedTests": 0,
+  "suites": [
+    {
+      "name": "Health Checks",
+      "file": "tests/health.test.js",
+      "duration": 1516,
+      "exitCode": 1,
+      "passed": false,
+      "output": "",
+      "errorOutput": "● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/src/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n● Validation Error:\n\n  Preset es-modules not found.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n"
+    },
+    {
+      "name": "API Endpoints",
+      "file": "tests/api.test.js",
+      "duration": 451,
+      "exitCode": 1,
+      "passed": false,
+      "output": "",
+      "errorOutput": "● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/src/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n● Validation Error:\n\n  Preset es-modules not found.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n"
+    },
+    {
+      "name": "Supabase Integration",
+      "file": "tests/supabase.test.js",
+      "duration": 1011,
+      "exitCode": 1,
+      "passed": false,
+      "output": "",
+      "errorOutput": "● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/src/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n● Validation Error:\n\n  Preset es-modules not found.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n"
+    },
+    {
+      "name": "External Services",
+      "file": "tests/services.test.js",
+      "duration": 453,
+      "exitCode": 1,
+      "passed": false,
+      "output": "",
+      "errorOutput": "● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/src/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n● Validation Error:\n\n  Preset es-modules not found.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n"
+    },
+    {
+      "name": "Security Tests",
+      "file": "tests/security.test.js",
+      "duration": 457,
+      "exitCode": 1,
+      "passed": false,
+      "output": "",
+      "errorOutput": "● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/src/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n● Validation Error:\n\n  Preset es-modules not found.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n"
+    },
+    {
+      "name": "Integration Tests",
+      "file": "tests/integration.test.js",
+      "duration": 2184,
+      "exitCode": 1,
+      "passed": false,
+      "output": "",
+      "errorOutput": "● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/src/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n● Validation Error:\n\n  Preset es-modules not found.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n"
+    }
+  ],
+  "environment": {
+    "nodeVersion": "v20.11.1",
+    "platform": "darwin",
+    "arch": "arm64",
+    "nodeEnv": "development"
+  },
+  "services": {
+    "Supabase": "❌ Missing",
+    "OpenAI": "❌ Missing",
+    "Browserbase": "⚠️  Optional",
+    "Redis": "⚠️  Using default",
+    "JWT": "❌ Missing"
+  },
+  "summary": {
+    "totalDuration": 12118,
+    "passedSuites": 0,
+    "failedSuites": 6,
+    "successRate": 0
+  }
+}

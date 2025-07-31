@@ -8,9 +8,10 @@
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "test": "node test-runner.js",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:ci": "jest --ci --coverage --watchAll=false",
+    "test:watch": "node --experimental-vm-modules node_modules/.bin/jest --watch",
+    "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage",
+    "test:ci": "node --experimental-vm-modules node_modules/.bin/jest --ci --coverage --watchAll=false",
+    "test:jest": "node --experimental-vm-modules node_modules/.bin/jest",
     "browser-use": "cd browser-use && python -m browser_use",
     "install-python": "cd browser-use && pip install -e ."
   },
