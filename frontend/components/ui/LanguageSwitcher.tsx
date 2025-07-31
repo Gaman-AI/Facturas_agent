@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Globe, Check, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -150,6 +150,12 @@ export function LanguageSwitcher({
 export function LanguageToggle({ className = '' }: { className?: string }) {
   const { language, setLanguage, isLoading } = useLanguage()
   const [isChanging, setIsChanging] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+
+  // Track mounted state to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const toggleLanguage = async () => {
     const newLanguage = language === 'es' ? 'en' : 'es'
@@ -163,6 +169,22 @@ export function LanguageToggle({ className = '' }: { className?: string }) {
     }
   }
 
+  // Render consistent content during hydration
+  if (!isMounted) {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        disabled={true}
+        className={`flex items-center gap-1 h-8 px-2 ${className}`}
+        title="Toggle language / Cambiar idioma"
+      >
+        <Globe className="h-4 w-4" />
+        <span className="text-xs font-medium">ES</span>
+      </Button>
+    )
+  }
+
   return (
     <Button
       variant="ghost"
@@ -171,9 +193,10 @@ export function LanguageToggle({ className = '' }: { className?: string }) {
       disabled={isLoading || isChanging}
       className={`flex items-center gap-1 h-8 px-2 ${className}`}
       title="Toggle language / Cambiar idioma"
+      suppressHydrationWarning={true}
     >
       <Globe className="h-4 w-4" />
-      <span className="text-xs font-medium">
+      <span className="text-xs font-medium" suppressHydrationWarning={true}>
         {language === 'es' ? 'ES' : 'EN'}
       </span>
     </Button>

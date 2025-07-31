@@ -4,6 +4,8 @@ import { validateCreateTask, validateTaskQuery, validateTaskParams, validateCFDI
 import { asyncHandler } from '../middleware/errorHandler.js'
 import browserService from '../services/browserService.js'
 import browserAgentService from '../services/browserAgentService.js'
+import taskService from '../services/taskService.js'
+import queueService from '../services/queueService.js'
 
 const router = express.Router()
 
@@ -51,59 +53,43 @@ router.get('/', authenticate, validateTaskQuery, asyncHandler(async (req, res) =
     })
   }
 
-  // Original task listing logic
-  const { page, limit, status } = req.query
+  // Get tasks from database using TaskService
+  const { page = 1, limit = 10, status } = req.query
   const userId = req.user.id
 
-  // For now, return mock data since we haven't implemented the full task service yet
-  // In a real implementation, this would query the Supabase database using MCP
-  const mockTasks = [
-    {
-      id: '123e4567-e89b-12d3-a456-426614174000',
-      user_id: userId,
-      vendor_url: 'https://facturacion.example.com',
-      ticket_details: {
-        customer_details: {
-          rfc: 'XAXX010101000',
-          company_name: 'Test Company',
-          email: 'test@example.com'
-        },
-        invoice_details: {
-          folio: 'ABC123',
-          total: 1500.00,
-          currency: 'MXN'
-        }
+  // Query database for user tasks
+  const { tasks, total, error } = await taskService.getUserTasks(userId, { 
+    page: parseInt(page), 
+    limit: parseInt(limit), 
+    status 
+  })
+
+  if (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'TASK_FETCH_FAILED',
+        message: 'Failed to retrieve tasks',
+        details: error
       },
-      status: 'COMPLETED',
-      created_at: new Date().toISOString(),
-      completed_at: new Date().toISOString(),
-      result: {
-        success: true,
-        execution_time: 45.2
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
       }
-    }
-  ]
-
-  // Filter by status if provided
-  const filteredTasks = status 
-    ? mockTasks.filter(task => task.status === status)
-    : mockTasks
-
-  // Apply pagination
-  const startIndex = (page - 1) * limit
-  const paginatedTasks = filteredTasks.slice(startIndex, startIndex + limit)
+    })
+  }
 
   res.json({
     success: true,
-    data: paginatedTasks,
+    data: tasks,
     meta: {
       timestamp: new Date().toISOString(),
       requestId: req.id,
       pagination: {
-        page,
-        limit,
-        total: filteredTasks.length,
-        totalPages: Math.ceil(filteredTasks.length / limit)
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalPages: Math.ceil(total / parseInt(limit))
       }
     }
   })
@@ -135,31 +121,54 @@ router.post('/', authenticate, validateCreateTask, asyncHandler(async (req, res)
     })
   }
 
-  // Create task record (would use Supabase MCP in real implementation)
-  const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  
-  const newTask = {
-    id: taskId,
-    user_id: userId,
-    vendor_url: taskData.vendor_url,
-    ticket_details: taskData.ticket_details,
-    status: 'PENDING',
-    created_at: new Date().toISOString(),
-    started_at: null,
-    completed_at: null,
-    result: null,
-    error_message: null
+  // Create task in database using TaskService
+  const { task, error } = await taskService.createTask(userId, taskData)
+
+  if (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'TASK_CREATION_FAILED',
+        message: 'Failed to create task in database',
+        details: error
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
   }
 
-  // Here we would:
-  // 1. Insert task into Supabase using MCP
-  // 2. Add task to Redis queue for processing
-  // 3. Return task details
+  // Add task to Redis queue for processing
+  const { job, error: queueError } = await queueService.addTask(task.id, {
+    ...taskData,
+    userId: userId
+  })
 
+  if (queueError) {
+    // Update task status to failed if queuing fails
+    await taskService.updateTaskStatus(task.id, userId, 'FAILED', {
+      failure_reason: `Queue error: ${queueError}`
+    })
+
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'TASK_QUEUE_FAILED',
+        message: 'Task created but failed to queue for processing',
+        details: queueError
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+  
   res.status(201).json({
     success: true,
     data: {
-      task: newTask,
+      task: task,
       message: 'Task created and queued for processing'
     },
     meta: {
@@ -178,61 +187,34 @@ router.get('/:taskId', authenticate, validateTaskParams, asyncHandler(async (req
   const { taskId } = req.params
   const userId = req.user.id
 
-  // Mock task details (would query Supabase using MCP in real implementation)
-  const mockTask = {
-    id: taskId,
-    user_id: userId,
-    vendor_url: 'https://facturacion.example.com',
-    ticket_details: {
-      customer_details: {
-        rfc: 'XAXX010101000',
-        company_name: 'Test Company',
-        email: 'test@example.com'
+  // Get task with steps from database using TaskService
+  const { task, steps, error } = await taskService.getTaskWithSteps(taskId, userId)
+
+  if (error) {
+    const statusCode = error.includes('not found') ? 404 : 500
+    return res.status(statusCode).json({
+      success: false,
+      error: {
+        code: statusCode === 404 ? 'TASK_NOT_FOUND' : 'TASK_FETCH_FAILED',
+        message: error,
+        details: { task_id: taskId }
       },
-      invoice_details: {
-        folio: 'ABC123',
-        total: 1500.00,
-        currency: 'MXN'
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
       }
-    },
-    status: 'COMPLETED',
-    created_at: new Date().toISOString(),
-    started_at: new Date().toISOString(),
-    completed_at: new Date().toISOString(),
-    result: {
-      success: true,
-      execution_time: 45.2,
-      vendor_url: 'https://facturacion.example.com',
-      customer_rfc: 'XAXX010101000'
-    },
-    steps: [
-      {
-        id: 1,
-        step_type: 'navigation',
-        content: { url: 'https://facturacion.example.com', action: 'navigate' },
-        status: 'completed',
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 2,
-        step_type: 'form_fill',
-        content: { field: 'rfc', value: 'XAXX010101000' },
-        status: 'completed',
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 3,
-        step_type: 'submission',
-        content: { action: 'submit_form', success: true },
-        status: 'completed',
-        timestamp: new Date().toISOString()
-      }
-    ]
+    })
+  }
+
+  // Combine task and steps in response
+  const taskWithSteps = {
+    ...task,
+    steps: steps
   }
 
   res.json({
     success: true,
-    data: mockTask,
+    data: taskWithSteps,
     meta: {
       timestamp: new Date().toISOString(),
       requestId: req.id
@@ -315,17 +297,38 @@ router.put('/:taskId/pause', authenticate, validateTaskParams, asyncHandler(asyn
   const { taskId } = req.params
   const userId = req.user.id
 
-  // In real implementation, this would:
-  // 1. Check if task belongs to user
-  // 2. Check if task is running
-  // 3. Send pause signal to queue/worker
-  // 4. Update task status in database
+  // Update task status to PAUSED in database
+  const { task, error } = await taskService.updateTaskStatus(taskId, userId, 'PAUSED')
+
+  if (error) {
+    const statusCode = error.includes('not found') ? 404 : 500
+    return res.status(statusCode).json({
+      success: false,
+      error: {
+        code: statusCode === 404 ? 'TASK_NOT_FOUND' : 'TASK_UPDATE_FAILED',
+        message: error,
+        details: { task_id: taskId }
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+
+  // Remove task from queue (pause implementation)
+  const { success: pauseSuccess, error: pauseError } = await queueService.pauseTask(taskId)
+  
+  if (pauseError) {
+    console.warn(`⚠️ Failed to pause task in queue: ${pauseError}`)
+    // Don't fail the request - task is paused in DB
+  }
 
   res.json({
     success: true,
     data: {
       task_id: taskId,
-      status: 'PAUSED',
+      status: task.status,
       message: 'Task paused successfully'
     },
     meta: {
@@ -344,17 +347,74 @@ router.put('/:taskId/resume', authenticate, validateTaskParams, asyncHandler(asy
   const { taskId } = req.params
   const userId = req.user.id
 
-  // In real implementation, this would:
-  // 1. Check if task belongs to user
-  // 2. Check if task is paused
-  // 3. Re-queue task for processing
-  // 4. Update task status in database
+  // Get task details for re-queuing
+  const { task: taskDetails, error: fetchError } = await taskService.getTask(taskId, userId)
+  
+  if (fetchError) {
+    const statusCode = fetchError.includes('not found') ? 404 : 500
+    return res.status(statusCode).json({
+      success: false,
+      error: {
+        code: statusCode === 404 ? 'TASK_NOT_FOUND' : 'TASK_FETCH_FAILED',
+        message: fetchError,
+        details: { task_id: taskId }
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+
+  // Update task status to RUNNING in database
+  const { task, error } = await taskService.updateTaskStatus(taskId, userId, 'RUNNING')
+
+  if (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'TASK_UPDATE_FAILED',
+        message: error,
+        details: { task_id: taskId }
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+
+  // Re-queue task for processing
+  const { success: resumeSuccess, error: resumeError } = await queueService.resumeTask(taskId, {
+    vendor_url: taskDetails.vendor_url,
+    ticket_details: taskDetails.ticket_details,
+    userId: userId
+  })
+
+  if (resumeError) {
+    console.warn(`⚠️ Failed to resume task in queue: ${resumeError}`)
+    // Update status back to PAUSED
+    await taskService.updateTaskStatus(taskId, userId, 'PAUSED')
+    
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'TASK_RESUME_FAILED',
+        message: 'Failed to resume task in queue',
+        details: resumeError
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
 
   res.json({
     success: true,
     data: {
       task_id: taskId,
-      status: 'RUNNING',
+      status: task.status,
       message: 'Task resumed successfully'
     },
     meta: {
@@ -373,11 +433,32 @@ router.delete('/:taskId', authenticate, validateTaskParams, asyncHandler(async (
   const { taskId } = req.params
   const userId = req.user.id
 
-  // In real implementation, this would:
-  // 1. Check if task belongs to user
-  // 2. Stop task if running
-  // 3. Remove from queue
-  // 4. Delete from database
+  // Cancel task in queue first
+  const { success: cancelSuccess, error: cancelError } = await queueService.cancelTask(taskId)
+  
+  if (cancelError) {
+    console.warn(`⚠️ Failed to cancel task in queue: ${cancelError}`)
+    // Continue with deletion anyway
+  }
+
+  // Delete task from database using TaskService
+  const { success, error } = await taskService.deleteTask(taskId, userId)
+
+  if (error) {
+    const statusCode = error.includes('not found') ? 404 : 500
+    return res.status(statusCode).json({
+      success: false,
+      error: {
+        code: statusCode === 404 ? 'TASK_NOT_FOUND' : 'TASK_DELETE_FAILED',
+        message: error,
+        details: { task_id: taskId }
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
 
   res.json({
     success: true,
@@ -400,17 +481,22 @@ router.delete('/:taskId', authenticate, validateTaskParams, asyncHandler(async (
 router.get('/stats', authenticate, asyncHandler(async (req, res) => {
   const userId = req.user.id
 
-  // Mock statistics (would query Supabase using MCP in real implementation)
-  const stats = {
-    total_tasks: 15,
-    completed_tasks: 12,
-    failed_tasks: 2,
-    pending_tasks: 1,
-    success_rate: 80.0,
-    avg_execution_time: 42.5,
-    total_automation_time_saved: 1800, // seconds
-    most_used_vendor: 'facturacion.example.com',
-    last_task_date: new Date().toISOString()
+  // Get real statistics from database using TaskService
+  const { stats, error } = await taskService.getUserTaskStats(userId)
+
+  if (error) {
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: 'STATS_FETCH_FAILED',
+        message: 'Failed to retrieve task statistics',
+        details: error
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
   }
 
   res.json({
@@ -421,6 +507,99 @@ router.get('/stats', authenticate, asyncHandler(async (req, res) => {
       requestId: req.id
     }
   })
+}))
+
+/**
+ * @route   GET /api/v1/tasks/queue/stats
+ * @desc    Get task queue statistics
+ * @access  Private
+ */
+router.get('/queue/stats', authenticate, asyncHandler(async (req, res) => {
+  try {
+    const { stats, error } = await queueService.getQueueStats()
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        error: {
+          code: 'QUEUE_STATS_FAILED',
+          message: 'Failed to retrieve queue statistics',
+          details: error
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: req.id
+        }
+      })
+    }
+
+    res.json({
+      success: true,
+      data: stats,
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ Queue stats endpoint error:', error)
+    
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'QUEUE_STATS_ERROR',
+        message: 'Unexpected error retrieving queue statistics',
+        details: error.message
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+}))
+
+/**
+ * @route   GET /api/v1/tasks/queue/health
+ * @desc    Check queue service health
+ * @access  Private
+ */
+router.get('/queue/health', authenticate, asyncHandler(async (req, res) => {
+  try {
+    const { status, error } = await queueService.healthCheck()
+
+    const statusCode = status === 'healthy' ? 200 : 503
+
+    res.status(statusCode).json({
+      success: status === 'healthy',
+      data: {
+        status,
+        error,
+        timestamp: new Date().toISOString()
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ Queue health check endpoint error:', error)
+    
+    res.status(503).json({
+      success: false,
+      error: {
+        code: 'QUEUE_HEALTH_ERROR',
+        message: 'Queue service health check failed',
+        details: error.message
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
 }))
 
 /**

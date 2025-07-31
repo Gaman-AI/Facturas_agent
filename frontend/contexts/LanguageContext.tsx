@@ -33,6 +33,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
   const [language, setLanguageState] = useState<Language>('es')
   const [translations, setTranslations] = useState<Translations>({})
   const [isLoading, setIsLoading] = useState(true)
+  const [isMounted, setIsMounted] = useState(false)
 
   // Load translations with caching to avoid repeated imports
   const loadTranslations = async (lang: Language) => {
@@ -81,23 +82,32 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     }
   }
 
-  // Initialize language with faster detection and loading
+  // Initialize component mount state
   useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  // Initialize language ONLY after component mounts to avoid hydration mismatch
+  useEffect(() => {
+    if (!isMounted) return
+
     const initializeLanguage = async () => {
       let savedLanguage: Language = 'es'
       
-      // Quick language detection
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) as Language
-        if (saved === 'es' || saved === 'en') {
-          savedLanguage = saved
-        } else {
-          // Simple browser language detection
-          savedLanguage = navigator.language.toLowerCase().startsWith('en') ? 'en' : 'es'
-        }
+      // Only detect language after mounting (client-side only)
+      const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) as Language
+      if (saved === 'es' || saved === 'en') {
+        savedLanguage = saved
+      } else {
+        // Simple browser language detection
+        savedLanguage = navigator.language.toLowerCase().startsWith('en') ? 'en' : 'es'
       }
       
-      setLanguageState(savedLanguage)
+      // Only update if different from current language
+      if (savedLanguage !== language) {
+        setLanguageState(savedLanguage)
+      }
+      
       await loadTranslations(savedLanguage)
       
       // Preload the other language in background for faster switching
@@ -108,6 +118,11 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     }
 
     initializeLanguage()
+  }, [isMounted, language])
+
+  // Load initial Spanish translations immediately to avoid hydration issues
+  useEffect(() => {
+    loadTranslations('es')
   }, [])
 
   // Set language with caching and proper state synchronization
