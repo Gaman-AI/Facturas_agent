@@ -47,8 +47,8 @@ app.use(cors({
   origin: config.cors.origins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['X-Total-Count', 'X-Page-Count']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID'],
+  exposedHeaders: ['X-Total-Count', 'X-Page-Count', 'X-Request-ID']
 }))
 
 // Request logging

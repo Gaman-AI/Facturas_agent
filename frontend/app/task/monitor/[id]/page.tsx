@@ -29,37 +29,26 @@ export default function TaskMonitorPage() {
         setError(null)
 
         // Fetch real task data from API
-        const [taskResponse, sessionResponse] = await Promise.allSettled([
-          ApiService.getBrowserUseTask(taskId),
-          ApiService.getTaskSession(taskId).catch(error => {
-            // Session endpoint might not exist yet, so we'll handle gracefully
-            console.warn('Session endpoint not available:', error)
-            return null
-          })
-        ])
+        const taskResponse = await ApiService.getBrowserUseTask(taskId).catch(error => {
+          console.warn('Task endpoint error:', error)
+          return { success: false, error: error.message }
+        })
+
+        // Note: Session management is not implemented yet, using task data only
+        const sessionResponse = null
 
         // Handle task data
-        if (taskResponse.status === 'fulfilled' && taskResponse.value.success) {
-          const task = taskResponse.value.data
+        if (taskResponse && taskResponse.success) {
+          const task = taskResponse.data
           setTaskStatus(task.status as any)
           
-          // If session data is available, use it
-          if (sessionResponse.status === 'fulfilled' && sessionResponse.value?.success) {
-            const session = sessionResponse.value.data
-            setSessionId(session.session_id)
-            setLiveViewUrl(session.live_view_url)
-          } else {
-            // Fallback: Generate session info from task data
-            // This is for backward compatibility until backend provides session endpoints
-            const fallbackSessionId = `session_${taskId}_${Date.now()}`
-            setSessionId(fallbackSessionId)
-            setLiveViewUrl(`https://www.browserbase.com/sessions/${fallbackSessionId}`)
-          }
+          // Session management not implemented - use local execution mode
+          // For local browser execution, we don't need live view URLs
+          setSessionId(`local_session_${taskId}`)
+          setLiveViewUrl(null) // No live view for local browser execution
         } else {
           // If task fetch failed, show error
-          const errorMessage = taskResponse.status === 'rejected' 
-            ? taskResponse.reason.message 
-            : 'Task not found'
+          const errorMessage = taskResponse?.error || 'Task not found or API unavailable'
           throw new Error(errorMessage)
         }
         

@@ -5,11 +5,11 @@ import { AppError, ServiceUnavailableError } from '../middleware/errorHandler.js
 
 /**
  * Browser Service - Node.js bridge to Python browser-use automation
- * Executes CFDI automation tasks using the Python browser agent
+ * Executes browser automation tasks using the enhanced browser_agent.py
  */
 class BrowserService {
   constructor() {
-    this.pythonPath = path.join(process.cwd(), 'src', 'python-bridge', 'browserAgent.py')
+    this.pythonPath = path.join(process.cwd(), 'browser_agent.py')
     this.pythonExecutable = config.python.executable
     this.maxExecutionTime = config.tasks.timeoutMinutes * 60 * 1000 // Convert to milliseconds
   }
@@ -247,51 +247,182 @@ class BrowserService {
   }
 
   /**
-   * Validate task data before execution
-   * @param {Object} taskData - Task data to validate
-   * @returns {Object} - Validation result
+   * Execute simplified browser automation task
+   * @param {Object} taskData - Simplified task configuration
+   * @returns {Promise<Object>} - Automation result
    */
-  validateTaskData(taskData) {
-    const errors = []
-
-    // Required fields
-    if (!taskData.vendor_url) {
-      errors.push('vendor_url is required')
-    }
-
-    // URL validation
-    if (taskData.vendor_url) {
-      try {
-        new URL(taskData.vendor_url)
-      } catch {
-        errors.push('vendor_url must be a valid URL')
+  async executeTask(taskData) {
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now()
+      let isResolved = false
+      
+      // Validate required fields - simplified validation
+      if (!taskData.task || typeof taskData.task !== 'string') {
+        return reject(new AppError(
+          'Task description is required and must be a string',
+          400,
+          'VALIDATION_ERROR'
+        ))
       }
-    }
 
-    // LLM provider validation
-    if (taskData.llm_provider && !['openai', 'anthropic', 'google'].includes(taskData.llm_provider)) {
-      errors.push('llm_provider must be one of: openai, anthropic, google')
-    }
+      // Prepare simplified task data for Python service
+      const pythonTaskData = {
+        task: taskData.task,
+        llm_provider: taskData.llm_provider || 'openai',
+        model: taskData.model || 'gpt-4o-mini',
+        timeout_minutes: taskData.timeout_minutes || 30
+      }
 
-    // Ticket details validation
-    if (taskData.ticket_details) {
-      const { customer_details, invoice_details } = taskData.ticket_details
+      console.log(`🐍 Starting Python browser automation process`)
+      console.log(`📄 Task data:`, JSON.stringify(pythonTaskData, null, 2))
 
-      if (customer_details?.rfc) {
-        const rfcPattern = /^[A-ZÑ&]{3,4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/
-        if (!rfcPattern.test(customer_details.rfc)) {
-          errors.push('Invalid RFC format')
+      // Spawn Python process
+      const pythonProcess = spawn(this.pythonExecutable, [
+        this.pythonPath,
+        JSON.stringify(pythonTaskData)
+      ], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: {
+          ...process.env,
+          PYTHONPATH: path.join(process.cwd(), 'browser-use'),
+          NODE_ENV: config.nodeEnv
         }
-      }
+      })
 
-      if (invoice_details?.total && (isNaN(invoice_details.total) || invoice_details.total <= 0)) {
-        errors.push('Invoice total must be a positive number')
-      }
-    }
+      let stdout = ''
+      let stderr = ''
+      let lastLogTime = Date.now()
 
+      // Handle stdout (main output)
+      pythonProcess.stdout.on('data', (data) => {
+        const output = data.toString()
+        stdout += output
+        
+        // Log real-time output for debugging
+        console.log(`🐍 [STDOUT]:`, output.trim())
+        lastLogTime = Date.now()
+      })
+
+      // Handle stderr (error output and debug logs)
+      pythonProcess.stderr.on('data', (data) => {
+        const output = data.toString()
+        stderr += output
+        
+        // Log errors but don't fail immediately (Python might recover)
+        console.log(`🐍 [STDERR]:`, output.trim())
+        lastLogTime = Date.now()
+      })
+
+      // Handle process completion
+      pythonProcess.on('close', (code) => {
+        if (isResolved) return
+
+        const executionTime = (Date.now() - startTime) / 1000
+        console.log(`🐍 Python process completed with code ${code} in ${executionTime}s`)
+
+        if (code === 0) {
+          try {
+            // Try to parse the JSON result from stdout
+            const lines = stdout.trim().split('\n')
+            let jsonResult = null
+            
+            // Look for JSON result (usually the last line)
+            for (let i = lines.length - 1; i >= 0; i--) {
+              try {
+                const line = lines[i].trim()
+                if (line.startsWith('{') || line.startsWith('[')) {
+                  jsonResult = JSON.parse(line)
+                  break
+                }
+              } catch (e) {
+                // Continue looking for valid JSON
+                continue
+              }
+            }
+
+            if (jsonResult) {
+              isResolved = true
+              resolve({
+                success: true,
+                data: jsonResult,
+                execution_time: executionTime,
+                session_log: lines.filter(line => !line.trim().startsWith('{') && line.trim())
+              })
+            } else {
+              // No JSON found, return the raw output
+              isResolved = true
+              resolve({
+                success: true,
+                data: {
+                  message: 'Task completed successfully',
+                  output: stdout.trim()
+                },
+                execution_time: executionTime,
+                session_log: lines
+              })
+            }
+          } catch (error) {
+            console.error(`❌ Failed to parse Python output:`, error)
+            isResolved = true
+            reject(new AppError(
+              `Failed to parse automation result: ${error.message}`,
+              500,
+              'PARSE_ERROR'
+            ))
+          }
+        } else {
+          // Process failed
+          isResolved = true
+          reject(new AppError(
+            `Browser automation failed: ${stderr || 'Unknown error'}`,
+            500,
+            'AUTOMATION_ERROR'
+          ))
+        }
+      })
+
+      // Handle process errors
+      pythonProcess.on('error', (error) => {
+        if (isResolved) return
+        console.error(`❌ Python process error:`, error)
+        isResolved = true
+        reject(new ServiceUnavailableError(
+          `Failed to start browser automation: ${error.message}`
+        ))
+      })
+
+      // Set execution timeout
+      const timeout = setTimeout(() => {
+        if (isResolved) return
+        console.log(`⏰ Task execution timeout after ${this.maxExecutionTime}ms`)
+        pythonProcess.kill('SIGTERM')
+        isResolved = true
+        reject(new AppError(
+          'Task execution timeout - process took too long to complete',
+          408,
+          'TIMEOUT_ERROR'
+        ))
+      }, this.maxExecutionTime)
+
+      // Clean up timeout when process completes
+      pythonProcess.on('close', () => {
+        clearTimeout(timeout)
+      })
+    })
+  }
+
+  /**
+   * Get service information
+   * @returns {Object} - Service details
+   */
+  getServiceInfo() {
     return {
-      isValid: errors.length === 0,
-      errors
+      name: 'Browser Automation Service',
+      version: '2.0.0',
+      description: 'Simplified browser automation service using browser-use',
+      python_executable: this.pythonExecutable,
+      max_execution_time: this.maxExecutionTime,
+      supported_providers: ['openai', 'anthropic', 'google']
     }
   }
 }

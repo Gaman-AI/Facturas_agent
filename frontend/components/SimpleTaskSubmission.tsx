@@ -56,15 +56,16 @@ export function SimpleTaskSubmission({
 
     try {
       // Create a simple browser automation task
-      const response = await ApiService.createBrowserTask({
-        task_description: task,
-        llm_provider: llmProvider,
-        model: llmProvider === 'openai' ? 'gpt-4o' : 
+      const response = await ApiService.executeBrowserTask({
+        task: task,
+        model: llmProvider === 'openai' ? 'gpt-4o-mini' : 
                llmProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' : 
-               'gemini-pro'
+               'gemini-pro',
+        llm_provider: llmProvider,
+        timeout_minutes: 30
       })
 
-      const taskId = response.task_id || response.id
+      const taskId = response.data.task_id
       setSuccess(t('tasks.success.created', 'Task created successfully!'))
       
       // Clear form

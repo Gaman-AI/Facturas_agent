@@ -5,6 +5,7 @@ import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { authService } from '@/services/auth'
 import { RegisterData } from '@/types/auth'
+import { tokenManager } from '@/utils/tokenManager'
 
 interface UserProfile {
   id?: string
@@ -163,9 +164,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null)
       const { error } = await supabase.auth.signOut()
       if (error) throw error
+      
+      // Clear token manager state on logout
+      tokenManager.clearState()
+      console.log('✅ Logged out and cleared token manager state')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Logout failed'
       setError(message)
+      // Clear token state even if logout fails
+      tokenManager.clearState()
       throw err
     }
   }, [])
@@ -201,16 +208,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshSession = useCallback(async () => {
     try {
       setError(null)
-      const { data, error } = await supabase.auth.refreshSession()
-      if (error) throw error
+      console.log('🔄 Refreshing session via token manager...')
       
-      if (data.user) {
-        setUser(data.user)
-        await loadUserProfile(data.user.id)
+      // Use centralized token manager for session refresh
+      const refreshedSession = await tokenManager.forceRefresh()
+      
+      if (!refreshedSession) {
+        throw new Error('Failed to get refreshed session')
+      }
+      
+      if (refreshedSession.user) {
+        console.log('✅ Session refreshed successfully via token manager')
+        setUser(refreshedSession.user)
+        await loadUserProfile(refreshedSession.user.id)
+      } else {
+        console.warn('⚠️  No user in refreshed session')
+        setUser(null)
+        setProfile(null)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Session refresh failed'
+      console.error('❌ Session refresh error:', message)
       setError(message)
+      // Clear user state and token manager state on refresh failure
+      setUser(null)
+      setProfile(null)
+      tokenManager.clearState()
       throw err
     }
   }, [loadUserProfile])

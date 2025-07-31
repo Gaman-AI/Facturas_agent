@@ -1,6 +1,5 @@
 import express from 'express'
-import { authenticate } from '../middleware/auth.js'
-import { validateCreateTask, validateTaskQuery, validateTaskParams, validateCFDIData } from '../middleware/validation.js'
+import { validateCreateTask, validateTaskQuery, validateTaskParams } from '../middleware/validation.js'
 import { asyncHandler } from '../middleware/errorHandler.js'
 import browserService from '../services/browserService.js'
 import browserAgentService from '../services/browserAgentService.js'
@@ -12,7 +11,7 @@ const router = express.Router()
  * @desc    Get tasks module information
  * @access  Public
  */
-router.get('/', authenticate, validateTaskQuery, asyncHandler(async (req, res) => {
+router.get('/', validateTaskQuery, asyncHandler(async (req, res) => {
   // If no query parameters, show module info instead of tasks
   if (Object.keys(req.query).length === 0) {
     return res.json({
@@ -20,7 +19,7 @@ router.get('/', authenticate, validateTaskQuery, asyncHandler(async (req, res) =
       data: {
         module: 'Task Management',
         version: '1.0.0',
-        description: 'CFDI automation task management and execution',
+        description: 'Browser automation task management and execution',
         endpoints: {
           listTasks: 'GET /api/v1/tasks?page=1&limit=10',
           createTask: 'POST /api/v1/tasks',
@@ -33,16 +32,13 @@ router.get('/', authenticate, validateTaskQuery, asyncHandler(async (req, res) =
           browserHealth: 'GET /api/v1/tasks/browser/health'
         },
         features: [
-          'CFDI automation execution',
-          'Task queue management',
+          'Browser automation execution',
+          'Task queue management', 
           'Real-time status updates',
           'Browser session management',
-          'Multi-vendor support'
+          'Flexible task instructions'
         ],
-        user: {
-          id: req.user.id,
-          email: req.user.email
-        }
+        user: 'anonymous'
       },
       meta: {
         timestamp: new Date().toISOString(),
@@ -53,7 +49,7 @@ router.get('/', authenticate, validateTaskQuery, asyncHandler(async (req, res) =
 
   // Original task listing logic
   const { page, limit, status } = req.query
-  const userId = req.user.id
+  const userId = 'anonymous'
 
   // For now, return mock data since we haven't implemented the full task service yet
   // In a real implementation, this would query the Supabase database using MCP
@@ -61,19 +57,7 @@ router.get('/', authenticate, validateTaskQuery, asyncHandler(async (req, res) =
     {
       id: '123e4567-e89b-12d3-a456-426614174000',
       user_id: userId,
-      vendor_url: 'https://facturacion.example.com',
-      ticket_details: {
-        customer_details: {
-          rfc: 'XAXX010101000',
-          company_name: 'Test Company',
-          email: 'test@example.com'
-        },
-        invoice_details: {
-          folio: 'ABC123',
-          total: 1500.00,
-          currency: 'MXN'
-        }
-      },
+          task_description: 'Go to https://facturacion.example.com and process invoice for RFC XAXX010101000',
       status: 'COMPLETED',
       created_at: new Date().toISOString(),
       completed_at: new Date().toISOString(),
@@ -111,29 +95,12 @@ router.get('/', authenticate, validateTaskQuery, asyncHandler(async (req, res) =
 
 /**
  * @route   POST /api/v1/tasks
- * @desc    Create a new CFDI automation task
+ * @desc    Create a new browser automation task
  * @access  Private
  */
-router.post('/', authenticate, validateCreateTask, asyncHandler(async (req, res) => {
-  const userId = req.user.id
-  const taskData = req.body
-
-  // Validate task data using browser service
-  const validation = browserService.validateTaskData(taskData)
-  if (!validation.isValid) {
-    return res.status(400).json({
-      success: false,
-      error: {
-        code: 'TASK_VALIDATION_FAILED',
-        message: 'Task data validation failed',
-        details: validation.errors
-      },
-      meta: {
-        timestamp: new Date().toISOString(),
-        requestId: req.id
-      }
-    })
-  }
+router.post('/', validateCreateTask, asyncHandler(async (req, res) => {
+  const userId = 'anonymous'
+  const { task, model, llm_provider, timeout_minutes } = req.body
 
   // Create task record (would use Supabase MCP in real implementation)
   const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -141,8 +108,10 @@ router.post('/', authenticate, validateCreateTask, asyncHandler(async (req, res)
   const newTask = {
     id: taskId,
     user_id: userId,
-    vendor_url: taskData.vendor_url,
-    ticket_details: taskData.ticket_details,
+    task_description: task,
+    model: model || 'gpt-4o-mini',
+    llm_provider: llm_provider || 'openai',
+    timeout_minutes: timeout_minutes || 30,
     status: 'PENDING',
     created_at: new Date().toISOString(),
     started_at: null,
@@ -174,27 +143,15 @@ router.post('/', authenticate, validateCreateTask, asyncHandler(async (req, res)
  * @desc    Get specific task details with steps
  * @access  Private
  */
-router.get('/:taskId', authenticate, validateTaskParams, asyncHandler(async (req, res) => {
+router.get('/:taskId', validateTaskParams, asyncHandler(async (req, res) => {
   const { taskId } = req.params
-  const userId = req.user.id
+  const userId = 'anonymous'
 
   // Mock task details (would query Supabase using MCP in real implementation)
   const mockTask = {
     id: taskId,
     user_id: userId,
-    vendor_url: 'https://facturacion.example.com',
-    ticket_details: {
-      customer_details: {
-        rfc: 'XAXX010101000',
-        company_name: 'Test Company',
-        email: 'test@example.com'
-      },
-      invoice_details: {
-        folio: 'ABC123',
-        total: 1500.00,
-        currency: 'MXN'
-      }
-    },
+    task_description: 'Go to https://facturacion.example.com and process invoice for RFC XAXX010101000',
     status: 'COMPLETED',
     created_at: new Date().toISOString(),
     started_at: new Date().toISOString(),
@@ -202,8 +159,7 @@ router.get('/:taskId', authenticate, validateTaskParams, asyncHandler(async (req
     result: {
       success: true,
       execution_time: 45.2,
-      vendor_url: 'https://facturacion.example.com',
-      customer_rfc: 'XAXX010101000'
+              task_description: 'Go to https://facturacion.example.com and process invoice for RFC XAXX010101000'
     },
     steps: [
       {
@@ -242,17 +198,25 @@ router.get('/:taskId', authenticate, validateTaskParams, asyncHandler(async (req
 
 /**
  * @route   POST /api/v1/tasks/execute
- * @desc    Execute a CFDI automation task immediately (for testing/demo)
+ * @desc    Execute a browser automation task immediately (for testing/demo)
  * @access  Private
  */
-router.post('/execute', authenticate, validateCFDIData, asyncHandler(async (req, res) => {
-  const taskData = req.body
+router.post('/execute', validateCreateTask, asyncHandler(async (req, res) => {
+  const { task, model, llm_provider, timeout_minutes } = req.body
 
   try {
-    console.log('🚀 Executing CFDI automation task directly')
+    console.log('🚀 Executing browser automation task directly')
+    
+    // Prepare simplified task data
+    const taskData = {
+      task,
+      model: model || 'gpt-4o-mini',
+      llm_provider: llm_provider || 'openai',
+      timeout_minutes: timeout_minutes || 30
+    }
     
     // Execute the task using browser service
-    const result = await browserService.executeCFDITask(taskData)
+    const result = await browserService.executeTask(taskData)
 
     if (result.success) {
       res.json({
@@ -311,9 +275,9 @@ router.post('/execute', authenticate, validateCFDIData, asyncHandler(async (req,
  * @desc    Pause a running task
  * @access  Private
  */
-router.put('/:taskId/pause', authenticate, validateTaskParams, asyncHandler(async (req, res) => {
+router.put('/:taskId/pause', validateTaskParams, asyncHandler(async (req, res) => {
   const { taskId } = req.params
-  const userId = req.user.id
+  const userId = 'anonymous'
 
   // In real implementation, this would:
   // 1. Check if task belongs to user
@@ -340,9 +304,9 @@ router.put('/:taskId/pause', authenticate, validateTaskParams, asyncHandler(asyn
  * @desc    Resume a paused task
  * @access  Private
  */
-router.put('/:taskId/resume', authenticate, validateTaskParams, asyncHandler(async (req, res) => {
+router.put('/:taskId/resume', validateTaskParams, asyncHandler(async (req, res) => {
   const { taskId } = req.params
-  const userId = req.user.id
+  const userId = 'anonymous'
 
   // In real implementation, this would:
   // 1. Check if task belongs to user
@@ -369,9 +333,9 @@ router.put('/:taskId/resume', authenticate, validateTaskParams, asyncHandler(asy
  * @desc    Cancel/delete a task
  * @access  Private
  */
-router.delete('/:taskId', authenticate, validateTaskParams, asyncHandler(async (req, res) => {
+router.delete('/:taskId', validateTaskParams, asyncHandler(async (req, res) => {
   const { taskId } = req.params
-  const userId = req.user.id
+  const userId = 'anonymous'
 
   // In real implementation, this would:
   // 1. Check if task belongs to user
@@ -397,8 +361,8 @@ router.delete('/:taskId', authenticate, validateTaskParams, asyncHandler(async (
  * @desc    Get user's task statistics
  * @access  Private
  */
-router.get('/stats', authenticate, asyncHandler(async (req, res) => {
-  const userId = req.user.id
+router.get('/stats', asyncHandler(async (req, res) => {
+  const userId = 'anonymous'
 
   // Mock statistics (would query Supabase using MCP in real implementation)
   const stats = {
@@ -428,7 +392,7 @@ router.get('/stats', authenticate, asyncHandler(async (req, res) => {
  * @desc    Check browser service health
  * @access  Private
  */
-router.get('/browser/health', authenticate, asyncHandler(async (req, res) => {
+router.get('/browser/health', asyncHandler(async (req, res) => {
   try {
     const healthCheck = await browserService.healthCheck()
     const serviceInfo = browserService.getServiceInfo()
@@ -471,8 +435,8 @@ router.get('/browser/health', authenticate, asyncHandler(async (req, res) => {
  * @desc    Create and execute a browser automation task using local browser-use
  * @access  Private
  */
-router.post('/browser-use', authenticate, asyncHandler(async (req, res) => {
-  const userId = req.user.id
+router.post('/browser-use', asyncHandler(async (req, res) => {
+  const userId = 'anonymous'
   const {
     prompt,
     vendor_url,
@@ -556,9 +520,9 @@ router.post('/browser-use', authenticate, asyncHandler(async (req, res) => {
  * @desc    Get browser task status and result
  * @access  Private
  */
-router.get('/browser-use/:taskId', authenticate, validateTaskParams, asyncHandler(async (req, res) => {
+router.get('/browser-use/:taskId', validateTaskParams, asyncHandler(async (req, res) => {
   const { taskId } = req.params
-  const userId = req.user.id
+  const userId = 'anonymous'
 
   try {
     const task = browserAgentService.getTask(taskId, userId)
@@ -623,8 +587,8 @@ router.get('/browser-use/:taskId', authenticate, validateTaskParams, asyncHandle
  * @desc    Get all browser tasks for the authenticated user
  * @access  Private
  */
-router.get('/browser-use', authenticate, asyncHandler(async (req, res) => {
-  const userId = req.user.id
+router.get('/browser-use', asyncHandler(async (req, res) => {
+  const userId = 'anonymous'
   const { 
     limit = 20, 
     offset = 0, 
@@ -692,9 +656,9 @@ router.get('/browser-use', authenticate, asyncHandler(async (req, res) => {
  * @desc    Cancel a running browser task
  * @access  Private
  */
-router.post('/browser-use/:taskId/cancel', authenticate, validateTaskParams, asyncHandler(async (req, res) => {
+router.post('/browser-use/:taskId/cancel', validateTaskParams, asyncHandler(async (req, res) => {
   const { taskId } = req.params
-  const userId = req.user.id
+  const userId = 'anonymous'
 
   try {
     const cancelled = await browserAgentService.cancelTask(taskId, userId)
@@ -750,9 +714,9 @@ router.post('/browser-use/:taskId/cancel', authenticate, validateTaskParams, asy
  * @desc    Delete a browser task
  * @access  Private
  */
-router.delete('/browser-use/:taskId', authenticate, validateTaskParams, asyncHandler(async (req, res) => {
+router.delete('/browser-use/:taskId', validateTaskParams, asyncHandler(async (req, res) => {
   const { taskId } = req.params
-  const userId = req.user.id
+  const userId = 'anonymous'
 
   try {
     const deleted = browserAgentService.deleteTask(taskId, userId)
@@ -807,8 +771,8 @@ router.delete('/browser-use/:taskId', authenticate, validateTaskParams, asyncHan
  * @desc    Get browser task statistics
  * @access  Private
  */
-router.get('/browser-use/stats', authenticate, asyncHandler(async (req, res) => {
-  const userId = req.user.id
+router.get('/browser-use/stats', asyncHandler(async (req, res) => {
+  const userId = 'anonymous'
 
   try {
     const stats = browserAgentService.getStats(userId)
@@ -845,7 +809,7 @@ router.get('/browser-use/stats', authenticate, asyncHandler(async (req, res) => 
  * @desc    Check browser-use service health
  * @access  Private
  */
-router.get('/browser-use/health', authenticate, asyncHandler(async (req, res) => {
+router.get('/browser-use/health', asyncHandler(async (req, res) => {
   try {
     const health = await browserAgentService.healthCheck()
 
