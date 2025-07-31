@@ -1,0 +1,120 @@
+FROM python:3.11-slim AS base
+
+# Install system dependencies
+FROM base AS deps
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    ca-certificates \
+    procps \
+    libxss1 \
+    libnss3 \
+    libnspr4 \
+    libatk-bridge2.0-0 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    libpango-1.0-0 \
+    libcairo2 \
+    libatspi2.0-0 \
+    libgtk-3-0 \
+    libgdk-pixbuf2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install browser dependencies
+FROM deps AS browser-deps
+RUN playwright install chromium
+RUN playwright install-deps chromium
+
+# Production image
+FROM browser-deps AS runner
+WORKDIR /app
+
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Copy application code
+COPY --from=deps /app /app
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p /app/logs /data && chown -R appuser:appuser /app /data
+
+# Create FastAPI wrapper
+COPY <<EOF /app/api_server.py
+import asyncio
+import os
+import logging
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Optional
+import uvicorn
+
+from main import (
+    create_browserbase_session,
+    create_browser_profile,
+    run_automation_task,
+    ManagedBrowserSession
+)
+
+app = FastAPI(title="CFDI Browser Automation Service", version="1.0.0")
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "service": "browser-automation"}
+
+class TaskRequest(BaseModel):
+    task_type: str
+    parameters: dict
+    profile_id: Optional[str] = None
+
+@app.post("/run-task")
+async def run_task(request: TaskRequest):
+    try:
+        # Initialize browser session
+        session = await create_browserbase_session()
+        
+        # Create or use existing profile
+        if request.profile_id:
+            profile = await create_browser_profile(session, request.profile_id)
+        else:
+            profile = await create_browser_profile(session)
+        
+        # Run the automation task
+        result = await run_automation_task(session, request.task_type, request.parameters)
+        
+        return {
+            "status": "success",
+            "result": result,
+            "profile_id": profile.id if profile else None
+        }
+    except Exception as e:
+        logging.error(f"Task execution failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 9000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
+EOF
+
+USER appuser
+
+EXPOSE 9000
+
+ENV PORT=9000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+  CMD python -c "import requests; requests.get('http://localhost:9000/health')" || exit 1
+
+CMD ["python", "api_server.py"] 
