@@ -153,4 +153,4 @@ running_services.jsonb
 
 # IMPORTANT: Keep browser-use folder and its contents
 !backend/browser-use/
-!backend/browser-use/**
+!backend/browser-use/**docker.env
