@@ -10,9 +10,7 @@ const nextConfig = {
     unoptimized: true,
   },
   // Suppress punycode deprecation warning from Next.js
-  experimental: {
-    suppressDeprecationWarnings: true,
-  },
+  // Removed deprecated experimental option
 }
 
 export default nextConfig
