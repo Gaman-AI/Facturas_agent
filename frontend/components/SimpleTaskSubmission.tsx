@@ -56,25 +56,13 @@ export function SimpleTaskSubmission({
     setSuccess(null)
 
     try {
-      if (isDemoMode) {
-        // Demo mode - create a fake task ID and redirect to monitoring
-        const demoTaskId = `demo_${Date.now()}`
-        setSuccess('Demo task created successfully!')
-        
-        setTimeout(() => {
-          router.push(`/task/monitor/${demoTaskId}`)
-        }, 1500)
-        return
-      }
-
-      // Create a simple browser automation task using the new BrowserUse API
-      const response = await ApiService.createBrowserUseTask({
-        prompt: task,
+      // Create a simple browser automation task
+      const response = await ApiService.createBrowserTask({
+        task_description: task,
+        llm_provider: llmProvider,
         model: llmProvider === 'openai' ? 'gpt-4o' : 
                llmProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' : 
-               'gemini-pro',
-        max_steps: 50,
-        timeout_minutes: 30
+               'gemini-pro'
       })
 
       const taskId = response.data.task_id

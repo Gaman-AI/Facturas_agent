@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, FileText, AlertCircle, CheckCircle, Play } from 'lucide-react'
 import { useAuth, useUserProfile } from '@/hooks/useAuth'
+import { useSessionManager } from '@/hooks/useSessionManager'
 import { useLanguage } from '@/contexts/LanguageContext'
 import ApiService, { type BrowserUseTaskRequest, type BrowserUseTaskResponse } from '@/services/api'
 
@@ -57,6 +58,7 @@ export function CFDITaskForm() {
   
   const { user } = useAuth()
   const { profile } = useUserProfile()
+  const { ensureValidSession, isRefreshing: sessionRefreshing } = useSessionManager()
   const { t } = useLanguage()
 
   const {
@@ -180,6 +182,10 @@ export function CFDITaskForm() {
     setConnectionError(null)
 
     try {
+      // Ensure we have a valid session before making the API call
+      console.log('🔐 Ensuring valid session before API call...')
+      await ensureValidSession()
+      console.log('✅ Session validated, proceeding with task creation...')
       // Prepare browser-use task data using user profile and form data
       const taskData: BrowserUseTaskRequest = {
         vendor_url: formData.vendor_url,

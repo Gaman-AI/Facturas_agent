@@ -83,40 +83,13 @@ export const schemas = {
     })
   },
   
-  // Task creation schema
+  // Task creation schema - simplified for any task string
   createTask: {
     body: z.object({
-      vendor_url: z.string().url('Invalid vendor URL'),
-      ticket_details: z.object({
-        customer_details: z.object({
-          rfc: z.string().regex(
-            /^[A-ZÑ&]{3,4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/,
-            'Invalid RFC format'
-          ),
-          email: z.string().email('Invalid email format'),
-          company_name: z.string().min(1, 'Company name is required'),
-          phone: z.string().optional(),
-          address: z.object({
-            street: z.string().optional(),
-            exterior_number: z.string().optional(),
-            interior_number: z.string().optional(),
-            colony: z.string().optional(),
-            municipality: z.string().optional(),
-            state: z.string().optional(),
-            postal_code: z.string().regex(/^[0-9]{5}$/, 'Invalid postal code').optional()
-          }).optional()
-        }),
-        invoice_details: z.object({
-          folio: z.string().min(1, 'Folio is required'),
-          transaction_date: z.string().optional(),
-          subtotal: z.number().positive('Subtotal must be positive').optional(),
-          iva: z.number().nonnegative('IVA must be non-negative').optional(),
-          total: z.number().positive('Total must be positive'),
-          currency: z.string().default('MXN')
-        }),
-        llm_provider: z.enum(['openai', 'anthropic', 'google']).default('openai').optional(),
-        model: z.string().optional()
-      })
+      task: z.string().min(10, 'Task description must be at least 10 characters'),
+      model: z.string().optional(),
+      llm_provider: z.enum(['openai', 'anthropic', 'google']).default('openai').optional(),
+      timeout_minutes: z.number().int().min(5).max(60).default(30).optional()
     })
   },
   
@@ -132,7 +105,7 @@ export const schemas = {
   // Task ID parameter schema
   taskParams: {
     params: z.object({
-      taskId: z.string().uuid('Invalid task ID format')
+      taskId: z.string().min(1, 'Task ID is required')
     })
   },
 

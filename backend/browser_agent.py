@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
 """
-Browser Agent Service for CFDI Automation
+Browser Agent Service - Multi-Mode Implementation
 
-This script provides a bridge between the Node.js backend and the local browser-use implementation.
-It executes browser automation tasks for CFDI (invoice) generation across different vendor websites.
+This script provides three ways to execute browser automation tasks:
+1. Interactive Mode: Run without arguments to enter tasks interactively
+2. Simple Text Mode: Pass a plain text task as argument
+3. JSON API Mode: Pass structured JSON for API integration
 
-@file purpose: Defines the Python execution bridge for browser-use tasks
+It uses the local browser-use implementation for browser automation tasks.
+
+Usage Examples:
+- Interactive: python browser_agent.py
+- Simple text: python browser_agent.py "search google for AI news"
+- Multiple words: python browser_agent.py search google for AI news
+- JSON API: python browser_agent.py '{"prompt": "search google", "model": "gpt-4o-mini"}'
+
+@file purpose: Flexible Python execution bridge for browser-use tasks
 """
 
 import asyncio
@@ -23,200 +33,204 @@ sys.path.insert(0, str(browser_use_path))
 # Load environment variables
 load_dotenv()
 
-# Import from local browser-use implementation
+# Import from local browser-use implementation (same as simple.py)
 from browser_use import Agent
-from browser_use.llm.openai.chat import ChatOpenAI
+from browser_use.llm import ChatOpenAI
 
 
-class BrowserAgentExecutor:
+async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", temperature: float = 0.7, max_steps: int = 30):
     """
-    Handles the execution of browser automation tasks using the local browser-use implementation.
+    Run a browser automation task - simplified version like simple.py
+    
+    Args:
+        task_prompt (str): The task description/prompt
+        model (str): LLM model to use
+        temperature (float): LLM temperature
+        max_steps (int): Maximum steps for the agent
+    
+    Returns:
+        The result from the agent execution
     """
+    # Validate environment variables
+    if not os.getenv('OPENAI_API_KEY'):
+        raise ValueError("OPENAI_API_KEY environment variable is required")
     
-    def __init__(self):
-        self.default_model = "gpt-4.1-mini"
-        self.default_temperature = 1.0
+    print(f"Starting browser automation task...")
+    print(f"   Model: {model}")
+    print(f"   Max Steps: {max_steps}")
+    print(f"   Task: {task_prompt[:100]}...")
     
-    async def execute_task(self, task_data: dict) -> dict:
-        """
-        Execute a browser automation task
-        
-        Args:
-            task_data (dict): Task configuration containing:
-                - prompt (str): The task description/prompt
-                - model (str, optional): LLM model to use
-                - temperature (float, optional): LLM temperature
-                - max_steps (int, optional): Maximum steps for the agent
-                - vendor_url (str, optional): Specific vendor URL (included in prompt)
-                - customer_details (dict, optional): Customer information for CFDI
-                - invoice_details (dict, optional): Invoice information
-        
-        Returns:
-            dict: Execution result with success status and data/error
-        """
-        try:
-            # Extract task parameters
-            prompt = task_data.get('prompt', '')
-            model = task_data.get('model', self.default_model)
-            temperature = task_data.get('temperature', self.default_temperature)
-            max_steps = task_data.get('max_steps', 50)
-            
-            # Build comprehensive prompt if structured data is provided
-            if not prompt and 'vendor_url' in task_data:
-                prompt = self._build_cfdi_prompt(task_data)
-            
-            if not prompt:
-                return {
-                    "success": False,
-                    "error": "No prompt provided and insufficient data to build prompt"
-                }
-            
-            # Initialize the LLM
-            llm = ChatOpenAI(
-                model=model,
-                temperature=temperature
-            )
-            
-            # Create and run the agent
-            agent = Agent(task=prompt, llm=llm)
-            
-            print(f"🚀 Starting browser agent task...")
-            print(f"   Model: {model}")
-            print(f"   Max Steps: {max_steps}")
-            print(f"   Prompt: {prompt[:100]}...")
-            
-            result = await agent.run(max_steps=max_steps)
-            
-            print("✅ Task completed successfully!")
-            
-            return {
-                "success": True,
-                "result": str(result),
-                "model_used": model,
-                "steps_taken": max_steps,
-                "prompt": prompt
-            }
-            
-        except Exception as e:
-            error_msg = str(e)
-            print(f"❌ Agent execution error: {error_msg}")
-            
-            return {
-                "success": False,
-                "error": error_msg,
-                "error_type": type(e).__name__
-            }
+    # Create agent exactly like simple.py
+    agent = Agent(
+        task=task_prompt,
+        llm=ChatOpenAI(model=model, temperature=temperature)
+    )
     
-    def _build_cfdi_prompt(self, task_data: dict) -> str:
-        """
-        Build a comprehensive CFDI automation prompt from structured data
-        
-        Args:
-            task_data (dict): Structured task data
-            
-        Returns:
-            str: Complete prompt for the browser agent
-        """
-        vendor_url = task_data.get('vendor_url', '')
-        customer_details = task_data.get('customer_details', {})
-        invoice_details = task_data.get('invoice_details', {})
-        
-        prompt_parts = [
-            f"Go to {vendor_url} and complete the CFDI (electronic invoice) generation process."
-        ]
-        
-        # Add customer details if available
-        if customer_details:
-            prompt_parts.append("\nCustomer details:")
-            if customer_details.get('rfc'):
-                prompt_parts.append(f"RFC: {customer_details['rfc']}")
-            if customer_details.get('email'):
-                prompt_parts.append(f"Email: {customer_details['email']}")
-            if customer_details.get('company_name'):
-                prompt_parts.append(f"Company Name: {customer_details['company_name']}")
-            if customer_details.get('address'):
-                address = customer_details['address']
-                if address.get('street'):
-                    prompt_parts.append(f"Street: {address['street']}")
-                if address.get('exterior_number'):
-                    prompt_parts.append(f"Exterior Number: {address['exterior_number']}")
-                if address.get('interior_number'):
-                    prompt_parts.append(f"Interior Number: {address['interior_number']}")
-                if address.get('colony'):
-                    prompt_parts.append(f"Colony: {address['colony']}")
-                if address.get('municipality'):
-                    prompt_parts.append(f"Municipality: {address['municipality']}")
-                if address.get('zip_code'):
-                    prompt_parts.append(f"Zip Code: {address['zip_code']}")
-                if address.get('state'):
-                    prompt_parts.append(f"State: {address['state']}")
-                if address.get('country'):
-                    prompt_parts.append(f"Country: {address['country']}")
-        
-        # Add invoice details if available
-        if invoice_details:
-            prompt_parts.append("\nInvoice details:")
-            if invoice_details.get('ticket_id'):
-                prompt_parts.append(f"Ticket ID: {invoice_details['ticket_id']}")
-            if invoice_details.get('folio'):
-                prompt_parts.append(f"Folio: {invoice_details['folio']}")
-            if invoice_details.get('transaction_date'):
-                prompt_parts.append(f"Transaction Date: {invoice_details['transaction_date']}")
-            if invoice_details.get('total'):
-                prompt_parts.append(f"Total: {invoice_details['total']}")
-            if invoice_details.get('currency'):
-                prompt_parts.append(f"Currency: {invoice_details['currency']}")
-            if invoice_details.get('subtotal'):
-                prompt_parts.append(f"Subtotal: {invoice_details['subtotal']}")
-            if invoice_details.get('iva'):
-                prompt_parts.append(f"IVA: {invoice_details['iva']}")
-        
-        prompt_parts.append("\nInstructions:")
-        prompt_parts.append("- Only use the details that are necessary for the CFDI generation")
-        prompt_parts.append("- Fill in the required fields step by step")
-        prompt_parts.append("- Complete the entire process until the CFDI is generated")
-        prompt_parts.append("- If there are any errors, try to resolve them")
-        prompt_parts.append("- Return the final status and any generated CFDI information")
-        
-        return "\n".join(prompt_parts)
+    # Run the agent
+    result = await agent.run()
+    
+    print("Task completed successfully!")
+    return result
 
 
 async def main():
     """
-    Main execution function - handles command line arguments and executes the task
+    Main execution function - handles interactive mode, simple text input, and JSON input
     """
-    if len(sys.argv) != 2:
-        print(json.dumps({
-            "success": False,
-            "error": "Usage: python browser_agent.py '<task_json>'"
-        }))
-        sys.exit(1)
     
-    try:
-        # Parse task data from command line argument
-        task_json = sys.argv[1]
-        task_data = json.loads(task_json)
+    # Case 1: No arguments - Interactive mode
+    if len(sys.argv) == 1:
+        print("Browser Agent - Interactive Mode")
+        print("=" * 50)
+        print("Enter your task description and press Enter to execute.")
+        print("Type 'exit' to quit.\n")
         
-        # Execute the task
-        executor = BrowserAgentExecutor()
-        result = await executor.execute_task(task_data)
+        while True:
+            try:
+                # Get task input from user
+                task_input = input("Enter task: ").strip()
+                
+                if not task_input:
+                    print("WARNING: Please enter a task description.")
+                    continue
+                    
+                if task_input.lower() in ['exit', 'quit', 'q']:
+                    print("Goodbye!")
+                    break
+                
+                print(f"\nExecuting task: {task_input[:100]}...")
+                print("-" * 50)
+                
+                # Execute the task
+                result = await run_browser_task(task_input)
+                
+                print("\n" + "=" * 50)
+                print("Task completed successfully!")
+                print(f"Result: {str(result)}")
+                print("=" * 50 + "\n")
+                
+            except KeyboardInterrupt:
+                print("\n\nInterrupted by user. Goodbye!")
+                break
+            except Exception as e:
+                print(f"\nError: {str(e)}")
+                print("Please try again.\n")
         
-        # Output result as JSON
-        print(json.dumps(result, indent=2))
+        return
+    
+    # Case 2: Single argument - could be simple text or JSON
+    if len(sys.argv) == 2:
+        argument = sys.argv[1]
         
-    except json.JSONDecodeError as e:
-        print(json.dumps({
-            "success": False,
-            "error": f"Invalid JSON in task data: {str(e)}"
-        }))
-        sys.exit(1)
-    except Exception as e:
-        print(json.dumps({
-            "success": False,
-            "error": f"Unexpected error: {str(e)}",
-            "error_type": type(e).__name__
-        }))
-        sys.exit(1)
+        # Try to parse as JSON first (for API integration)
+        try:
+            task_data = json.loads(argument)
+            
+            # Extract task parameters from JSON
+            # Support both 'task' (from API) and 'prompt' (legacy) field names
+            prompt = task_data.get('task', '') or task_data.get('prompt', '')
+            model = task_data.get('model', 'gpt-4o-mini')
+            temperature = task_data.get('temperature', 0.7)
+            max_steps = task_data.get('max_steps', 30)
+            vendor_url = task_data.get('vendor_url', '')
+            
+            # Build complete prompt
+            if vendor_url:
+                if prompt:
+                    complete_prompt = f"Go to {vendor_url} and {prompt}"
+                else:
+                    complete_prompt = f"Navigate to {vendor_url} and perform the required tasks on this website"
+            else:
+                complete_prompt = prompt
+                
+            # Add context if available
+            context = build_task_context(task_data)
+            if context:
+                complete_prompt += context
+                
+            if not complete_prompt:
+                print(json.dumps({
+                    "success": False,
+                    "error": "No task description provided. Please provide either 'task' or 'prompt' field."
+                }))
+                return
+            
+            # Execute the task
+            result = await run_browser_task(complete_prompt, model, temperature, max_steps)
+            
+            # Output result as JSON (for API integration)
+            print(json.dumps({
+                "success": True,
+                "result": str(result),
+                "model_used": model,
+                "steps_executed": max_steps,
+                "task_prompt": complete_prompt,
+                "vendor_url": vendor_url or "none"
+            }, indent=2))
+            
+        except json.JSONDecodeError:
+            # Not JSON, treat as simple text task
+            try:
+                print(f"Executing simple task: {argument[:100]}...")
+                result = await run_browser_task(argument)
+                print(f"Task completed successfully!")
+                print(f"Result: {str(result)}")
+            except Exception as e:
+                print(f"Error executing task: {str(e)}")
+        
+        except Exception as e:
+            print(json.dumps({
+                "success": False,
+                "error": f"Execution failed: {str(e)}",
+                "error_type": type(e).__name__
+            }))
+        
+        return
+    
+    # Case 3: Multiple arguments - treat as simple text task (join arguments)
+    if len(sys.argv) > 2:
+        task_text = " ".join(sys.argv[1:])
+        try:
+            print(f"Executing task: {task_text[:100]}...")
+            result = await run_browser_task(task_text)
+            print(f"Task completed successfully!")
+            print(f"Result: {str(result)}")
+        except Exception as e:
+            print(f"Error executing task: {str(e)}")
+        return
+
+
+def build_task_context(task_data: dict) -> str:
+    """
+    Add simple context to the task prompt based on available data
+    
+    Args:
+        task_data (dict): Task data containing context information
+        
+    Returns:
+        str: Additional context string to append to the prompt
+    """
+    context_parts = []
+    
+    # Add customer details if available
+    customer_details = task_data.get('customer_details', {})
+    if customer_details and isinstance(customer_details, dict):
+        if customer_details.get('rfc'):
+            context_parts.append(f"Customer RFC: {customer_details['rfc']}")
+        if customer_details.get('email'):
+            context_parts.append(f"Customer Email: {customer_details['email']}")
+        if customer_details.get('company_name'):
+            context_parts.append(f"Company: {customer_details['company_name']}")
+    
+    # Add invoice details if available
+    invoice_details = task_data.get('invoice_details', {})
+    if invoice_details and isinstance(invoice_details, dict):
+        if invoice_details.get('total'):
+            context_parts.append(f"Total Amount: {invoice_details['total']}")
+        if invoice_details.get('folio'):
+            context_parts.append(f"Folio: {invoice_details['folio']}")
+    
+    return "\nContext: " + "; ".join(context_parts) if context_parts else ""
 
 
 if __name__ == "__main__":

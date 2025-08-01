@@ -1,52 +1,128 @@
-import axios from 'axios';
-import { supabase } from '@/lib/supabase';
+import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
+import { tokenManager } from '@/utils/tokenManager';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '30000');
 
-// Create axios instance with default config
-const apiClient = axios.create({
-  baseURL: `${API_BASE_URL}/api/v1`,
-  timeout: API_TIMEOUT,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+// Request queue for handling concurrent requests during token refresh
+interface QueuedRequest {
+  config: AxiosRequestConfig;
+  resolve: (value: AxiosResponse) => void;
+  reject: (error: any) => void;
+}
 
-// Authentication interceptor - adds Supabase JWT token to requests
-apiClient.interceptors.request.use(
-  async (config) => {
-    try {
-      // Get current session token from Supabase
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.access_token) {
-        config.headers.Authorization = `Bearer ${session.access_token}`;
-        console.log('🔐 Added Supabase token to request');
-      } else {
-        console.warn('⚠️  No Supabase session found for API request');
-      }
-    } catch (error) {
-      console.error('❌ Failed to get Supabase session:', error);
-    }
+class ApiClient {
+  private client: ReturnType<typeof axios.create>;
+  private requestQueue: QueuedRequest[] = [];
+  private isProcessingQueue = false;
 
-    console.log('🚀 API Request:', config.method?.toUpperCase(), config.url, config.data);
-    return config;
-  },
-  (error) => {
-    console.error('❌ API Request Error:', error);
-    return Promise.reject(error);
+  constructor() {
+    // Create axios instance with default config
+    this.client = axios.create({
+      baseURL: `${API_BASE_URL}/api/v1`,
+      timeout: API_TIMEOUT,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    this.setupInterceptors();
   }
-);
 
-// Response interceptor for error handling
-apiClient.interceptors.response.use(
-  (response) => {
-    console.log('✅ API Response:', response.status, response.config.url, response.data);
-    return response;
-  },
-  (error) => {
-    console.error('❌ API Error Details:');
+  private setupInterceptors() {
+    // Request interceptor - adds token using centralized token manager
+    this.client.interceptors.request.use(
+      async (config) => {
+        try {
+          // Use centralized token manager to get valid token
+          const token = await tokenManager.getValidToken();
+          
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+            console.log('🔐 Added token to request:', config.method?.toUpperCase(), config.url);
+          } else {
+            console.warn('⚠️  No valid token available for API request');
+            // Don't throw error here, let the backend handle the missing token
+          }
+        } catch (error) {
+          console.error('❌ Failed to get valid token:', error);
+          // Continue with request without token - let backend handle it
+        }
+
+        // Add request correlation ID for debugging
+        config.headers['X-Request-ID'] = this.generateRequestId();
+        console.log('🚀 API Request:', config.method?.toUpperCase(), config.url, 
+          `[${config.headers['X-Request-ID']}]`);
+        
+        return config;
+      },
+      (error) => {
+        console.error('❌ API Request Error:', error);
+        return Promise.reject(error);
+      }
+    );
+
+    // Response interceptor with enhanced error handling and retry logic
+    this.client.interceptors.response.use(
+      (response) => {
+        const requestId = response.config.headers['X-Request-ID'];
+        console.log('✅ API Response:', response.status, response.config.url, 
+          `[${requestId}]`);
+        return response;
+      },
+      async (error) => {
+        const originalRequest = error.config;
+        const requestId = originalRequest?.headers['X-Request-ID'] || 'unknown';
+        
+        this.logError(error, requestId);
+        
+        // Handle 401 errors with centralized token refresh
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          return this.handleUnauthorizedError(originalRequest, error, requestId);
+        }
+        
+        return Promise.reject(error);
+      }
+    );
+  }
+
+  private async handleUnauthorizedError(originalRequest: any, error: any, requestId: string) {
+    originalRequest._retry = true;
+    
+    console.log(`🔄 401 error detected, attempting token refresh... [${requestId}]`);
+    
+    try {
+      // Use centralized token manager for refresh
+      const refreshedSession = await tokenManager.forceRefresh();
+      
+      if (refreshedSession?.access_token) {
+        console.log(`✅ Token refreshed, retrying request... [${requestId}]`);
+        originalRequest.headers.Authorization = `Bearer ${refreshedSession.access_token}`;
+        
+        // Process any queued requests
+        this.processRequestQueue();
+        
+        return this.client(originalRequest);
+      } else {
+        throw new Error('No access token in refreshed session');
+      }
+    } catch (refreshError) {
+      console.error(`❌ Token refresh failed [${requestId}]:`, refreshError);
+      
+      // Clear token state and redirect to login if needed
+      tokenManager.clearState();
+      
+      // Emit auth error event for global handling
+      window.dispatchEvent(new CustomEvent('auth:token-refresh-failed', {
+        detail: { error: refreshError, requestId }
+      }));
+      
+      return Promise.reject(error);
+    }
+  }
+
+  private logError(error: any, requestId: string) {
+    console.error(`❌ API Error Details [${requestId}]:`);
     console.error('   - URL:', error.config?.url);
     console.error('   - Method:', error.config?.method);
     console.error('   - Status:', error.response?.status);
@@ -54,21 +130,77 @@ apiClient.interceptors.response.use(
     console.error('   - Data:', error.response?.data);
     console.error('   - Message:', error.message);
     console.error('   - Code:', error.code);
-    
-    // Handle specific error cases
-    if (error.response?.status === 401) {
-      console.error('🔒 Authentication failed - token may be expired');
-    } else if (error.response?.status === 404) {
+
+    // Log specific error types
+    if (error.response?.status === 404) {
       console.error('🔍 API endpoint not found - check backend routes');
     } else if (error.response?.status === 500) {
       console.error('🔥 Backend server error');
     } else if (error.code === 'ECONNREFUSED') {
       console.error('🔌 Cannot connect to backend - is it running?');
+    } else if (error.code === 'ECONNABORTED') {
+      console.error('⏱️ Request timeout - server took too long to respond');
     }
-    
-    return Promise.reject(error);
   }
-);
+
+  private processRequestQueue() {
+    if (this.isProcessingQueue || this.requestQueue.length === 0) {
+      return;
+    }
+
+    this.isProcessingQueue = true;
+    
+    const queue = [...this.requestQueue];
+    this.requestQueue = [];
+
+    console.log(`🔄 Processing ${queue.length} queued requests...`);
+
+    queue.forEach(({ config, resolve, reject }) => {
+      this.client(config)
+        .then(resolve)
+        .catch(reject);
+    });
+
+    this.isProcessingQueue = false;
+  }
+
+  private generateRequestId(): string {
+    return Math.random().toString(36).substr(2, 9);
+  }
+
+  // Expose axios methods
+  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.client.get(url, config);
+  }
+
+  async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.client.post(url, data, config);
+  }
+
+  async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.client.put(url, data, config);
+  }
+
+  async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.client.patch(url, data, config);
+  }
+
+  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.client.delete(url, config);
+  }
+
+  // Health check method
+  async healthCheck(): Promise<{ status: string; tokenInfo: any }> {
+    const tokenInfo = await tokenManager.getTokenInfo();
+    return {
+      status: tokenInfo.hasToken ? 'authenticated' : 'unauthenticated',
+      tokenInfo
+    };
+  }
+}
+
+// Create singleton instance
+const apiClient = new ApiClient();
 
 // Types
 export interface Task {
@@ -100,41 +232,15 @@ export interface HealthResponse {
   version: string;
 }
 
-// Browser-Use Integration Types
-export interface BrowserUseTaskRequest {
-  prompt?: string;
-  vendor_url?: string;
-  customer_details?: {
-    rfc?: string;
-    email?: string;
-    company_name?: string;
-    address?: {
-      street?: string;
-      exterior_number?: string;
-      interior_number?: string;
-      colony?: string;
-      municipality?: string;
-      zip_code?: string;
-      state?: string;
-      country?: string;
-    };
-  };
-  invoice_details?: {
-    ticket_id?: string;
-    folio?: string;
-    transaction_date?: string;
-    total?: number;
-    currency?: string;
-    subtotal?: number;
-    iva?: number;
-  };
+// Simplified Browser Task Integration Types
+export interface BrowserTaskRequest {
+  task: string;
   model?: string;
-  temperature?: number;
-  max_steps?: number;
+  llm_provider?: 'openai' | 'anthropic' | 'google';
   timeout_minutes?: number;
 }
 
-export interface BrowserUseTaskResponse {
+export interface BrowserTaskResponse {
   success: boolean;
   data: {
     task_id: string;
@@ -451,10 +557,16 @@ export class ApiService {
     return response.data as any[];
   }
 
-  // Browser-Use Integration (New)
-  static async createBrowserUseTask(request: BrowserUseTaskRequest): Promise<BrowserUseTaskResponse> {
-    const response = await apiClient.post('/tasks/browser-use', request);
-    return response.data as BrowserUseTaskResponse;
+  // Simplified Browser Task Integration
+  static async createBrowserTask(request: BrowserTaskRequest): Promise<BrowserTaskResponse> {
+    const response = await apiClient.post('/tasks', request);
+    return response.data as BrowserTaskResponse;
+  }
+  
+  // Execute task immediately (for testing)
+  static async executeBrowserTask(request: BrowserTaskRequest): Promise<BrowserTaskResponse> {
+    const response = await apiClient.post('/tasks/execute', request);
+    return response.data as BrowserTaskResponse;
   }
 
   static async getBrowserUseTask(taskId: string): Promise<BrowserUseTask> {
@@ -502,28 +614,51 @@ export class ApiService {
 
   // Session Management for Task Monitoring
   static async getTaskSession(taskId: string): Promise<TaskSession> {
-    const response = await apiClient.get(`/tasks/browser-use/${taskId}/session`);
-    return response.data as TaskSession;
+    // Session management not implemented - return mock data for local execution
+    console.warn('Session management not implemented for local browser execution');
+    return {
+      success: true,
+      data: {
+        task_id: taskId,
+        session_id: `local_session_${taskId}`,
+        live_view_url: null, // No live view for local execution
+        browser_type: 'local',
+        status: 'running',
+        capabilities: {
+          live_view: false,
+          session_control: false,
+          real_time_logs: false
+        }
+      }
+    } as TaskSession;
   }
 
   static async pauseTask(taskId: string): Promise<{ success: boolean; message: string }> {
-    const response = await apiClient.post(`/tasks/browser-use/${taskId}/pause`);
-    return response.data as { success: boolean; message: string };
+    // Session control not implemented for local execution
+    console.warn('Task pause not implemented for local browser execution');
+    return { success: false, message: 'Session control not available for local execution' };
   }
 
   static async resumeTask(taskId: string): Promise<{ success: boolean; message: string }> {
-    const response = await apiClient.post(`/tasks/browser-use/${taskId}/resume`);
-    return response.data as { success: boolean; message: string };
+    // Session control not implemented for local execution
+    console.warn('Task resume not implemented for local browser execution');
+    return { success: false, message: 'Session control not available for local execution' };
   }
 
   static async stopTask(taskId: string): Promise<{ success: boolean; message: string }> {
-    const response = await apiClient.post(`/tasks/browser-use/${taskId}/stop`);
-    return response.data as { success: boolean; message: string };
+    // Session control not implemented for local execution
+    console.warn('Task stop not implemented for local browser execution');
+    return { success: false, message: 'Session control not available for local execution' };
   }
 
   static async restartTask(taskId: string): Promise<BrowserUseTaskResponse> {
-    const response = await apiClient.post(`/tasks/browser-use/${taskId}/restart`);
-    return response.data as BrowserUseTaskResponse;
+    // Session control not implemented for local execution
+    console.warn('Task restart not implemented for local browser execution');
+    return { 
+      success: false, 
+      data: null,
+      error: { message: 'Session control not available for local execution' }
+    } as BrowserUseTaskResponse;
   }
 
   static async getTaskLogs(taskId: string, options?: {
@@ -538,6 +673,11 @@ export class ApiService {
 
     const response = await apiClient.get(`/tasks/browser-use/${taskId}/logs?${params.toString()}`);
     return response.data as TaskLogsResponse;
+  }
+
+  // Authentication Health Check
+  static async authHealthCheck(): Promise<{ status: string; tokenInfo: any }> {
+    return apiClient.healthCheck();
   }
 }
 
