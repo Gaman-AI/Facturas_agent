@@ -7,7 +7,8 @@ WORKDIR /app
 
 # Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production --frozen-lockfile --legacy-peer-deps
+# Install all dependencies (including dev dependencies) for build
+RUN npm ci --frozen-lockfile --legacy-peer-deps
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -21,7 +22,12 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Build the application
 RUN npm run build
+
+# Verify that standalone directory exists
+RUN ls -la .next/
+RUN ls -la .next/standalone/ || echo "Standalone directory not found"
 
 # Production image, copy all the files and run next
 FROM base AS production
