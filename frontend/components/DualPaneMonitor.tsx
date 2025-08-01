@@ -55,6 +55,12 @@ export function DualPaneMonitor({
   useEffect(() => {
     const fetchLogs = async () => {
       try {
+        // Skip if taskId is invalid
+        if (!taskId || taskId === 'undefined') {
+          console.debug('Skipping log fetch - invalid taskId:', taskId)
+          return
+        }
+
         const logsResponse = await ApiService.getTaskLogs(taskId, { limit: 50 })
         if (logsResponse.success) {
           const apiLogs = logsResponse.data.logs.map(log => ({
@@ -148,9 +154,12 @@ export function DualPaneMonitor({
     websocketService.on('step_update', handleLogUpdate)
     websocketService.on('status_change', handleStatusChange)
 
-    // Connect to WebSocket if sessionId is provided
-    if (currentSessionId) {
+    // Connect to WebSocket if sessionId is provided and valid
+    if (currentSessionId && currentSessionId !== 'unknown' && !currentSessionId.includes('undefined')) {
+      console.log('🔌 Connecting to WebSocket for session:', currentSessionId)
       websocketService.connectBrowserAgent(currentSessionId)
+    } else {
+      console.log('⚠️ Skipping WebSocket connection - invalid sessionId:', currentSessionId)
     }
 
     // Cleanup
@@ -255,78 +264,12 @@ export function DualPaneMonitor({
     addLog('Browser view refreshed', 'info')
   }
 
-  // Mobile Layout (Tabbed with Analytics)
-  if (isMobile) {
-    return (
-      <div className={`h-full ${className}`}>
-        <Tabs defaultValue="browser" className="h-full flex flex-col">
-          <div className="flex-shrink-0 border-b bg-white px-4 py-2">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="browser" className="flex items-center gap-1 text-xs">
-                <Monitor className="w-3 h-3" />
-                {t('monitor.tabs.browser', 'Browser')}
-              </TabsTrigger>
-              <TabsTrigger value="status" className="flex items-center gap-1 text-xs">
-                <Activity className="w-3 h-3" />
-                {t('monitor.tabs.status', 'Status')}
-                {isConnected && (
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs">
-                <BarChart3 className="w-3 h-3" />
-                {t('monitor.tabs.analytics', 'Analytics')}
-              </TabsTrigger>
-            </TabsList>
-          </div>
-          
-          <TabsContent value="browser" className="flex-1 p-4">
-            <LiveViewPane
-              sessionId={currentSessionId || 'unknown'}
-              liveViewUrl={liveViewUrl}
-              taskId={taskId}
-              status={status}
-              onTakeoverRequest={handleTakeoverRequest}
-              onRefresh={handleRefreshView}
-              className="h-full"
-            />
-          </TabsContent>
-          
-          <TabsContent value="status" className="flex-1 p-4">
-            <StatusSidebar
-              taskId={taskId}
-              sessionId={currentSessionId}
-              status={status}
-              progress={progress}
-              logs={logs}
-              isConnected={isConnected}
-              sessionControls={sessionControls}
-              taskStartTime={taskStartTime}
-              className="h-full"
-            />
-          </TabsContent>
-
-          <TabsContent value="analytics" className="flex-1 p-4">
-            <TaskAnalytics
-              taskId={taskId}
-              status={status}
-              logs={logs}
-              startTime={taskStartTime}
-              endTime={status === 'completed' || status === 'failed' ? new Date().toISOString() : undefined}
-              className="h-full"
-            />
-          </TabsContent>
-        </Tabs>
-      </div>
-    )
-  }
-
-  // Desktop Layout (Dual Pane)
+  // Simplified Dual Pane Layout (Chat + Browser View Only)
   return (
     <div className={`h-full ${className}`}>
       <ResizablePanelGroup direction="horizontal" className="h-full">
-        {/* Left Pane - Browser View (70% default) */}
-        <ResizablePanel defaultSize={70} minSize={50}>
+        {/* Left Pane - Chat View (40% default) */}
+        <ResizablePanel defaultSize={40} minSize={30} maxSize={60}>
           <div className="h-full p-4">
             <LiveViewPane
               sessionId={currentSessionId || 'unknown'}
@@ -336,72 +279,26 @@ export function DualPaneMonitor({
               onTakeoverRequest={handleTakeoverRequest}
               onRefresh={handleRefreshView}
               className="h-full"
+              viewType="chat"
             />
           </div>
         </ResizablePanel>
 
         <ResizableHandle withHandle />
 
-        {/* Right Pane - Status/Analytics Toggle (30% default) */}
-        <ResizablePanel defaultSize={30} minSize={25} maxSize={50}>
-          <div className="h-full flex flex-col">
-            {/* Right Pane Header with Toggle */}
-            <div className="flex-shrink-0 bg-white border-b px-4 py-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium text-slate-900">
-                  {rightPaneView === 'status' 
-                    ? t('monitor.panes.status', 'Task Status')
-                    : t('monitor.panes.analytics', 'Analytics')
-                  }
-                </h3>
-                <div className="flex rounded-lg bg-slate-100 p-1">
-                  <Button
-                    size="sm"
-                    variant={rightPaneView === 'status' ? 'default' : 'ghost'}
-                    onClick={() => setRightPaneView('status')}
-                    className="h-6 px-2 text-xs"
-                  >
-                    <Activity className="w-3 h-3 mr-1" />
-                    Status
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={rightPaneView === 'analytics' ? 'default' : 'ghost'}
-                    onClick={() => setRightPaneView('analytics')}
-                    className="h-6 px-2 text-xs"
-                  >
-                    <BarChart3 className="w-3 h-3 mr-1" />
-                    Analytics
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Pane Content */}
-            <div className="flex-1 p-4">
-              {rightPaneView === 'status' ? (
-                <StatusSidebar
-                  taskId={taskId}
-                  sessionId={currentSessionId}
-                  status={status}
-                  progress={progress}
-                  logs={logs}
-                  isConnected={isConnected}
-                  sessionControls={sessionControls}
-                  taskStartTime={taskStartTime}
-                  className="h-full"
-                />
-              ) : (
-                <TaskAnalytics
-                  taskId={taskId}
-                  status={status}
-                  logs={logs}
-                  startTime={taskStartTime}
-                  endTime={status === 'completed' || status === 'failed' ? new Date().toISOString() : undefined}
-                  className="h-full"
-                />
-              )}
-            </div>
+        {/* Right Pane - Browser View (60% default) */}
+        <ResizablePanel defaultSize={60} minSize={40} maxSize={70}>
+          <div className="h-full p-4">
+            <LiveViewPane
+              sessionId={currentSessionId || 'unknown'}
+              liveViewUrl={liveViewUrl}
+              taskId={taskId}
+              status={status}
+              onTakeoverRequest={handleTakeoverRequest}
+              onRefresh={handleRefreshView}
+              className="h-full"
+              viewType="browser"
+            />
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
@@ -411,7 +308,7 @@ export function DualPaneMonitor({
         <Card className="shadow-lg">
           <CardContent className="p-2">
             <div className="flex items-center gap-2 text-sm">
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-pink-500' : 'bg-red-500'}`}></div>
               <span className="text-slate-600">
                 {isConnected ? t('common.connected', 'Connected') : t('common.disconnected', 'Disconnected')}
               </span>

@@ -146,7 +146,8 @@ const es: Translations = {
 
   // Dashboard
   'dashboard.title': 'Dashboard',
-  'dashboard.welcome': 'Bienvenido al Dashboard',
+  'dashboard.welcome': 'Bienvenido de vuelta',
+  'dashboard.subtitle': '¿Listo para automatizar tus tareas del navegador con IA? ¡Empecemos!',
   'dashboard.recentTasks': 'Tareas Recientes',
   'dashboard.statistics': 'Estadísticas',
   'dashboard.noTasks': 'No hay tareas disponibles',
@@ -239,6 +240,43 @@ const es: Translations = {
   'monitor.sidebar.noActivity': 'Aún no hay actividad',
   'monitor.logs.searchPlaceholder': 'Buscar registros...',
   'monitor.logs.noResults': 'No hay registros que coincidan con tus filtros',
+  
+  // Task Monitor
+  'tasks.monitor.title': 'Monitor de Tareas',
+  'tasks.monitor.loading': 'Cargando interfaz de monitoreo...',
+  'tasks.monitor.error': 'Error al cargar la interfaz de monitoreo',
+  'tasks.monitor.legacyView': 'Vista Legacy',
+  'tasks.monitor.useLegacy': 'Usar Monitor Legacy',
+  'tasks.monitor.backToDashboard': 'Volver al Dashboard',
+  
+  // Monitor Status
+  'monitor.status.running': 'Ejecutando',
+  'monitor.status.paused': 'Pausado',
+  'monitor.status.completed': 'Completado',
+  'monitor.status.failed': 'Fallido',
+  'monitor.status.connecting': 'Conectando',
+  'monitor.status.pending': 'Pendiente',
+  
+  // Monitor Live View
+  'monitor.liveView.title': 'Vista de Navegador en Vivo',
+  'monitor.liveView.loading': 'Cargando vista del navegador...',
+  'monitor.liveView.sessionId': 'Sesión',
+  'monitor.liveView.taskId': 'Tarea',
+  'monitor.liveView.takeControl': 'Tomar Control',
+  'monitor.liveView.resumeAgent': 'Reanudar Agente',
+  'monitor.liveView.openExternal': 'Abrir en Nueva Pestaña',
+  
+  // Monitor Sidebar
+  'monitor.sidebar.title': 'Monitor de Tareas',
+  'monitor.sidebar.taskId': 'ID de Tarea',
+  'monitor.sidebar.connection': 'Conexión',
+  'monitor.sidebar.controls': 'Controles',
+  
+  // Common Status
+  'common.disconnected': 'Desconectado',
+  'common.connected': 'Conectado',
+  'common.restart': 'Reiniciar',
+  'common.retry': 'Reintentar',
   'analytics.title': 'Analíticas de Tarea',
   'analytics.subtitle': 'Métricas e insights de rendimiento para la tarea',
 

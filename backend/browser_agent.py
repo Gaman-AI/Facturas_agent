@@ -36,6 +36,7 @@ load_dotenv()
 # Import from local browser-use implementation (same as simple.py)
 from browser_use import Agent
 from browser_use.llm import ChatOpenAI
+from browser_use.browser.profile import BrowserProfile
 
 
 async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", temperature: float = 0.7, max_steps: int = 30):
@@ -60,10 +61,11 @@ async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", tempera
     print(f"   Max Steps: {max_steps}")
     print(f"   Task: {task_prompt[:100]}...")
     
-    # Create agent exactly like simple.py
+    # Create agent with visible browser (non-headless)
     agent = Agent(
         task=task_prompt,
-        llm=ChatOpenAI(model=model, temperature=temperature)
+        llm=ChatOpenAI(model=model, temperature=temperature),
+        browser_profile=BrowserProfile(headless=False)  # Show browser window
     )
     
     # Run the agent

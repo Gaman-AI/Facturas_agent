@@ -8,6 +8,7 @@ import config from './config/index.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 import authRoutes from './routes/auth.js'
 import taskRoutes from './routes/tasks.js'
+import websocketService from './services/websocketService.js'
 
 /**
  * Create Express Application
@@ -228,10 +229,18 @@ app.use(notFoundHandler)
 app.use(errorHandler)
 
 /**
+ * Initialize WebSocket Server
+ */
+websocketService.initialize(server)
+
+/**
  * Graceful Shutdown
  */
 const gracefulShutdown = (signal) => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`)
+  
+  // Close WebSocket server first
+  websocketService.close()
   
   server.close(() => {
     console.log('✅ HTTP server closed')

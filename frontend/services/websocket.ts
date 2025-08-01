@@ -142,7 +142,7 @@ export class WebSocketService {
     this.shouldReconnect = true;
 
     try {
-      const wsUrl = `${WS_BASE_URL}/api/v1/browser-agent/ws/${sessionId}`;
+      const wsUrl = `${WS_BASE_URL}/api/v1/browser-agent/ws?sessionId=${sessionId}`;
       console.log('Connecting to browser agent WebSocket:', wsUrl);
       
       this.ws = new WebSocket(wsUrl);

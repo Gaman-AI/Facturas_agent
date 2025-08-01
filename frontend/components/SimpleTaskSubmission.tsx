@@ -58,7 +58,7 @@ export function SimpleTaskSubmission({
     try {
       // Create a simple browser automation task
       const response = await ApiService.createBrowserTask({
-        task_description: task,
+        task: task,
         llm_provider: llmProvider,
         model: llmProvider === 'openai' ? 'gpt-4o' : 
                llmProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' : 

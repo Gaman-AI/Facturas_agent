@@ -146,7 +146,8 @@ const en: Translations = {
 
   // Dashboard
   'dashboard.title': 'Dashboard',
-  'dashboard.welcome': 'Welcome to Dashboard',
+  'dashboard.welcome': 'Welcome back',
+  'dashboard.subtitle': 'Ready to automate your browser tasks with AI? Let\'s get started!',
   'dashboard.recentTasks': 'Recent Tasks',
   'dashboard.statistics': 'Statistics',
   'dashboard.noTasks': 'No tasks available',
@@ -239,6 +240,43 @@ const en: Translations = {
   'monitor.sidebar.noActivity': 'No activity yet',
   'monitor.logs.searchPlaceholder': 'Search logs...',
   'monitor.logs.noResults': 'No logs match your filters',
+  
+  // Task Monitor
+  'tasks.monitor.title': 'Task Monitor',
+  'tasks.monitor.loading': 'Loading task monitoring interface...',
+  'tasks.monitor.error': 'Failed to load task monitoring interface',
+  'tasks.monitor.legacyView': 'Legacy View',
+  'tasks.monitor.useLegacy': 'Use Legacy Monitor',
+  'tasks.monitor.backToDashboard': 'Back to Dashboard',
+  
+  // Monitor Status
+  'monitor.status.running': 'Running',
+  'monitor.status.paused': 'Paused',
+  'monitor.status.completed': 'Completed',
+  'monitor.status.failed': 'Failed',
+  'monitor.status.connecting': 'Connecting',
+  'monitor.status.pending': 'Pending',
+  
+  // Monitor Live View
+  'monitor.liveView.title': 'Live Browser View',
+  'monitor.liveView.loading': 'Loading browser view...',
+  'monitor.liveView.sessionId': 'Session',
+  'monitor.liveView.taskId': 'Task',
+  'monitor.liveView.takeControl': 'Take Control',
+  'monitor.liveView.resumeAgent': 'Resume Agent',
+  'monitor.liveView.openExternal': 'Open in New Tab',
+  
+  // Monitor Sidebar
+  'monitor.sidebar.title': 'Task Monitor',
+  'monitor.sidebar.taskId': 'Task ID',
+  'monitor.sidebar.connection': 'Connection',
+  'monitor.sidebar.controls': 'Controls',
+  
+  // Common Status
+  'common.disconnected': 'Disconnected',
+  'common.connected': 'Connected',
+  'common.restart': 'Restart',
+  'common.retry': 'Retry',
   'analytics.title': 'Task Analytics',
   'analytics.subtitle': 'Performance insights and metrics for task',
 

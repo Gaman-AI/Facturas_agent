@@ -102,40 +102,49 @@ router.post('/', validateCreateTask, asyncHandler(async (req, res) => {
   const userId = 'anonymous'
   const { task, model, llm_provider, timeout_minutes } = req.body
 
-  // Create task record (would use Supabase MCP in real implementation)
-  const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  
-  const newTask = {
-    id: taskId,
-    user_id: userId,
-    task_description: task,
-    model: model || 'gpt-4o-mini',
-    llm_provider: llm_provider || 'openai',
-    timeout_minutes: timeout_minutes || 30,
-    status: 'PENDING',
-    created_at: new Date().toISOString(),
-    started_at: null,
-    completed_at: null,
-    result: null,
-    error_message: null
-  }
-
-  // Here we would:
-  // 1. Insert task into Supabase using MCP
-  // 2. Add task to Redis queue for processing
-  // 3. Return task details
-
-  res.status(201).json({
-    success: true,
-    data: {
-      task: newTask,
-      message: 'Task created and queued for processing'
-    },
-    meta: {
-      timestamp: new Date().toISOString(),
-      requestId: req.id
+  try {
+    // Create task using browserAgentService for proper storage and execution
+    const taskData = {
+      prompt: task,
+      model: model || 'gpt-4o-mini',
+      llm_provider: llm_provider || 'openai',
+      max_steps: 50,
+      timeout_minutes: timeout_minutes || 30
     }
-  })
+
+    const createdTask = await browserAgentService.createTask(userId, taskData)
+    
+    res.status(201).json({
+      success: true,
+      data: {
+        task_id: createdTask.id,
+        status: createdTask.status,
+        created_at: createdTask.createdAt,
+        model: createdTask.model,
+        max_steps: createdTask.maxSteps,
+        message: 'Task created and queued for processing'
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  } catch (error) {
+    console.error('❌ Task creation error:', error)
+    
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'TASK_CREATION_FAILED',
+        message: 'Failed to create task',
+        details: error.message
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
 }))
 
 /**
@@ -794,6 +803,99 @@ router.get('/browser-use/stats', asyncHandler(async (req, res) => {
       error: {
         code: 'BROWSER_STATS_FAILED',
         message: 'Failed to retrieve browser task statistics',
+        details: error.message
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+}))
+
+/**
+ * @route   GET /api/v1/tasks/browser-use/:taskId/logs
+ * @desc    Get logs for a specific browser task
+ * @access  Private
+ */
+router.get('/browser-use/:taskId/logs', validateTaskParams, asyncHandler(async (req, res) => {
+  const { taskId } = req.params
+  const userId = 'anonymous'
+  const { limit = 50, offset = 0, level = 'all' } = req.query
+
+  try {
+    const task = browserAgentService.getTask(taskId, userId)
+
+    if (!task) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'TASK_NOT_FOUND',
+          message: 'Browser task not found or access denied',
+          details: { task_id: taskId }
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: req.id
+        }
+      })
+    }
+
+    // Get logs from the task (mock implementation for now)
+    const mockLogs = [
+      {
+        id: `log_${Date.now()}_1`,
+        task_id: taskId,
+        timestamp: new Date().toISOString(),
+        level: 'info',
+        message: 'Task created and queued for processing',
+        details: { step: 'creation' },
+        source: 'system'
+      },
+      {
+        id: `log_${Date.now()}_2`,
+        task_id: taskId,
+        timestamp: new Date().toISOString(),
+        level: 'info',
+        message: 'Browser automation started',
+        details: { step: 'execution' },
+        source: 'agent'
+      }
+    ]
+
+    // Filter by level if specified
+    const filteredLogs = level === 'all' 
+      ? mockLogs 
+      : mockLogs.filter(log => log.level === level)
+
+    // Apply pagination
+    const startIndex = parseInt(offset)
+    const endIndex = startIndex + parseInt(limit)
+    const paginatedLogs = filteredLogs.slice(startIndex, endIndex)
+
+    res.json({
+      success: true,
+      data: {
+        logs: paginatedLogs,
+        total_count: filteredLogs.length,
+        has_more: endIndex < filteredLogs.length,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ Failed to get browser task logs:', error)
+    
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'BROWSER_TASK_LOGS_FAILED',
+        message: 'Failed to retrieve browser task logs',
         details: error.message
       },
       meta: {
