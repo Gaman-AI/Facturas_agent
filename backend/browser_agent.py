@@ -38,7 +38,7 @@ from browser_use import Agent
 from browser_use.llm import ChatOpenAI
 
 
-async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", temperature: float = 0.7, max_steps: int = 30):
+async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", temperature: float = 0.1, max_steps: int = 30):
     """
     Run a browser automation task - simplified version like simple.py
     
@@ -80,9 +80,10 @@ async def main():
     
     # Case 1: No arguments - Interactive mode
     if len(sys.argv) == 1:
-        print("Browser Agent - Interactive Mode")
+        print("Browser Agent - Facturación Mode")
         print("=" * 50)
-        print("Enter your task description and press Enter to execute.")
+        print("Enter your facturación task with vendor URL and details.")
+        print("Example: Go to https://example.com and do facturación for customer RFC ABC123, email customer@example.com")
         print("Type 'exit' to quit.\n")
         
         while True:
@@ -98,14 +99,33 @@ async def main():
                     print("Goodbye!")
                     break
                 
-                print(f"\nExecuting task: {task_input[:100]}...")
+                print(f"\nExecuting facturación task: {task_input[:100]}...")
                 print("-" * 50)
                 
+                # Format task for facturación
+                if "http" in task_input.lower():
+                    # Simple URL detection - look for http/https in the text
+                    words = task_input.split()
+                    url_found = None
+                    for word in words:
+                        if word.lower().startswith(('http://', 'https://')):
+                            url_found = word
+                            break
+                    
+                    if url_found:
+                        # Remove URL from task text and create facturación prompt
+                        task_without_url = task_input.replace(url_found, '').strip()
+                        facturacion_prompt = f"Go to {url_found} and do the facturación using the below details: {task_without_url}"
+                    else:
+                        facturacion_prompt = f"Do the facturación using the below details: {task_input}"
+                else:
+                    facturacion_prompt = f"Do the facturación using the below details: {task_input}"
+                
                 # Execute the task
-                result = await run_browser_task(task_input)
+                result = await run_browser_task(facturacion_prompt)
                 
                 print("\n" + "=" * 50)
-                print("Task completed successfully!")
+                print("Facturación task completed successfully!")
                 print(f"Result: {str(result)}")
                 print("=" * 50 + "\n")
                 
@@ -134,14 +154,14 @@ async def main():
             max_steps = task_data.get('max_steps', 30)
             vendor_url = task_data.get('vendor_url', '')
             
-            # Build complete prompt
+            # Build complete prompt for facturación
             if vendor_url:
                 if prompt:
-                    complete_prompt = f"Go to {vendor_url} and {prompt}"
+                    complete_prompt = f"Go to {vendor_url} and do the facturación using the below details: {prompt}"
                 else:
-                    complete_prompt = f"Navigate to {vendor_url} and perform the required tasks on this website"
+                    complete_prompt = f"Go to {vendor_url} and do the facturación using the below details"
             else:
-                complete_prompt = prompt
+                complete_prompt = f"Do the facturación using the below details: {prompt}" if prompt else "Perform facturación"
                 
             # Add context if available
             context = build_task_context(task_data)
@@ -165,18 +185,38 @@ async def main():
                 "model_used": model,
                 "steps_executed": max_steps,
                 "task_prompt": complete_prompt,
-                "vendor_url": vendor_url or "none"
+                "vendor_url": vendor_url or "none",
+                "task_type": "facturacion"
             }, indent=2))
             
         except json.JSONDecodeError:
-            # Not JSON, treat as simple text task
+            # Not JSON, treat as simple text task for facturación
             try:
-                print(f"Executing simple task: {argument[:100]}...")
-                result = await run_browser_task(argument)
-                print(f"Task completed successfully!")
+                print(f"Executing facturación task: {argument[:100]}...")
+                # Extract URL from text if present and format for facturación
+                if "http" in argument.lower():
+                    # Simple URL detection - look for http/https in the text
+                    words = argument.split()
+                    url_found = None
+                    for word in words:
+                        if word.lower().startswith(('http://', 'https://')):
+                            url_found = word
+                            break
+                    
+                    if url_found:
+                        # Remove URL from task text and create facturación prompt
+                        task_without_url = argument.replace(url_found, '').strip()
+                        facturacion_prompt = f"Go to {url_found} and do the facturación using the below details: {task_without_url}"
+                    else:
+                        facturacion_prompt = f"Do the facturación using the below details: {argument}"
+                else:
+                    facturacion_prompt = f"Do the facturación using the below details: {argument}"
+                
+                result = await run_browser_task(facturacion_prompt)
+                print(f"Facturación task completed successfully!")
                 print(f"Result: {str(result)}")
             except Exception as e:
-                print(f"Error executing task: {str(e)}")
+                print(f"Error executing facturación task: {str(e)}")
         
         except Exception as e:
             print(json.dumps({
@@ -187,22 +227,41 @@ async def main():
         
         return
     
-    # Case 3: Multiple arguments - treat as simple text task (join arguments)
+    # Case 3: Multiple arguments - treat as facturación task (join arguments)
     if len(sys.argv) > 2:
         task_text = " ".join(sys.argv[1:])
         try:
-            print(f"Executing task: {task_text[:100]}...")
-            result = await run_browser_task(task_text)
-            print(f"Task completed successfully!")
+            print(f"Executing facturación task: {task_text[:100]}...")
+            # Extract URL from text if present and format for facturación
+            if "http" in task_text.lower():
+                # Simple URL detection - look for http/https in the text
+                words = task_text.split()
+                url_found = None
+                for word in words:
+                    if word.lower().startswith(('http://', 'https://')):
+                        url_found = word
+                        break
+                
+                if url_found:
+                    # Remove URL from task text and create facturación prompt
+                    task_without_url = task_text.replace(url_found, '').strip()
+                    facturacion_prompt = f"Go to {url_found} and do the facturación using the below details: {task_without_url}"
+                else:
+                    facturacion_prompt = f"Do the facturación using the below details: {task_text}"
+            else:
+                facturacion_prompt = f"Do the facturación using the below details: {task_text}"
+            
+            result = await run_browser_task(facturacion_prompt)
+            print(f"Facturación task completed successfully!")
             print(f"Result: {str(result)}")
         except Exception as e:
-            print(f"Error executing task: {str(e)}")
+            print(f"Error executing facturación task: {str(e)}")
         return
 
 
 def build_task_context(task_data: dict) -> str:
     """
-    Add simple context to the task prompt based on available data
+    Add facturación context to the task prompt based on available data
     
     Args:
         task_data (dict): Task data containing context information
@@ -230,7 +289,7 @@ def build_task_context(task_data: dict) -> str:
         if invoice_details.get('folio'):
             context_parts.append(f"Folio: {invoice_details['folio']}")
     
-    return "\nContext: " + "; ".join(context_parts) if context_parts else ""
+    return "\nFacturación Details: " + "; ".join(context_parts) if context_parts else ""
 
 
 if __name__ == "__main__":

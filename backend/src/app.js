@@ -8,6 +8,7 @@ import config from './config/index.js'
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 import authRoutes from './routes/auth.js'
 import taskRoutes from './routes/tasks.js'
+import websocketService from './services/websocketService.js'
 
 /**
  * Create Express Application
@@ -226,6 +227,11 @@ app.use(notFoundHandler)
 
 // Global error handler
 app.use(errorHandler)
+
+/**
+ * WebSocket Integration
+ */
+websocketService.initialize(server)
 
 /**
  * Graceful Shutdown

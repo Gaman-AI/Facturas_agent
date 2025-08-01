@@ -48,7 +48,7 @@ const config = {
   // Task Configuration
   tasks: {
     maxConcurrent: parseInt(process.env.MAX_CONCURRENT_TASKS) || 5,
-    timeoutMinutes: parseInt(process.env.TASK_TIMEOUT_MINUTES) || 30,
+    timeoutMinutes: parseInt(process.env.TASK_TIMEOUT_MINUTES) || 15, // 15 minutes for browser automation
   },
 
   // Python Service Configuration

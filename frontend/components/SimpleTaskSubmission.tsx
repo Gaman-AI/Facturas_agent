@@ -34,8 +34,7 @@ export function SimpleTaskSubmission({
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  const characterLimit = 500
-  const remainingChars = characterLimit - task.length
+  // Character limit removed - no longer needed
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,10 +44,7 @@ export function SimpleTaskSubmission({
       return
     }
 
-    if (task.length > characterLimit) {
-      setError(t('tasks.validation.taskTooLong', 'Task description is too long'))
-      return
-    }
+    // Character limit validation removed
 
     setIsSubmitting(true)
     setError(null)
@@ -128,13 +124,9 @@ export function SimpleTaskSubmission({
               placeholder={t('tasks.simple.placeholder', 'Example: Search for OpenAI latest updates on Google and summarize the findings')}
               className="min-h-[100px] resize-none"
               disabled={isSubmitting}
-              maxLength={characterLimit}
             />
             <div className="flex justify-between items-center text-xs text-muted-foreground">
               <span>{t('tasks.simple.hint', 'Be specific about what you want to accomplish')}</span>
-              <span className={remainingChars < 50 ? 'text-orange-500' : remainingChars < 10 ? 'text-red-500' : ''}>
-                {remainingChars} {t('common.charactersRemaining', 'characters remaining')}
-              </span>
             </div>
           </div>
 
@@ -211,7 +203,7 @@ export function SimpleTaskSubmission({
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={isSubmitting || !task.trim() || task.length > characterLimit}
+                          disabled={isSubmitting || !task.trim()}
           >
             {isSubmitting ? (
               <>

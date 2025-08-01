@@ -2,6 +2,7 @@ import express from 'express'
 import { validateCreateTask, validateTaskQuery, validateTaskParams } from '../middleware/validation.js'
 import { asyncHandler } from '../middleware/errorHandler.js'
 import browserService from '../services/browserService.js'
+import enhancedBrowserService from '../services/enhancedBrowserService.js'
 import browserAgentService from '../services/browserAgentService.js'
 
 const router = express.Router()
@@ -215,8 +216,8 @@ router.post('/execute', validateCreateTask, asyncHandler(async (req, res) => {
       timeout_minutes: timeout_minutes || 30
     }
     
-    // Execute the task using browser service
-    const result = await browserService.executeTask(taskData)
+    // Execute the task using enhanced browser service with real-time monitoring
+    const result = await enhancedBrowserService.executeTaskWithMonitoring(taskData)
 
     if (result.success) {
       res.json({

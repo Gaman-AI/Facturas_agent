@@ -2304,3 +2304,197 @@ const result = await pythonBridge.executeBrowserTask(taskData)
 ✅ **Backend Compatible**: Maintains all integration capabilities  
 ✅ **Simplified & Clean**: Much easier to understand and maintain  
 ✅ **Production Ready**: Robust error handling and flexible execution 
+
+---
+
+## 2024-12-19 15:30 - Browser Agent Facturación Focus Update
+
+### Changes Made:
+- Updated `backend/browser_agent.py` to focus specifically on facturación tasks
+- Modified all task prompts to include "do the facturación using the below details" format
+- Added automatic URL detection from text input for vendor websites
+- Updated interactive mode to show facturación-specific instructions
+- Enhanced JSON API mode to format facturación tasks properly
+- Added "task_type": "facturacion" to JSON output
+- Updated context building to show "Facturación Details" instead of generic context
+
+### Key Features:
+1. **URL Detection**: Automatically extracts vendor URLs from text input
+2. **Facturación Format**: All tasks are formatted as "Go to [URL] and do the facturación using the below details: [details]"
+3. **Multiple Input Modes**: 
+   - Interactive mode with facturación-specific prompts
+   - Simple text input with automatic facturación formatting
+   - JSON API with facturación task structure
+4. **Context Integration**: Customer and invoice details are added as facturación context
+
+### Usage Examples:
+- Interactive: `python browser_agent.py` then enter facturación task
+- Simple text: `python browser_agent.py "Go to https://example.com and do facturación for RFC ABC123"`
+- JSON API: `python browser_agent.py '{"vendor_url": "https://example.com", "task": "facturación details"}'`
+
+### Files Modified:
+- `backend/browser_agent.py`: Complete facturación focus implementation
+
+---
+
+## 2024-12-19 15:45 - Frontend Task Input Size Limit Removal
+
+### Changes Made:
+- Removed 500 character limit from task input in `frontend/components/SimpleTaskSubmission.tsx`
+- Removed character count display and validation
+- Removed maxLength attribute from Textarea component
+- Removed character limit validation from form submission
+- Removed character limit from submit button disabled state
+
+### Key Changes:
+1. **Character Limit Removal**: Eliminated the 500-character restriction on task descriptions
+2. **UI Simplification**: Removed character counter display and color-coded warnings
+3. **Validation Update**: Removed task length validation from form submission
+4. **Component Cleanup**: Simplified the task input component by removing limit-related code
+
+### Benefits:
+- Users can now enter longer, more detailed task descriptions
+- Better support for complex facturación tasks with detailed requirements
+- Improved user experience for comprehensive task descriptions
+- No artificial constraints on task complexity
+
+### Files Modified:
+- `frontend/components/SimpleTaskSubmission.tsx`: Removed all character limit restrictions
+
+---
+
+## 🧠 **Real-time Agent Thinking Monitor Implementation** 
+*Date: January 16, 2025 - 4:30 PM*
+
+### Overview:
+Implemented a comprehensive real-time agent thinking monitoring system that allows users to observe the agent's thought process as it executes browser automation tasks. This system provides insights into the agent's decision-making, memory updates, goal setting, and action execution in real-time.
+
+### 🔧 **Technical Implementation:**
+
+#### 1. **Timeout Configuration Updates**
+**Problem**: Original 30-second timeout was insufficient for complex browser automation tasks
+**Solution**: Extended timeouts across the system
+- **Frontend API timeout**: Increased from 30 seconds to 5 minutes (300,000ms)
+- **Backend task timeout**: Set to 15 minutes for complex facturación tasks
+- **Python process timeout**: Aligned with backend configuration
+
+**Files Modified:**
+- `frontend/services/api.ts`: Updated API_TIMEOUT to 300,000ms
+- `backend/src/config/index.js`: Set task timeout to 15 minutes
+
+#### 2. **WebSocket Infrastructure**
+**Implementation**: Built real-time communication system for agent thinking updates
+- **WebSocket Server**: Created `/ws/agent-thinking` endpoint
+- **Message Types**: thinking, action, observation, goal, memory, evaluation
+- **Connection Management**: Automatic reconnection, heartbeat, subscription management
+- **Error Handling**: Graceful degradation and connection recovery
+
+**Files Created:**
+- `backend/src/services/websocketService.js`: WebSocket server implementation
+**Files Modified:**
+- `backend/src/app.js`: Integrated WebSocket server with HTTP server
+
+#### 3. **Enhanced Browser Agent**
+**Implementation**: Created enhanced Python agent with real-time thinking callbacks
+- **Thinking Monitoring**: Captures agent's reasoning process at each step
+- **WebSocket Integration**: Sends real-time updates via stdout parsing
+- **Structured Output**: JSON-formatted thinking, memory, and goal updates
+- **Step Tracking**: Monitors agent progress and execution flow
+
+**Files Created:**
+- `backend/enhanced_browser_agent.py`: Enhanced agent with thinking callbacks
+- `backend/src/services/enhancedBrowserService.js`: Node.js service integration
+
+#### 4. **Real-time Frontend Components**
+**Implementation**: React components for live agent monitoring
+- **AgentThinkingMonitor**: Main monitoring component with real-time updates
+- **WebSocket Hook**: Custom React hook for WebSocket connection management
+- **Agent Monitor Page**: Full demo page for testing and monitoring
+- **Dual Monitor Support**: Fullscreen mode for secondary display
+
+**Files Created:**
+- `frontend/components/AgentThinkingMonitor.tsx`: Main monitoring component
+- `frontend/hooks/useAgentWebSocket.ts`: WebSocket client hook
+- `frontend/app/agent-monitor/page.tsx`: Demo page implementation
+
+#### 5. **Enhanced Browser Service Integration**
+**Problem**: Original browser service lacked real-time monitoring capabilities
+**Solution**: Created enhanced service with WebSocket integration
+- **Real-time Updates**: Captures and broadcasts agent thinking via WebSocket
+- **Task Management**: Improved task lifecycle management
+- **Error Handling**: Enhanced error reporting and recovery
+- **Thinking History**: Stores complete thinking process for analysis
+
+**Files Modified:**
+- `backend/src/routes/tasks.js`: Updated to use enhanced browser service
+
+### 🎯 **Key Features Implemented:**
+
+#### Agent Thinking Categories:
+1. **💭 Thinking**: Agent's reasoning and decision-making process
+2. **🎬 Action**: Specific actions the agent is taking (click, type, navigate)
+3. **👁️ Observation**: What the agent observes from the browser state
+4. **🎯 Goal**: Current and updated goals the agent is working towards
+5. **🧠 Memory**: Information the agent stores and recalls
+6. **⚖️ Evaluation**: Agent's assessment of previous actions and outcomes
+
+#### Real-time Features:
+- **Live Updates**: See agent thinking as it happens
+- **Step Tracking**: Monitor progress through automation steps
+- **Connection Status**: Real-time WebSocket connection monitoring
+- **Error Handling**: Graceful error display and recovery
+- **Fullscreen Mode**: Dedicated monitor display for dual-screen setups
+
+#### Developer Experience:
+- **WebSocket Debugging**: Console logging for all WebSocket messages
+- **Connection Recovery**: Automatic reconnection with exponential backoff
+- **Task Subscription**: Subscribe/unsubscribe from specific task updates
+- **History Management**: Complete thinking history storage and retrieval
+
+### 🔍 **System Architecture:**
+
+```
+Frontend (React) ←→ WebSocket ←→ Backend (Node.js) ←→ Python Agent
+     ↓                              ↓                    ↓
+AgentThinkingMonitor    WebSocketService    EnhancedBrowserAgent
+useAgentWebSocket       websocketService    real-time callbacks
+```
+
+### 📊 **Data Flow:**
+1. **Task Execution**: User submits task via frontend
+2. **Agent Start**: Backend spawns enhanced Python agent
+3. **Thinking Capture**: Agent sends thinking updates via stdout
+4. **WebSocket Broadcast**: Backend parses and broadcasts updates
+5. **Real-time Display**: Frontend receives and displays thinking process
+6. **Completion**: Full thinking history available for analysis
+
+### 🚀 **Usage Instructions:**
+1. **Access Monitor**: Navigate to `/agent-monitor` page
+2. **Configure Task**: Enter browser automation task description
+3. **Start Monitoring**: Click "Start Task" to begin execution
+4. **Observe Thinking**: Watch real-time agent thinking process
+5. **Fullscreen Mode**: Use maximize button for dual-monitor display
+6. **Review Results**: Analyze complete thinking history after completion
+
+### 🛠 **Technical Benefits:**
+- **Debugging**: Developers can see exactly how the agent is reasoning
+- **Transparency**: Users understand what the agent is doing and why
+- **Optimization**: Identify inefficient reasoning patterns
+- **Trust**: Build user confidence through transparent AI processes
+- **Education**: Learn how AI agents approach complex tasks
+
+### 🔄 **Connection Management:**
+- **Auto-connect**: WebSocket connects automatically on page load
+- **Heartbeat**: 30-second ping/pong to maintain connection
+- **Reconnection**: Exponential backoff with max 5 attempts
+- **Graceful Degradation**: Continues to work without WebSocket if needed
+- **Task Subscription**: Subscribe only to relevant task updates
+
+### 📈 **Performance Considerations:**
+- **Efficient Updates**: Only broadcast to subscribed clients
+- **Message Filtering**: Reduce noise in console output
+- **Memory Management**: Clean up completed task data after 5 seconds
+- **Connection Pooling**: Reuse WebSocket connections for multiple tasks
+- **Error Recovery**: Automatic cleanup on connection failures
+
+This implementation provides a comprehensive solution for real-time agent monitoring while maintaining system performance and reliability. The dual-monitor support specifically addresses your requirement for dedicated thinking display.
