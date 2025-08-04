@@ -1,6 +1,9 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { Translations } from '@/types/translations'
+import enTranslations from '@/lib/translations/en'
+import esTranslations from '@/lib/translations/es'
 
 export type Language = 'es' | 'en'
 
@@ -13,17 +16,11 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
 
-// Translation type
-export type Translations = Record<string, string>
-
 // Storage key for language preference
 const LANGUAGE_STORAGE_KEY = 'cfdi-app-language'
 
 // Preload translations to avoid dynamic import delays
-const preloadedTranslations: Record<Language, Translations | null> = {
-  es: null,
-  en: null
-}
+const preloadedTranslations: Partial<Record<Language, Translations>> = {}
 
 interface LanguageProviderProps {
   children: React.ReactNode
@@ -33,9 +30,10 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
   const [language, setLanguageState] = useState<Language>('es')
   const [translations, setTranslations] = useState<Translations>({})
   const [isLoading, setIsLoading] = useState(true)
+  const [isMounted, setIsMounted] = useState(false)
 
-  // Load translations with caching to avoid repeated imports
-  const loadTranslations = async (lang: Language) => {
+  // Load translations with static imports
+  const loadTranslations = (lang: Language) => {
     try {
       // Check if already cached
       if (preloadedTranslations[lang]) {
@@ -45,91 +43,104 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
       }
 
       setIsLoading(true)
-      const translationModule = await import(`@/lib/translations/${lang}`)
-      const loadedTranslations = translationModule.default
+      
+      // Use static imports instead of dynamic
+      const translationMap = {
+        'en': enTranslations,
+        'es': esTranslations
+      }
+      
+      const loadedTranslations = translationMap[lang]
+      
+      if (!loadedTranslations || typeof loadedTranslations !== 'object') {
+        throw new Error(`Invalid translation module for ${lang}`)
+      }
       
       // Cache the translations
       preloadedTranslations[lang] = loadedTranslations
       setTranslations(loadedTranslations)
     } catch (error) {
       console.error(`Failed to load translations for ${lang}:`, error)
-      // Fallback to Spanish if English fails to load
-      if (lang === 'en') {
-        try {
-          const fallbackModule = await import(`@/lib/translations/es`)
-          const fallbackTranslations = fallbackModule.default
-          preloadedTranslations['es'] = fallbackTranslations
-          setTranslations(fallbackTranslations)
-        } catch (fallbackError) {
-          console.error('Failed to load fallback translations:', fallbackError)
-        }
-      }
+      setTranslations({})
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Initialize language with faster detection and loading
+  // Initialize language
   useEffect(() => {
-    const initializeLanguage = async () => {
+    const initializeLanguage = () => {
       let savedLanguage: Language = 'es'
       
-      // Quick language detection
       if (typeof window !== 'undefined') {
         const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) as Language
         if (saved === 'es' || saved === 'en') {
           savedLanguage = saved
         } else {
-          // Simple browser language detection
           savedLanguage = navigator.language.toLowerCase().startsWith('en') ? 'en' : 'es'
         }
       }
       
       setLanguageState(savedLanguage)
-      await loadTranslations(savedLanguage)
+      loadTranslations(savedLanguage)
       
-      // Preload the other language in background for faster switching
+      // Preload the other language
       const otherLang = savedLanguage === 'es' ? 'en' : 'es'
       setTimeout(() => {
-        loadTranslations(otherLang).catch(console.error)
+        loadTranslations(otherLang)
       }, 1000)
     }
 
     initializeLanguage()
+  }, [isMounted, language])
+
+  // Load initial Spanish translations immediately to avoid hydration issues
+  useEffect(() => {
+    loadTranslations('es')
   }, [])
 
-  // Set language with caching
-  const setLanguage = async (lang: Language) => {
-    setLanguageState(lang)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(LANGUAGE_STORAGE_KEY, lang)
+  // Set language function
+  const setLanguage = (lang: Language) => {
+    try {
+      setIsLoading(true)
+      setLanguageState(lang)
+      
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LANGUAGE_STORAGE_KEY, lang)
+      }
+      
+      loadTranslations(lang)
+    } catch (error) {
+      console.error('Failed to set language:', error)
+      setIsLoading(false)
+      throw error
     }
-    await loadTranslations(lang)
   }
 
-  // Translation function with parameter substitution
+  // Translation function
   const t = (key: string, params?: Record<string, string | number>): string => {
+    if (!translations || Object.keys(translations).length === 0) {
+      const loadingFallbacks: Record<string, string> = {
+        'language.switch': language === 'es' ? 'Cambiar idioma' : 'Switch language',
+        'common.loading': language === 'es' ? 'Cargando...' : 'Loading...',
+        'common.error': language === 'es' ? 'Error' : 'Error'
+      }
+      return loadingFallbacks[key] || key
+    }
+
     let translation = translations[key] || key
-    
-    // Replace parameters in translation
+
     if (params) {
-      Object.entries(params).forEach(([param, value]) => {
-        translation = translation.replace(new RegExp(`{{${param}}}`, 'g'), String(value))
+      Object.entries(params).forEach(([paramKey, paramValue]) => {
+        translation = translation.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(paramValue))
       })
     }
-    
+
     return translation
   }
 
-  const value: LanguageContextType = {
-    language,
-    setLanguage,
-    t,
-    isLoading
-  }
-
   return (
-    <LanguageContext.Provider value={value}>
+    <LanguageContext.Provider value={{ language, setLanguage, t, isLoading }}>
       {children}
     </LanguageContext.Provider>
   )
@@ -141,4 +152,4 @@ export function useLanguage() {
     throw new Error('useLanguage must be used within a LanguageProvider')
   }
   return context
-} 
+}

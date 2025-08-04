@@ -1,17 +1,16 @@
-import { Translations } from '@/contexts/LanguageContext'
+import { Translations } from '@/types/translations'
 
 const en: Translations = {
   // Common
   'common.loading': 'Loading...',
-  'common.error': 'Error',
-  'common.success': 'Success',
+  'common.loadMore': 'Load More',
+  'common.refresh': 'Refresh',
+  'common.total': 'total',
   'common.cancel': 'Cancel',
-  'common.confirm': 'Confirm',
+  'common.submit': 'Submit',
   'common.save': 'Save',
-  'common.delete': 'Delete',
   'common.edit': 'Edit',
-  'common.view': 'View',
-  'common.close': 'Close',
+  'common.delete': 'Delete',
   'common.back': 'Back',
   'common.next': 'Next',
   'common.previous': 'Previous',
@@ -19,6 +18,12 @@ const en: Translations = {
   'common.optional': 'Optional',
   'common.yes': 'Yes',
   'common.no': 'No',
+  'common.charactersRemaining': 'characters remaining',
+  'common.personaFisica': 'Individual',
+  'common.personaMoral': 'Company',
+  'common.mexicanPeso': 'Mexican Peso',
+  'common.usDollar': 'US Dollar',
+  'common.euro': 'Euro',
 
   // Navigation
   'nav.home': 'Home',
@@ -34,7 +39,7 @@ const en: Translations = {
   'auth.logout': 'Logout',
   'auth.email': 'Email',
   'auth.password': 'Password',
-  'auth.forgotPassword': 'Forgot your password?',
+  'auth.forgotPassword': 'Forgot password?',
   'auth.noAccount': "Don't have an account?",
   'auth.hasAccount': 'Already have an account?',
   'auth.registerHere': 'Register here',
@@ -53,8 +58,8 @@ const en: Translations = {
   'login.error.generic': 'Login error',
 
   // Registration Page
-  'register.title': 'Create Account',
-  'register.subtitle': 'Registration for CFDI 4.0 Automation System',
+  'register.title': 'Create Your Account',
+  'register.subtitle': 'Join our CFDI automation platform',
   'register.createAccountButton': 'Create Account',
 
   // Registration Form Sections
@@ -64,29 +69,30 @@ const en: Translations = {
   'register.taxInfo': 'Tax Information',
 
   // Registration Fields
-  'register.email.label': 'Email',
+  'register.email.label': 'Email Address',
   'register.email.placeholder': 'your@email.com',
   'register.password.label': 'Password',
-  'register.password.placeholder': 'Minimum 8 characters',
+  'register.password.placeholder': 'Enter a secure password',
   'register.rfc.label': 'RFC',
-  'register.rfc.placeholder': 'XAXX010101000',
-  'register.companyName.label': 'Company Name',
-  'register.companyName.placeholder': 'Company name',
-  'register.country.label': 'Country',
+  'register.rfc.placeholder': 'ABCD123456E12',
+  'register.rfc.help': 'Enter your RFC without spaces or special characters',
+  'register.companyName.label': 'Company Name / Full Name',
+  'register.companyName.placeholder': 'Company Name S.A. de C.V.',
   'register.street.label': 'Street',
-  'register.street.placeholder': 'Street name',
+  'register.street.placeholder': 'Av. Ejemplo 123',
   'register.exteriorNumber.label': 'Exterior Number',
   'register.exteriorNumber.placeholder': '123',
-  'register.interiorNumber.label': 'Interior Number',
-  'register.interiorNumber.placeholder': 'A, B, 1, 2...',
+  'register.interiorNumber.label': 'Interior Number (Optional)',
+  'register.interiorNumber.placeholder': 'A',
   'register.colony.label': 'Colony',
-  'register.colony.placeholder': 'Colony name',
-  'register.municipality.label': 'Municipality',
-  'register.municipality.placeholder': 'Municipality/Borough',
-  'register.zipCode.label': 'Zip Code',
-  'register.zipCode.placeholder': '12345',
+  'register.colony.placeholder': 'Centro',
+  'register.municipality.label': 'Municipality / Delegation',
+  'register.municipality.placeholder': 'Benito Juárez',
+  'register.zipCode.label': 'Postal Code',
+  'register.zipCode.placeholder': '01234',
   'register.state.label': 'State',
-  'register.state.placeholder': 'Select your state',
+  'register.state.placeholder': 'CDMX',
+  'register.country.label': 'Country',
   'register.taxRegime.label': 'Tax Regime',
   'register.taxRegime.placeholder': 'Select your tax regime',
   'register.cfdiUse.label': 'CFDI Use',
@@ -122,10 +128,20 @@ const en: Translations = {
   'validation.cfdiUse.required': 'CFDI use is required',
 
   // Home Page
-  'home.title': 'CFDI 4.0 Automation System',
-  'home.subtitle': 'Automate CFDI 4.0 form filling on vendor portals with our AI-powered browser agent',
-  'home.getStarted': 'Get Started Free',
-  'home.login': 'Login',
+  'home.title': 'CFDI Automation Platform',
+  'home.subtitle': 'Automate your CFDI invoice requests intelligently',
+  'home.description': 'Transform your billing processes with intelligent automation. Request CFDI invoices on vendor portals quickly, securely, and error-free.',
+  'home.loginButton': 'Login',
+  'home.registerButton': 'Get Started',
+  'home.featuresTitle': 'Key Features',
+  'home.feature1Title': 'Intelligent Automation',
+  'home.feature1Description': 'AI-powered system that learns and adapts to different vendor portals',
+  'home.feature2Title': 'Secure & Reliable',
+  'home.feature2Description': 'Enterprise-grade security with complete audit trail',
+  'home.feature3Title': 'Easy Integration',
+  'home.feature3Description': 'Simple setup with your existing business processes',
+  'home.getStarted': 'Start Automating Today',
+  'home.getStartedDescription': 'Join hundreds of businesses already automating their CFDI processes',
   'home.loadingApp': 'Loading application...',
   'home.redirectingToDashboard': 'Redirecting to dashboard...',
 
@@ -140,10 +156,29 @@ const en: Translations = {
 
   // Dashboard
   'dashboard.title': 'Dashboard',
-  'dashboard.welcome': 'Welcome',
+  'dashboard.welcome': 'Welcome back',
+  'dashboard.subtitle': 'Ready to automate your browser tasks with AI? Let\'s get started!',
   'dashboard.recentTasks': 'Recent Tasks',
   'dashboard.statistics': 'Statistics',
   'dashboard.noTasks': 'No tasks available',
+  'dashboard.quickActions': 'Quick Actions',
+  'dashboard.viewHistory': 'View History',
+  'dashboard.systemStatus': 'System Status',
+  'dashboard.systemOperational': 'System Operational',
+  'dashboard.allServicesWorking': 'All services working correctly',
+  'dashboard.taskListDescription': 'Manage and monitor your CFDI automation tasks',
+  'dashboard.statsDescription': 'Overview of your task automation performance',
+
+  // Dashboard Stats
+  'dashboard.stats.total': 'Total Tasks',
+  'dashboard.stats.running': 'Running',
+  'dashboard.stats.completed': 'Completed',
+  'dashboard.stats.failed': 'Failed',
+  'dashboard.stats.pending': 'Pending',
+  'dashboard.stats.paused': 'Paused',
+  'dashboard.stats.successRate': 'Success Rate',
+  'dashboard.stats.avgTime': 'Avg. Time',
+  'dashboard.stats.breakdown': 'Task Breakdown',
 
   // Language Switcher
   'language.switch': 'Switch language',
@@ -170,13 +205,108 @@ const en: Translations = {
   // Tasks
   'tasks.title': 'CFDI Tasks',
   'tasks.create': 'Create Task',
+  'tasks.searchPlaceholder': 'Search tasks...',
+  'tasks.noPrompt': 'No description',
+  'tasks.completedAt': 'Completed',
+  'tasks.status.all': 'All Status',
   'tasks.status.pending': 'Pending',
   'tasks.status.running': 'Running',
   'tasks.status.completed': 'Completed',
   'tasks.status.failed': 'Failed',
   'tasks.status.cancelled': 'Cancelled',
+  'tasks.status.paused': 'Paused',
   'tasks.noTasks': 'No tasks available',
   'tasks.createFirst': 'Create your first CFDI task',
+  'tasks.automationDescription': 'Automate CFDI invoice requests on vendor portals intelligently',
+  'tasks.createNewTask': 'New CFDI Automation Task',
+  'tasks.formDescription': 'Complete the data to automate the billing request on the vendor portal',
+  'tasks.vendorInfo': 'Vendor Information',
+  'tasks.vendorUrl': 'Billing Portal URL',
+  'tasks.vendorUrlPlaceholder': 'https://billing.vendor.com',
+  'tasks.invoiceDetails': 'Invoice Details',
+  'tasks.ticketId': 'Ticket/Folio ID',
+  'tasks.ticketIdPlaceholder': 'TKT-123456',
+  'tasks.folio': 'Folio',
+  'tasks.folioPlaceholder': 'F-001234',
+  'tasks.transactionDate': 'Transaction Date',
+  'tasks.currency': 'Currency',
+  'tasks.subtotal': 'Subtotal',
+  'tasks.subtotalPlaceholder': '1000.00',
+  'tasks.iva': 'VAT',
+  'tasks.ivaPlaceholder': '160.00',
+  'tasks.total': 'Total',
+  'tasks.totalPlaceholder': '1160.00',
+
+  // Simple Task Submission
+  'tasks.simple.title': 'Quick Task Submission',
+  'tasks.simple.description': 'Describe what you want the browser agent to do in plain language',
+  'tasks.simple.taskLabel': 'What would you like the agent to do?',
+  'tasks.simple.placeholder': 'Example: Search for OpenAI latest updates on Google and summarize the findings',
+  'tasks.simple.hint': 'Be specific about what you want to accomplish',
+  'tasks.simple.quickExamples': 'Quick Examples',
+  'tasks.simple.aiModel': 'AI Model',
+  'tasks.simple.submit': 'Start Task',
+  'tasks.simple.creating': 'Creating Task...',
+  'tasks.simple.userNote': 'Task will be executed as',
+  'tasks.quick.searchGoogle': 'Search for recent news about artificial intelligence on Google',
+  'tasks.quick.checkWeather': 'Check the weather forecast for Mexico City',
+  'tasks.quick.findProduct': 'Find laptop prices on MercadoLibre',
+  'tasks.quick.socialMedia': 'Check latest posts on Twitter about technology',
+  'tasks.validation.taskRequired': 'Task description is required',
+  'tasks.validation.taskTooLong': 'Task description is too long',
+  'tasks.success.created': 'Task created successfully!',
+  'tasks.error.creation': 'Failed to create task: {{error}}',
+
+  // Monitoring and Analytics
+  'monitor.tabs.browser': 'Browser',
+  'monitor.tabs.status': 'Status',
+  'monitor.tabs.analytics': 'Analytics',
+  'monitor.panes.status': 'Task Status',
+  'monitor.panes.analytics': 'Analytics',
+  'monitor.sidebar.activityLog': 'Activity Log',
+  'monitor.sidebar.realtimeUpdates': 'Real-time task updates',
+  'monitor.sidebar.noActivity': 'No activity yet',
+  'monitor.logs.searchPlaceholder': 'Search logs...',
+  'monitor.logs.noResults': 'No logs match your filters',
+  
+  // Task Monitor
+  'tasks.monitor.title': 'Task Monitor',
+  'tasks.monitor.loading': 'Loading task monitoring interface...',
+  'tasks.monitor.error': 'Failed to load task monitoring interface',
+  'tasks.monitor.legacyView': 'Legacy View',
+  'tasks.monitor.useLegacy': 'Use Legacy Monitor',
+  'tasks.monitor.backToDashboard': 'Back to Dashboard',
+  
+  // Monitor Status
+  'monitor.status.running': 'Running',
+  'monitor.status.paused': 'Paused',
+  'monitor.status.completed': 'Completed',
+  'monitor.status.failed': 'Failed',
+  'monitor.status.connecting': 'Connecting',
+  'monitor.status.pending': 'Pending',
+  
+  // Monitor Live View
+  'monitor.liveView.title': 'Live Browser View',
+  'monitor.liveView.loading': 'Loading browser view...',
+  'monitor.liveView.sessionId': 'Session',
+  'monitor.liveView.taskId': 'Task',
+  'monitor.liveView.takeControl': 'Take Control',
+  'monitor.liveView.resumeAgent': 'Resume Agent',
+  'monitor.liveView.openExternal': 'Open in New Tab',
+  
+  // Monitor Sidebar
+  'monitor.sidebar.title': 'Task Monitor',
+  'monitor.sidebar.taskId': 'Task ID',
+  'monitor.sidebar.connection': 'Connection',
+  'monitor.sidebar.controls': 'Controls',
+  
+  // Common Status
+  'common.disconnected': 'Disconnected',
+  'common.connected': 'Connected',
+  'common.restart': 'Restart',
+  'common.retry': 'Retry',
+  'analytics.title': 'Task Analytics',
+  'analytics.subtitle': 'Performance insights and metrics for task',
 
   // Profile
   'profile.title': 'My Profile',
@@ -185,6 +315,8 @@ const en: Translations = {
   'profile.companyInfo': 'Company Information',
   'profile.addressInfo': 'Tax Address',
   'profile.taxInfo': 'Tax Information',
+  'profile.noProfile': 'No profile information found',
+  'profile.basicFunctions': 'You can use the basic system functions without completing your profile',
 
   // Settings
   'settings.title': 'Settings',
@@ -199,4 +331,4 @@ const en: Translations = {
   'meta.keywords': 'CFDI, 4.0, automation, invoicing, Mexico, RFC, SAT'
 }
 
-export default en 
+export default en; 

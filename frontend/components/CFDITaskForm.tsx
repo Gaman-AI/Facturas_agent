@@ -13,6 +13,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, FileText, AlertCircle, CheckCircle, Play } from 'lucide-react'
 import { useAuth, useUserProfile } from '@/hooks/useAuth'
+import { useSessionManager } from '@/hooks/useSessionManager'
+import { useLanguage } from '@/contexts/LanguageContext'
 import ApiService, { type BrowserUseTaskRequest, type BrowserUseTaskResponse } from '@/services/api'
 
 // Form validation schema
@@ -56,6 +58,8 @@ export function CFDITaskForm() {
   
   const { user } = useAuth()
   const { profile } = useUserProfile()
+  const { ensureValidSession, isRefreshing: sessionRefreshing } = useSessionManager()
+  const { t } = useLanguage()
 
   const {
     register,
@@ -178,21 +182,25 @@ export function CFDITaskForm() {
     setConnectionError(null)
 
     try {
+      // Ensure we have a valid session before making the API call
+      console.log('🔐 Ensuring valid session before API call...')
+      await ensureValidSession()
+      console.log('✅ Session validated, proceeding with task creation...')
       // Prepare browser-use task data using user profile and form data
       const taskData: BrowserUseTaskRequest = {
         vendor_url: formData.vendor_url,
         customer_details: {
           rfc: profile.rfc,
-          email: user.email || profile.email,
-          company_name: profile.company_name || profile.razon_social,
+          email: user.email,
+          company_name: profile.company_name,
           address: {
-            street: profile.street || profile.calle,
-            exterior_number: profile.exterior_number || profile.numero_ext,
-            interior_number: profile.interior_number || profile.numero_int || undefined,
-            colony: profile.colony || profile.colonia,
-            municipality: profile.municipality || profile.delegacion_municipio,
-            state: profile.state || profile.estado,
-            zip_code: profile.zip_code || profile.codigo_postal,
+            street: profile.street,
+            exterior_number: profile.exterior_number,
+            interior_number: profile.interior_number || undefined,
+            colony: profile.colony,
+            municipality: profile.municipality,
+            state: profile.state,
+            zip_code: profile.zip_code,
             country: 'Mexico'
           }
         },
@@ -302,24 +310,23 @@ export function CFDITaskForm() {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <FileText className="w-5 h-5" />
-            <span>Nueva Tarea de Automatización CFDI</span>
+            <span>{t('tasks.createNewTask')}</span>
           </CardTitle>
           <CardDescription>
-            Complete los datos para automatizar la solicitud de facturación en el portal del proveedor
+            {t('tasks.formDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Vendor Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Información del Proveedor</h3>
+              <h3 className="text-lg font-medium">{t('tasks.vendorInfo')}</h3>
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <Label htmlFor="vendor_url">URL del Portal de Facturación *</Label>
+                  <Label htmlFor="vendor_url">{t('tasks.vendorUrl')} *</Label>
                   <Input
                     {...register('vendor_url')}
-                    placeholder="https://facturacion.proveedor.com"
-                    error={errors.vendor_url?.message}
+                    placeholder={t('tasks.vendorUrlPlaceholder')}
                   />
                 </div>
               </div>
@@ -327,32 +334,36 @@ export function CFDITaskForm() {
 
             {/* Invoice Details */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Detalles de la Factura</h3>
+              <h3 className="text-lg font-medium">{t('tasks.invoiceDetails')}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="ticket_id">ID del Ticket/Folio *</Label>
+                  <Label htmlFor="ticket_id">{t('tasks.ticketId')} *</Label>
                   <Input
                     {...register('ticket_id')}
-                    placeholder="TKT-123456"
-                    error={errors.ticket_id?.message}
+                    placeholder={t('tasks.ticketIdPlaceholder')}
+                    onError={(e: React.SyntheticEvent<HTMLInputElement>) => {
+                      if (errors.ticket_id?.message) {
+                        (e.target as HTMLInputElement).setCustomValidity(errors.ticket_id.message)
+                      }
+                    }}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="folio">Folio (Opcional)</Label>
+                  <Label htmlFor="folio">{t('tasks.folio')} ({t('common.optional')})</Label>
                   <Input
                     {...register('folio')}
-                    placeholder="F-001234"
+                    placeholder={t('tasks.folioPlaceholder')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="transaction_date">Fecha de Transacción (Opcional)</Label>
+                  <Label htmlFor="transaction_date">{t('tasks.transactionDate')} ({t('common.optional')})</Label>
                   <Input
                     type="date"
                     {...register('transaction_date')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="currency">Moneda</Label>
+                  <Label htmlFor="currency">{t('tasks.currency')}</Label>
                   <Select value={watch('currency')} onValueChange={(value) => setValue('currency', value)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -365,36 +376,56 @@ export function CFDITaskForm() {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="subtotal">Subtotal (Opcional)</Label>
+                  <Label htmlFor="subtotal">{t('tasks.subtotal')} ({t('common.optional')})</Label>
                   <Input
                     type="number"
                     step="0.01"
                     {...register('subtotal', { valueAsNumber: true })}
-                    placeholder="1000.00"
+                    placeholder={t('tasks.subtotalPlaceholder')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="iva">IVA (Opcional)</Label>
+                  <Label htmlFor="iva">{t('tasks.iva')} ({t('common.optional')})</Label>
                   <Input
                     type="number"
                     step="0.01"
                     {...register('iva', { valueAsNumber: true })}
-                    placeholder="160.00"
+                    placeholder={t('tasks.ivaPlaceholder')}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="total">Total *</Label>
+                  <Label htmlFor="total">{t('tasks.total')} *</Label>
                   <Input
                     type="number"
                     step="0.01"
                     {...register('total', { valueAsNumber: true })}
-                    placeholder="1160.00"
-                    error={errors.total?.message}
+                    placeholder={t('tasks.totalPlaceholder')}
+                    onError={(e: React.SyntheticEvent<HTMLInputElement>) => {
+                      if (errors.total?.message) {
+                        (e.target as HTMLInputElement).setCustomValidity(errors.total.message)
+                      }
+                    }}
                   />
                 </div>
               </div>
             </div>
-
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">{t('tasks.invoiceDetails')}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="ticket_id">{t('tasks.ticketId')} *</Label>
+                  <Input
+                    {...register('ticket_id')}
+                    placeholder={t('tasks.ticketIdPlaceholder')}
+                    onError={(e: React.SyntheticEvent<HTMLInputElement>) => {
+                      if (errors.ticket_id?.message) {
+                        (e.target as HTMLInputElement).setCustomValidity(errors.ticket_id.message)
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </div>  
             {/* Automation Configuration */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Configuración de Automatización</h3>

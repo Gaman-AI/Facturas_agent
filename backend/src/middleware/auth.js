@@ -30,20 +30,73 @@ export const authenticate = async (req, res, next) => {
         success: false,
         error: {
           code: 'INVALID_TOKEN_FORMAT',
-          message: 'Invalid authorization header format'
+          message: 'Invalid authorization header format. Expected: Bearer <token>'
         }
       })
     }
 
-    // Verify Supabase JWT token
-    const { user, error } = await supabaseService.verifyToken(token)
+    // Generate request correlation ID for debugging
+    const requestId = req.headers['x-request-id'] || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    req.requestId = requestId
+
+    // Verify Supabase JWT token with enhanced error handling
+    const verificationResult = await supabaseService.verifyToken(token)
+    const { user, error, errorCode, details } = verificationResult
     
     if (error || !user) {
-      return res.status(401).json({
+      // Enhanced error logging with request correlation
+      console.error(`❌ Authentication failed [${requestId}]:`, {
+        errorCode: errorCode || 'UNKNOWN_ERROR',
+        error: error || 'No user found',
+        details: details || 'No additional details',
+        url: req.originalUrl,
+        method: req.method,
+        userAgent: req.headers['user-agent'],
+        ip: req.ip || req.connection.remoteAddress
+      })
+
+      // Map internal error codes to user-friendly messages
+      let userMessage = 'Authentication failed'
+      let httpStatus = 401
+      
+      switch (errorCode) {
+        case 'TOKEN_EXPIRED':
+          userMessage = 'Your session has expired. Please refresh the page or log in again.'
+          break
+        case 'INVALID_TOKEN':
+        case 'INVALID_SIGNATURE':
+          userMessage = 'Invalid authentication token. Please log in again.'
+          break
+        case 'EMAIL_NOT_CONFIRMED':
+          userMessage = 'Please confirm your email address before accessing this resource.'
+          httpStatus = 403
+          break
+        case 'NETWORK_ERROR':
+        case 'AUTH_SERVICE_UNREACHABLE':
+          userMessage = 'Authentication service temporarily unavailable. Please try again.'
+          httpStatus = 503
+          break
+        case 'VERIFICATION_TIMEOUT':
+          userMessage = 'Authentication verification timed out. Please try again.'
+          httpStatus = 408
+          break
+        case 'RATE_LIMIT_EXCEEDED':
+          userMessage = 'Too many authentication attempts. Please wait a moment and try again.'
+          httpStatus = 429
+          break
+        default:
+          userMessage = error || 'Authentication failed'
+      }
+      
+      return res.status(httpStatus).json({
         success: false,
         error: {
-          code: 'INVALID_TOKEN',
-          message: error || 'Invalid or expired token'
+          code: errorCode || 'AUTHENTICATION_FAILED',
+          message: userMessage
+        },
+        meta: {
+          requestId,
+          timestamp: new Date().toISOString()
         }
       })
     }
@@ -58,6 +111,14 @@ export const authenticate = async (req, res, next) => {
       exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7 days from now
     }
 
+    // Log successful authentication
+    console.log(`✅ Authentication successful [${requestId}]:`, {
+      userId: user.id,
+      email: user.email,
+      url: req.originalUrl,
+      method: req.method
+    })
+
     next()
   } catch (error) {
     console.error('Authentication error:', error)
@@ -65,7 +126,7 @@ export const authenticate = async (req, res, next) => {
       success: false,
       error: {
         code: 'AUTH_ERROR',
-        message: 'Authentication failed'
+        message: 'Internal authentication error'
       }
     })
   }

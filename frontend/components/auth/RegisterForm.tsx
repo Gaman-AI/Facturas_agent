@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,6 +22,7 @@ export function RegisterForm() {
   const [mounted, setMounted] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const mountedRef = useRef(true) // Add ref to track if component is mounted
   
   const router = useRouter()
   const { register: registerUser } = useAuth()
@@ -66,6 +67,12 @@ export function RegisterForm() {
   // Prevent hydration mismatch
   useEffect(() => {
     setMounted(true)
+    mountedRef.current = true
+    
+    // Cleanup function to prevent state updates after unmount
+    return () => {
+      mountedRef.current = false
+    }
   }, [])
 
   const {
@@ -95,18 +102,35 @@ export function RegisterForm() {
   })
 
   const onSubmit = async (data: RegisterFormData) => {
+    // Prevent multiple submissions
+    if (isLoading) return
+    
     try {
+      // Check if component is still mounted before setting state
+      if (!mountedRef.current) return
+      
       setIsLoading(true)
       setError(null)
       
       // Pass all the collected form data to registration
       await registerUser(data)
+      
+      // Check if component is still mounted before navigation
+      if (!mountedRef.current) return
+      
+      // Navigate to dashboard
       router.push('/dashboard')
     } catch (err) {
-      console.error('Registration error:', err)
-      setError(err instanceof Error ? err.message : t('error.registrationFailed'))
+      // Only update state if component is still mounted
+      if (mountedRef.current) {
+        console.error('Registration error:', err)
+        setError(err instanceof Error ? err.message : t('error.registrationFailed'))
+      }
     } finally {
-      setIsLoading(false)
+      // Only update state if component is still mounted
+      if (mountedRef.current) {
+        setIsLoading(false)
+      }
     }
   }
 

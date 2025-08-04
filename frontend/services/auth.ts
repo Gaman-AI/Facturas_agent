@@ -11,12 +11,20 @@ import {
 class AuthService {
   private supabase = createSupabaseClient();
 
+  private checkSupabase() {
+    if (!this.supabase) {
+      throw new Error('Supabase client not initialized. Please check your environment variables.');
+    }
+  }
+
   /**
    * Login user with email and password
    */
   async login(credentials: LoginCredentials): Promise<{ user: User; profile: UserProfile }> {
+    this.checkSupabase();
+    
     try {
-      const { data, error } = await this.supabase.auth.signInWithPassword({
+      const { data, error } = await this.supabase!.auth.signInWithPassword({
         email: credentials.email,
         password: credentials.password,
       });
@@ -43,9 +51,11 @@ class AuthService {
    * Register new user with your required CFDI profile data
    */
   async register(registerData: RegisterData): Promise<{ user: User; profile: UserProfile }> {
+    this.checkSupabase();
+    
     try {
       // Step 1: Create user account
-      const { data: authData, error: authError } = await this.supabase.auth.signUp({
+      const { data: authData, error: authError } = await this.supabase!.auth.signUp({
         email: registerData.email,
         password: registerData.password,
       });
@@ -60,7 +70,7 @@ class AuthService {
 
       // Step 2: Create user profile using the safe database function
       // This handles validation, RFC uniqueness, and atomic operations
-      const { data: profileResult, error: profileError } = await this.supabase
+      const { data: profileResult, error: profileError } = await this.supabase!
         .rpc('create_user_profile', {
           p_user_id: authData.user.id,
           p_rfc: registerData.rfc.toUpperCase(),
@@ -100,8 +110,10 @@ class AuthService {
    * Logout current user
    */
   async logout(): Promise<void> {
+    this.checkSupabase();
+    
     try {
-      const { error } = await this.supabase.auth.signOut();
+      const { error } = await this.supabase!.auth.signOut();
       if (error) {
         throw this.formatAuthError(error);
       }
@@ -115,8 +127,10 @@ class AuthService {
    * Get current user session
    */
   async getCurrentSession() {
+    this.checkSupabase();
+    
     try {
-      const { data: { session }, error } = await this.supabase.auth.getSession();
+      const { data: { session }, error } = await this.supabase!.auth.getSession();
       
       if (error) {
         throw this.formatAuthError(error);
@@ -139,8 +153,10 @@ class AuthService {
    * Refresh current session
    */
   async refreshSession(): Promise<{ user: User; profile: UserProfile } | null> {
+    this.checkSupabase();
+    
     try {
-      const { data, error } = await this.supabase.auth.refreshSession();
+      const { data, error } = await this.supabase!.auth.refreshSession();
       
       if (error) {
         throw this.formatAuthError(error);
@@ -163,8 +179,10 @@ class AuthService {
    * Get user profile by user ID
    */
   async getUserProfile(userId: string): Promise<UserProfile> {
+    this.checkSupabase();
+    
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await this.supabase!
         .from(TABLES.USER_PROFILES)
         .select('*')
         .eq('user_id', userId)
@@ -189,8 +207,10 @@ class AuthService {
    * Update user profile
    */
   async updateProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
+    this.checkSupabase();
+    
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await this.supabase!
         .from(TABLES.USER_PROFILES)
         .update({
           ...updates,
@@ -215,8 +235,10 @@ class AuthService {
    * Check if RFC is already registered
    */
   async isRFCRegistered(rfc: string): Promise<boolean> {
+    this.checkSupabase();
+    
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await this.supabase!
         .from(TABLES.USER_PROFILES)
         .select('id')
         .eq('rfc', rfc.toUpperCase())
@@ -237,10 +259,12 @@ class AuthService {
    * Check if email is already registered in auth.users
    */
   async isEmailRegistered(email: string): Promise<boolean> {
+    this.checkSupabase();
+    
     try {
       // Check if email exists in auth system by attempting a password reset
       // This is a safe way to check email existence without exposing user data
-      const { error } = await this.supabase.auth.resetPasswordForEmail(
+      const { error } = await this.supabase!.auth.resetPasswordForEmail(
         email.toLowerCase(),
         { redirectTo: 'http://localhost:3000/auth/callback' }
       );
@@ -261,7 +285,9 @@ class AuthService {
    * Subscribe to authentication state changes
    */
   onAuthStateChange(callback: (user: User | null) => void) {
-    return this.supabase.auth.onAuthStateChange((event, session) => {
+    this.checkSupabase();
+    
+    return this.supabase!.auth.onAuthStateChange((event, session) => {
       callback(session?.user || null);
     });
   }
