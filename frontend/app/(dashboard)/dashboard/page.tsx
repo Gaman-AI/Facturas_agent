@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import { LogOut, User, Building2, FileText, BarChart3, Zap, Plus, Monitor, Globe, Activity, TrendingUp, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +10,10 @@ import { useAuth, useUserProfile } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
 import { SimpleTaskSubmission } from '@/components/SimpleTaskSubmission';
+import { TaskStats } from '@/components/TaskStats';
+import { TaskList } from '@/components/TaskList';
+import { TaskProgressList } from '@/components/TaskProgressIndicator';
+import { ApiService } from '@/services/api';
 
 export default function DashboardPage() {
   return (
@@ -423,7 +428,7 @@ function DashboardContent() {
             />
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 } 
