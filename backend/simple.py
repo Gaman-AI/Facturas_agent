@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from browser_use import Agent
 from browser_use.llm import ChatOpenAI
+from browser_use.browser.profile import BrowserProfile
 
 async def main():
     agent = Agent(
@@ -28,7 +29,8 @@ Dont need to use all the details, just the ones that are necessary.
 
 
 """,
-        llm=ChatOpenAI(model="o4-mini-2025-04-16", temperature=1.0),
+        llm=ChatOpenAI(model="gpt-4o-mini", temperature=1.0),
+        browser_profile=BrowserProfile(headless=False)  # Show browser window
     )
     await agent.run()
 

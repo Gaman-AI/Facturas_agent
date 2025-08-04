@@ -1,6 +1,9 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { Translations } from '@/types/translations'
+import enTranslations from '@/lib/translations/en'
+import esTranslations from '@/lib/translations/es'
 
 export type Language = 'es' | 'en'
 
@@ -13,17 +16,11 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined)
 
-// Translation type
-export type Translations = Record<string, string>
-
 // Storage key for language preference
 const LANGUAGE_STORAGE_KEY = 'cfdi-app-language'
 
 // Preload translations to avoid dynamic import delays
-const preloadedTranslations: Record<Language, Translations | null> = {
-  es: null,
-  en: null
-}
+const preloadedTranslations: Partial<Record<Language, Translations>> = {}
 
 interface LanguageProviderProps {
   children: React.ReactNode
@@ -35,8 +32,8 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isMounted, setIsMounted] = useState(false)
 
-  // Load translations with caching to avoid repeated imports
-  const loadTranslations = async (lang: Language) => {
+  // Load translations with static imports
+  const loadTranslations = (lang: Language) => {
     try {
       // Check if already cached
       if (preloadedTranslations[lang]) {
@@ -46,10 +43,15 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
       }
 
       setIsLoading(true)
-      const translationModule = await import(`@/lib/translations/${lang}`)
-      const loadedTranslations = translationModule.default
       
-      // Validate that translations were loaded
+      // Use static imports instead of dynamic
+      const translationMap = {
+        'en': enTranslations,
+        'es': esTranslations
+      }
+      
+      const loadedTranslations = translationMap[lang]
+      
       if (!loadedTranslations || typeof loadedTranslations !== 'object') {
         throw new Error(`Invalid translation module for ${lang}`)
       }
@@ -59,61 +61,33 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
       setTranslations(loadedTranslations)
     } catch (error) {
       console.error(`Failed to load translations for ${lang}:`, error)
-      // Fallback to Spanish if English fails to load
-      if (lang === 'en') {
-        try {
-          const fallbackModule = await import(`@/lib/translations/es`)
-          const fallbackTranslations = fallbackModule.default
-          if (fallbackTranslations && typeof fallbackTranslations === 'object') {
-            preloadedTranslations['es'] = fallbackTranslations
-            setTranslations(fallbackTranslations)
-          }
-        } catch (fallbackError) {
-          console.error('Failed to load fallback translations:', fallbackError)
-          // Set empty translations as last resort
-          setTranslations({})
-        }
-      } else {
-        // For Spanish, set empty translations if failed
-        setTranslations({})
-      }
+      setTranslations({})
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Initialize component mount state
+  // Initialize language
   useEffect(() => {
-    setIsMounted(true)
-  }, [])
-
-  // Initialize language ONLY after component mounts to avoid hydration mismatch
-  useEffect(() => {
-    if (!isMounted) return
-
-    const initializeLanguage = async () => {
+    const initializeLanguage = () => {
       let savedLanguage: Language = 'es'
       
-      // Only detect language after mounting (client-side only)
-      const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) as Language
-      if (saved === 'es' || saved === 'en') {
-        savedLanguage = saved
-      } else {
-        // Simple browser language detection
-        savedLanguage = navigator.language.toLowerCase().startsWith('en') ? 'en' : 'es'
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) as Language
+        if (saved === 'es' || saved === 'en') {
+          savedLanguage = saved
+        } else {
+          savedLanguage = navigator.language.toLowerCase().startsWith('en') ? 'en' : 'es'
+        }
       }
       
-      // Only update if different from current language
-      if (savedLanguage !== language) {
-        setLanguageState(savedLanguage)
-      }
+      setLanguageState(savedLanguage)
+      loadTranslations(savedLanguage)
       
-      await loadTranslations(savedLanguage)
-      
-      // Preload the other language in background for faster switching
+      // Preload the other language
       const otherLang = savedLanguage === 'es' ? 'en' : 'es'
       setTimeout(() => {
-        loadTranslations(otherLang).catch(console.error)
+        loadTranslations(otherLang)
       }, 1000)
     }
 
@@ -125,10 +99,9 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     loadTranslations('es')
   }, [])
 
-  // Set language with caching and proper state synchronization
-  const setLanguage = async (lang: Language) => {
+  // Set language function
+  const setLanguage = (lang: Language) => {
     try {
-      // Set loading state before changing language
       setIsLoading(true)
       setLanguageState(lang)
       
@@ -136,67 +109,38 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
         localStorage.setItem(LANGUAGE_STORAGE_KEY, lang)
       }
       
-      await loadTranslations(lang)
+      loadTranslations(lang)
     } catch (error) {
       console.error('Failed to set language:', error)
-      // Reset to previous language on error
       setIsLoading(false)
       throw error
     }
   }
 
-  // Translation function with parameter substitution and better fallbacks
+  // Translation function
   const t = (key: string, params?: Record<string, string | number>): string => {
-    // If translations are empty (still loading), return a loading placeholder or the key
     if (!translations || Object.keys(translations).length === 0) {
-      // During loading, return a more user-friendly placeholder for common keys
       const loadingFallbacks: Record<string, string> = {
         'language.switch': language === 'es' ? 'Cambiar idioma' : 'Switch language',
-        'language.current': language === 'es' ? 'Idioma actual: {{language}}' : 'Current language: {{language}}',
         'common.loading': language === 'es' ? 'Cargando...' : 'Loading...',
-        'common.success': language === 'es' ? 'Éxito' : 'Success',
-        'auth.login': language === 'es' ? 'Iniciar Sesión' : 'Login',
-        'auth.register': language === 'es' ? 'Registrarse' : 'Register',
-        'login.title': language === 'es' ? 'Iniciar Sesión' : 'Login',
-        'register.title': language === 'es' ? 'Crear Cuenta' : 'Create Account',
-        'home.loadingApp': language === 'es' ? 'Cargando aplicación...' : 'Loading application...',
-        'features.secure': language === 'es' ? 'Seguro y Confiable' : 'Secure and Reliable',
-        'features.intelligent': language === 'es' ? 'Automatización Inteligente' : 'Intelligent Automation'
+        'common.error': language === 'es' ? 'Error' : 'Error'
       }
-      
-      let translation = loadingFallbacks[key] || key
-      
-      // Replace parameters in fallback translation
-      if (params) {
-        Object.entries(params).forEach(([param, value]) => {
-          translation = translation.replace(new RegExp(`{{${param}}}`, 'g'), String(value))
-        })
-      }
-      
-      return translation
+      return loadingFallbacks[key] || key
     }
-    
+
     let translation = translations[key] || key
-    
-    // Replace parameters in translation
+
     if (params) {
-      Object.entries(params).forEach(([param, value]) => {
-        translation = translation.replace(new RegExp(`{{${param}}}`, 'g'), String(value))
+      Object.entries(params).forEach(([paramKey, paramValue]) => {
+        translation = translation.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(paramValue))
       })
     }
-    
+
     return translation
   }
 
-  const value: LanguageContextType = {
-    language,
-    setLanguage,
-    t,
-    isLoading
-  }
-
   return (
-    <LanguageContext.Provider value={value}>
+    <LanguageContext.Provider value={{ language, setLanguage, t, isLoading }}>
       {children}
     </LanguageContext.Provider>
   )
@@ -208,4 +152,4 @@ export function useLanguage() {
     throw new Error('useLanguage must be used within a LanguageProvider')
   }
   return context
-} 
+}

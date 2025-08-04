@@ -1,4 +1,4 @@
-import { Translations } from '@/contexts/LanguageContext'
+import { Translations } from '@/types/translations'
 
 const en: Translations = {
   // Common
@@ -14,9 +14,11 @@ const en: Translations = {
   'common.back': 'Back',
   'common.next': 'Next',
   'common.previous': 'Previous',
-  'common.search': 'Search',
-  'common.filter': 'Filter',
-  'common.close': 'Close',
+  'common.required': 'Required',
+  'common.optional': 'Optional',
+  'common.yes': 'Yes',
+  'common.no': 'No',
+  'common.charactersRemaining': 'characters remaining',
   'common.personaFisica': 'Individual',
   'common.personaMoral': 'Company',
   'common.mexicanPeso': 'Mexican Peso',
@@ -153,9 +155,9 @@ const en: Translations = {
   'footer.copyright': '© {{year}}',
 
   // Dashboard
-  'dashboard.title': 'CFDI Automation Dashboard',
-  'dashboard.welcome': 'Welcome',
-  'dashboard.subtitle': 'CFDI Automation Control Panel',
+  'dashboard.title': 'Dashboard',
+  'dashboard.welcome': 'Welcome back',
+  'dashboard.subtitle': 'Ready to automate your browser tasks with AI? Let\'s get started!',
   'dashboard.recentTasks': 'Recent Tasks',
   'dashboard.statistics': 'Statistics',
   'dashboard.noTasks': 'No tasks available',
@@ -224,37 +226,109 @@ const en: Translations = {
   'tasks.invoiceDetails': 'Invoice Details',
   'tasks.ticketId': 'Ticket/Folio ID',
   'tasks.ticketIdPlaceholder': 'TKT-123456',
-  'tasks.customerDetails': 'Customer Details',
-  'tasks.invoiceInfo': 'Invoice Information',
-  'tasks.automationSettings': 'Automation Settings',
-  'tasks.llmProvider': 'AI Provider',
-  'tasks.model': 'AI Model',
-  'tasks.maxRetries': 'Max Retries',
-  'tasks.timeoutMinutes': 'Timeout (minutes)',
-  'tasks.createTask': 'Create Automation Task',
-  'tasks.executing': 'Executing...',
-  'tasks.taskCreated': 'Task created successfully',
-  'tasks.taskFailed': 'Task execution failed',
-  'tasks.executionResults': 'Execution Results',
-  'tasks.taskId': 'Task ID',
-  'tasks.status': 'Status',
-  'tasks.executionTime': 'Execution Time',
-  'tasks.result': 'Result',
-  'tasks.logs': 'Logs',
-  'tasks.createAnother': 'Create Another Task',
+  'tasks.folio': 'Folio',
+  'tasks.folioPlaceholder': 'F-001234',
+  'tasks.transactionDate': 'Transaction Date',
+  'tasks.currency': 'Currency',
+  'tasks.subtotal': 'Subtotal',
+  'tasks.subtotalPlaceholder': '1000.00',
+  'tasks.iva': 'VAT',
+  'tasks.ivaPlaceholder': '160.00',
+  'tasks.total': 'Total',
+  'tasks.totalPlaceholder': '1160.00',
 
-  // CFDI Form Fields
-  'cfdi.customerRfc': 'Customer RFC',
-  'cfdi.customerRfcPlaceholder': 'XAXX010101000',
-  'cfdi.customerName': 'Customer Company Name',
-  'cfdi.customerNamePlaceholder': 'Customer Company S.A. de C.V.',
-  'cfdi.folio': 'Invoice Folio',
-  'cfdi.folioPlaceholder': 'FAC-001',
-  'cfdi.total': 'Total Amount',
-  'cfdi.totalPlaceholder': '1000.00',
-  'cfdi.currency': 'Currency',
-  'cfdi.description': 'Description',
-  'cfdi.descriptionPlaceholder': 'Professional services...'
+  // Simple Task Submission
+  'tasks.simple.title': 'Quick Task Submission',
+  'tasks.simple.description': 'Describe what you want the browser agent to do in plain language',
+  'tasks.simple.taskLabel': 'What would you like the agent to do?',
+  'tasks.simple.placeholder': 'Example: Search for OpenAI latest updates on Google and summarize the findings',
+  'tasks.simple.hint': 'Be specific about what you want to accomplish',
+  'tasks.simple.quickExamples': 'Quick Examples',
+  'tasks.simple.aiModel': 'AI Model',
+  'tasks.simple.submit': 'Start Task',
+  'tasks.simple.creating': 'Creating Task...',
+  'tasks.simple.userNote': 'Task will be executed as',
+  'tasks.quick.searchGoogle': 'Search for recent news about artificial intelligence on Google',
+  'tasks.quick.checkWeather': 'Check the weather forecast for Mexico City',
+  'tasks.quick.findProduct': 'Find laptop prices on MercadoLibre',
+  'tasks.quick.socialMedia': 'Check latest posts on Twitter about technology',
+  'tasks.validation.taskRequired': 'Task description is required',
+  'tasks.validation.taskTooLong': 'Task description is too long',
+  'tasks.success.created': 'Task created successfully!',
+  'tasks.error.creation': 'Failed to create task: {{error}}',
+
+  // Monitoring and Analytics
+  'monitor.tabs.browser': 'Browser',
+  'monitor.tabs.status': 'Status',
+  'monitor.tabs.analytics': 'Analytics',
+  'monitor.panes.status': 'Task Status',
+  'monitor.panes.analytics': 'Analytics',
+  'monitor.sidebar.activityLog': 'Activity Log',
+  'monitor.sidebar.realtimeUpdates': 'Real-time task updates',
+  'monitor.sidebar.noActivity': 'No activity yet',
+  'monitor.logs.searchPlaceholder': 'Search logs...',
+  'monitor.logs.noResults': 'No logs match your filters',
+  
+  // Task Monitor
+  'tasks.monitor.title': 'Task Monitor',
+  'tasks.monitor.loading': 'Loading task monitoring interface...',
+  'tasks.monitor.error': 'Failed to load task monitoring interface',
+  'tasks.monitor.legacyView': 'Legacy View',
+  'tasks.monitor.useLegacy': 'Use Legacy Monitor',
+  'tasks.monitor.backToDashboard': 'Back to Dashboard',
+  
+  // Monitor Status
+  'monitor.status.running': 'Running',
+  'monitor.status.paused': 'Paused',
+  'monitor.status.completed': 'Completed',
+  'monitor.status.failed': 'Failed',
+  'monitor.status.connecting': 'Connecting',
+  'monitor.status.pending': 'Pending',
+  
+  // Monitor Live View
+  'monitor.liveView.title': 'Live Browser View',
+  'monitor.liveView.loading': 'Loading browser view...',
+  'monitor.liveView.sessionId': 'Session',
+  'monitor.liveView.taskId': 'Task',
+  'monitor.liveView.takeControl': 'Take Control',
+  'monitor.liveView.resumeAgent': 'Resume Agent',
+  'monitor.liveView.openExternal': 'Open in New Tab',
+  
+  // Monitor Sidebar
+  'monitor.sidebar.title': 'Task Monitor',
+  'monitor.sidebar.taskId': 'Task ID',
+  'monitor.sidebar.connection': 'Connection',
+  'monitor.sidebar.controls': 'Controls',
+  
+  // Common Status
+  'common.disconnected': 'Disconnected',
+  'common.connected': 'Connected',
+  'common.restart': 'Restart',
+  'common.retry': 'Retry',
+  'analytics.title': 'Task Analytics',
+  'analytics.subtitle': 'Performance insights and metrics for task',
+
+  // Profile
+  'profile.title': 'My Profile',
+  'profile.edit': 'Edit Profile',
+  'profile.save': 'Save Changes',
+  'profile.companyInfo': 'Company Information',
+  'profile.addressInfo': 'Tax Address',
+  'profile.taxInfo': 'Tax Information',
+  'profile.noProfile': 'No profile information found',
+  'profile.basicFunctions': 'You can use the basic system functions without completing your profile',
+
+  // Settings
+  'settings.title': 'Settings',
+  'settings.language': 'Language',
+  'settings.notifications': 'Notifications',
+  'settings.security': 'Security',
+  'settings.account': 'Account',
+
+  // Metadata
+  'meta.title': 'CFDI 4.0 Automation System',
+  'meta.description': 'Automated system for filling CFDI 4.0 forms with AI-powered browser agent',
+  'meta.keywords': 'CFDI, 4.0, automation, invoicing, Mexico, RFC, SAT'
 }
 
 export default en; 

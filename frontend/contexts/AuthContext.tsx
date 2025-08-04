@@ -63,6 +63,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const loadUserProfile = useCallback(async (userId: string) => {
+    if (!supabase) {
+      console.warn('Supabase client not initialized - skipping profile load')
+      return
+    }
+    
     try {
       const { data, error } = await supabase
         .from('user_profiles')
@@ -87,7 +92,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     mountedRef.current = true
 
     const initializeAuth = async () => {
+      if (!supabase) {
+        console.warn('Supabase client not initialized - skipping auth initialization')
+        setIsInitialized(true)
+        setLoading(false)
+        return
+      }
+      
       try {
+        // Get session and handle profile loading in parallel if user exists
         const { data: { session } } = await supabase.auth.getSession()
         
         if (session?.user) {
@@ -105,31 +118,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initializeAuth()
 
-    // Auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mountedRef.current) return // Don't update if unmounted
-        
-        if (event === 'SIGNED_IN' && session?.user) {
-          safeSetUser(session.user)
-          safeSetError(null)
-          // Load profile in background - don't block UI
-          loadUserProfile(session.user.id).catch(console.error)
-        } else if (event === 'SIGNED_OUT') {
-          safeSetUser(null)
-          safeSetProfile(null)
-          safeSetError(null)
+    // Auth state listener - only if supabase is available
+    if (supabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (event === 'SIGNED_IN' && session?.user) {
+            setUser(session.user)
+            setError(null)
+            // Load profile in background - don't block UI
+            loadUserProfile(session.user.id).catch(console.error)
+          } else if (event === 'SIGNED_OUT') {
+            setUser(null)
+            setProfile(null)
+            setError(null)
+          }
         }
-      }
-    )
+      )
 
-    return () => {
-      mountedRef.current = false
-      subscription.unsubscribe()
+      return () => {
+        subscription.unsubscribe()
+      }
     }
   }, [loadUserProfile, safeSetUser, safeSetProfile, safeSetError, safeSetLoading, safeSetIsInitialized])
 
   const login = useCallback(async (email: string, password: string) => {
+    if (!supabase) {
+      const error = new Error('Supabase client not initialized. Please check your environment variables.')
+      setError(error.message)
+      throw error
+    }
+    
     try {
       safeSetError(null)
       safeSetLoading(true)
@@ -170,18 +188,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [safeSetError, safeSetLoading, safeSetUser, safeSetProfile])
 
   const logout = useCallback(async () => {
+    if (!supabase) {
+      const error = new Error('Supabase client not initialized. Please check your environment variables.')
+      setError(error.message)
+      throw error
+    }
+    
     try {
       safeSetError(null)
       const { error } = await supabase.auth.signOut()
       if (error) throw error
+      
+      // Clear token manager state on logout
+      tokenManager.clearState()
+      console.log('✅ Logged out and cleared token manager state')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Logout failed'
-      safeSetError(message)
+      setError(message)
+      // Clear token state even if logout fails
+      tokenManager.clearState()
       throw err
     }
   }, [safeSetError])
 
   const updateProfile = useCallback(async (profileData: Partial<UserProfile>) => {
+    if (!supabase) {
+      const error = new Error('Supabase client not initialized. Please check your environment variables.')
+      setError(error.message)
+      throw error
+    }
+    
     if (!user) throw new Error('No authenticated user')
 
     try {
@@ -210,16 +246,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user, safeSetError, safeSetLoading, safeSetProfile])
 
   const refreshSession = useCallback(async () => {
+    if (!supabase) {
+      const error = new Error('Supabase client not initialized. Please check your environment variables.')
+      setError(error.message)
+      throw error
+    }
+    
     try {
-      const { data, error } = await supabase.auth.refreshSession()
-      if (error) throw error
+      setError(null)
+      console.log('🔄 Refreshing session via token manager...')
       
-      if (data.session?.user) {
-        safeSetUser(data.session.user)
-        await loadUserProfile(data.session.user.id)
+      // Use centralized token manager for session refresh
+      const refreshedSession = await tokenManager.forceRefresh()
+      
+      if (!refreshedSession) {
+        throw new Error('Failed to get refreshed session')
+      }
+      
+      if (refreshedSession.user) {
+        console.log('✅ Session refreshed successfully via token manager')
+        setUser(refreshedSession.user)
+        await loadUserProfile(refreshedSession.user.id)
+      } else {
+        console.warn('⚠️  No user in refreshed session')
+        setUser(null)
+        setProfile(null)
       }
     } catch (err) {
-      console.error('Session refresh error:', err)
+      const message = err instanceof Error ? err.message : 'Session refresh failed'
+      console.error('❌ Session refresh error:', message)
+      setError(message)
+      // Clear user state and token manager state on refresh failure
+      setUser(null)
+      setProfile(null)
+      tokenManager.clearState()
       throw err
     }
   }, [safeSetUser, loadUserProfile])
