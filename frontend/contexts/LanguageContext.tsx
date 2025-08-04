@@ -92,7 +92,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     }
 
     initializeLanguage()
-  }, [isMounted, language])
+  }, [])
 
   // Load initial Spanish translations immediately to avoid hydration issues
   useEffect(() => {
