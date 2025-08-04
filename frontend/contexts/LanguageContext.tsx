@@ -30,6 +30,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
   const [language, setLanguageState] = useState<Language>('es')
   const [translations, setTranslations] = useState<Translations>({})
   const [isLoading, setIsLoading] = useState(true)
+  const [isMounted, setIsMounted] = useState(false)
 
   // Load translations with static imports
   const loadTranslations = (lang: Language) => {
@@ -91,6 +92,11 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     }
 
     initializeLanguage()
+  }, [])
+
+  // Load initial Spanish translations immediately to avoid hydration issues
+  useEffect(() => {
+    loadTranslations('es')
   }, [])
 
   // Set language function

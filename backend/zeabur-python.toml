@@ -1,0 +1,17 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "backend/Dockerfile.python"
+
+[deploy]
+startCommand = "python api_server.py"
+healthCheckPath = "/health"
+healthCheckTimeout = 300
+
+[[services]]
+name = "python-browser"
+plan = "Hobby"
+region = "California"
+port = 9000
+
+[env]
+PYTHON_ENV = "production" 

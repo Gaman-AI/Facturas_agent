@@ -7,6 +7,8 @@
 
 import { app, server } from './app.js'
 import config from './config/index.js'
+import redisService from './services/redisService.js'
+import queueService from './services/queueService.js'
 
 /**
  * Validate Environment Configuration
@@ -21,10 +23,61 @@ try {
 }
 
 /**
+ * Initialize Services
+ */
+const initializeServices = async () => {
+  console.log('🔧 Initializing services...')
+  
+  try {
+    // Initialize Redis connection
+    console.log('🔌 Connecting to Redis...')
+    const redisConnected = await redisService.connect()
+    if (!redisConnected) {
+      console.warn('⚠️  Redis connection failed - queue functionality will be disabled')
+      return false
+    }
+    console.log('✅ Redis connected successfully')
+
+    // Initialize Queue Service
+    console.log('🚀 Initializing queue service...')
+    const queueInitialized = await queueService.initialize()
+    if (!queueInitialized) {
+      console.warn('⚠️  Queue service initialization failed - tasks will not be processed')
+      return false
+    }
+    console.log('✅ Queue service initialized successfully')
+
+    // Initialize Queue Worker (optional - can be run separately)
+    if (config.isDevelopment() || process.env.START_WORKER === 'true') {
+      console.log('👷 Starting queue worker...')
+      const workerStarted = await queueService.initializeWorker()
+      if (workerStarted) {
+        console.log('✅ Queue worker started successfully')
+      } else {
+        console.warn('⚠️  Queue worker failed to start')
+      }
+    } else {
+      console.log('ℹ️  Queue worker not started (use START_WORKER=true to enable)')
+    }
+
+    return true
+  } catch (error) {
+    console.error('❌ Service initialization failed:', error)
+    return false
+  }
+}
+
+/**
  * Start HTTP Server
  */
 const startServer = async () => {
   try {
+    // Initialize services first
+    const servicesReady = await initializeServices()
+    if (!servicesReady) {
+      console.warn('⚠️  Some services failed to initialize - continuing with limited functionality')
+    }
+
     // Start the server
     server.listen(config.port, config.host || '0.0.0.0', () => {
       console.log(`

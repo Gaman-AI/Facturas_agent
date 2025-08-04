@@ -397,17 +397,7 @@ export interface TaskLogsResponse {
   };
 }
 
-export interface BrowserTaskRequest {
-  task_description: string;
-  llm_provider?: string;
-  model?: string;
-}
 
-export interface BrowserTaskResponse {
-  task_id: string;
-  status: string;
-  message: string;
-}
 
 // CFDI Task Types to match backend validation
 export interface CFDITaskRequest {

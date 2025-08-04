@@ -86,10 +86,23 @@ export const schemas = {
   // Task creation schema - simplified for any task string
   createTask: {
     body: z.object({
-      task: z.string().min(10, 'Task description must be at least 10 characters'),
+      task: z.string().min(10, 'Task description must be at least 10 characters').optional(),
+      task_description: z.string().min(10, 'Task description must be at least 10 characters').optional(),
       model: z.string().optional(),
       llm_provider: z.enum(['openai', 'anthropic', 'google']).default('openai').optional(),
       timeout_minutes: z.number().int().min(5).max(60).default(30).optional()
+    }).refine((data) => {
+      // Ensure either 'task' or 'task_description' is provided
+      return data.task || data.task_description;
+    }, {
+      message: 'Either "task" or "task_description" field is required',
+      path: ['task']
+    }).transform((data) => {
+      // Normalize to use 'task' field
+      return {
+        ...data,
+        task: data.task || data.task_description
+      };
     })
   },
   
