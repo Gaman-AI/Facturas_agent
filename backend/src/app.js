@@ -229,7 +229,7 @@ app.use(notFoundHandler)
 app.use(errorHandler)
 
 /**
- * Initialize WebSocket Server
+ * WebSocket Integration
  */
 websocketService.initialize(server)
 
@@ -238,9 +238,6 @@ websocketService.initialize(server)
  */
 const gracefulShutdown = (signal) => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`)
-  
-  // Close WebSocket server first
-  websocketService.close()
   
   server.close(() => {
     console.log('✅ HTTP server closed')

@@ -2,7 +2,7 @@ import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { tokenManager } from '@/utils/tokenManager';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '30000');
+const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '300000'); // 5 minutes for browser automation
 
 // Request queue for handling concurrent requests during token refresh
 interface QueuedRequest {
@@ -397,7 +397,17 @@ export interface TaskLogsResponse {
   };
 }
 
+export interface BrowserTaskRequest {
+  task_description: string;
+  llm_provider?: string;
+  model?: string;
+}
 
+export interface BrowserTaskResponse {
+  task_id: string;
+  status: string;
+  message: string;
+}
 
 // CFDI Task Types to match backend validation
 export interface CFDITaskRequest {

@@ -2,6 +2,7 @@ import { spawn } from 'child_process'
 import path from 'path'
 import config from '../config/index.js'
 import { AppError, ServiceUnavailableError } from '../middleware/errorHandler.js'
+import websocketService from './websocketService.js'
 
 /**
  * Browser Service - Node.js bridge to Python browser-use automation
@@ -9,7 +10,7 @@ import { AppError, ServiceUnavailableError } from '../middleware/errorHandler.js
  */
 class BrowserService {
   constructor() {
-    this.pythonPath = path.join(process.cwd(), 'browser_agent.py')
+    this.pythonPath = path.join(process.cwd(), 'enhanced_browser_agent.py')
     this.pythonExecutable = config.python.executable
     this.maxExecutionTime = config.tasks.timeoutMinutes * 60 * 1000 // Convert to milliseconds
   }
@@ -265,12 +266,16 @@ class BrowserService {
         ))
       }
 
+      // Generate unique task ID for real-time monitoring
+      const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
       // Prepare simplified task data for Python service
       const pythonTaskData = {
         task: taskData.task,
         llm_provider: taskData.llm_provider || 'openai',
         model: taskData.model || 'gpt-4o-mini',
-        timeout_minutes: taskData.timeout_minutes || 30
+        timeout_minutes: taskData.timeout_minutes || 30,
+        task_id: taskId
       }
 
       console.log(`🐍 Starting Python browser automation process`)

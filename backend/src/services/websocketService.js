@@ -1,326 +1,403 @@
-/**
- * WebSocket Service for Browser Automation
- * 
- * This service handles real-time communication between the frontend and backend
- * for browser automation tasks, providing live updates on task progress, logs, and status changes.
- * 
- * @file purpose: Real-time communication for browser automation monitoring
- */
-
 import { WebSocketServer } from 'ws'
+import { createServer } from 'http'
 
+/**
+ * WebSocket Service for Real-time Agent Thinking Updates
+ * Handles real-time communication between the agent and the frontend
+ */
 class WebSocketService {
   constructor() {
     this.wss = null
-    this.clients = new Map() // Map of sessionId -> WebSocket
-    this.taskSubscriptions = new Map() // Map of taskId -> Set of WebSocket clients
+    this.clients = new Map() // Map of task_id -> Set of WebSocket connections
+    this.activeAgents = new Map() // Map of task_id -> agent monitoring data
   }
 
   /**
    * Initialize WebSocket server
-   * @param {import('http').Server} server - HTTP server instance
+   * @param {http.Server} server - HTTP server instance
    */
   initialize(server) {
     this.wss = new WebSocketServer({ 
       server,
-      path: '/api/v1/browser-agent/ws'
+      path: '/ws/agent-thinking'
     })
 
-    console.log('🔌 WebSocket server initialized on /api/v1/browser-agent/ws')
-
-    this.wss.on('connection', (ws, req) => {
-      this.handleConnection(ws, req)
-    })
-
-    this.wss.on('error', (error) => {
-      console.error('❌ WebSocket server error:', error)
-    })
-  }
-
-  /**
-   * Handle new WebSocket connection
-   * @param {WebSocket} ws - WebSocket instance
-   * @param {import('http').IncomingMessage} req - HTTP request
-   */
-  handleConnection(ws, req) {
-    const url = new URL(req.url, `http://${req.headers.host}`)
-    const sessionId = url.searchParams.get('sessionId') || 'unknown'
-    
-    console.log(`🔗 WebSocket connection established for session: ${sessionId}`)
-
-    // Store client connection
-    this.clients.set(sessionId, ws)
-
-    // Send initial connection status
-    this.sendToClient(ws, {
-      type: 'connection_status',
-      data: {
-        connected: true,
-        sessionId: sessionId,
-        timestamp: new Date().toISOString()
-      }
-    })
-
-    // Handle incoming messages
-    ws.on('message', (data) => {
-      try {
-        const message = JSON.parse(data.toString())
-        this.handleMessage(ws, sessionId, message)
-      } catch (error) {
-        console.error('❌ Failed to parse WebSocket message:', error)
-        this.sendToClient(ws, {
-          type: 'error',
-          data: {
-            message: 'Invalid message format',
-            timestamp: new Date().toISOString()
-          }
-        })
-      }
-    })
-
-    // Handle client disconnect
-    ws.on('close', () => {
-      console.log(`🔌 WebSocket connection closed for session: ${sessionId}`)
-      this.clients.delete(sessionId)
+    this.wss.on('connection', (ws, request) => {
+      console.log('🔌 New WebSocket connection established')
       
-      // Remove from task subscriptions
-      for (const [taskId, clients] of this.taskSubscriptions.entries()) {
-        clients.delete(ws)
-        if (clients.size === 0) {
-          this.taskSubscriptions.delete(taskId)
+      ws.on('message', (message) => {
+        try {
+          const data = JSON.parse(message.toString())
+          this.handleClientMessage(ws, data)
+        } catch (error) {
+          console.error('❌ Invalid WebSocket message:', error)
+          ws.send(JSON.stringify({
+            type: 'error',
+            message: 'Invalid message format'
+          }))
         }
-      }
+      })
+
+      ws.on('close', () => {
+        console.log('🔌 WebSocket connection closed')
+        this.removeClient(ws)
+      })
+
+      ws.on('error', (error) => {
+        console.error('❌ WebSocket error:', error)
+        this.removeClient(ws)
+      })
+
+      // Send initial connection confirmation
+      ws.send(JSON.stringify({
+        type: 'connection',
+        status: 'connected',
+        timestamp: new Date().toISOString()
+      }))
     })
 
-    // Handle connection errors
-    ws.on('error', (error) => {
-      console.error(`❌ WebSocket error for session ${sessionId}:`, error)
-      this.clients.delete(sessionId)
-    })
+    console.log('🔌 WebSocket server initialized on /ws/agent-thinking')
   }
 
   /**
-   * Handle incoming WebSocket messages
-   * @param {WebSocket} ws - WebSocket instance
-   * @param {string} sessionId - Session ID
-   * @param {Object} message - Parsed message object
+   * Handle incoming client messages
+   * @param {WebSocket} ws - WebSocket connection
+   * @param {Object} data - Message data
    */
-  handleMessage(ws, sessionId, message) {
-    console.log(`📨 WebSocket message from ${sessionId}:`, message.type)
-
-    switch (message.type) {
-      case 'subscribe_task':
-        this.subscribeToTask(ws, message.data.taskId)
+  handleClientMessage(ws, data) {
+    switch (data.type) {
+      case 'subscribe':
+        this.subscribeToTask(ws, data.task_id)
         break
       
-      case 'unsubscribe_task':
-        this.unsubscribeFromTask(ws, message.data.taskId)
+      case 'unsubscribe':
+        this.unsubscribeFromTask(ws, data.task_id)
         break
       
       case 'ping':
-        this.sendToClient(ws, { type: 'pong', data: { timestamp: new Date().toISOString() } })
+        ws.send(JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }))
         break
       
       default:
-        console.warn(`⚠️ Unknown WebSocket message type: ${message.type}`)
-        this.sendToClient(ws, {
-          type: 'error',
-          data: {
-            message: `Unknown message type: ${message.type}`,
-            timestamp: new Date().toISOString()
-          }
-        })
+        console.warn('⚠️ Unknown WebSocket message type:', data.type)
     }
   }
 
   /**
-   * Subscribe a client to task updates
-   * @param {WebSocket} ws - WebSocket instance
+   * Subscribe client to task updates
+   * @param {WebSocket} ws - WebSocket connection
    * @param {string} taskId - Task ID to subscribe to
    */
   subscribeToTask(ws, taskId) {
-    if (!this.taskSubscriptions.has(taskId)) {
-      this.taskSubscriptions.set(taskId, new Set())
+    if (!taskId) {
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Task ID is required for subscription'
+      }))
+      return
     }
-    
-    this.taskSubscriptions.get(taskId).add(ws)
-    console.log(`📋 Client subscribed to task: ${taskId}`)
-    
-    this.sendToClient(ws, {
-      type: 'subscription_confirmed',
-      data: {
-        taskId: taskId,
+
+    if (!this.clients.has(taskId)) {
+      this.clients.set(taskId, new Set())
+    }
+
+    this.clients.get(taskId).add(ws)
+    ws.taskId = taskId
+
+    ws.send(JSON.stringify({
+      type: 'subscribed',
+      task_id: taskId,
+      timestamp: new Date().toISOString()
+    }))
+
+    console.log(`🔔 Client subscribed to task: ${taskId}`)
+
+    // Send existing agent data if available
+    if (this.activeAgents.has(taskId)) {
+      const agentData = this.activeAgents.get(taskId)
+      ws.send(JSON.stringify({
+        type: 'agent_status',
+        task_id: taskId,
+        data: agentData,
         timestamp: new Date().toISOString()
-      }
-    })
+      }))
+    }
   }
 
   /**
-   * Unsubscribe a client from task updates
-   * @param {WebSocket} ws - WebSocket instance
+   * Unsubscribe client from task updates
+   * @param {WebSocket} ws - WebSocket connection
    * @param {string} taskId - Task ID to unsubscribe from
    */
   unsubscribeFromTask(ws, taskId) {
-    const clients = this.taskSubscriptions.get(taskId)
-    if (clients) {
-      clients.delete(ws)
-      if (clients.size === 0) {
-        this.taskSubscriptions.delete(taskId)
+    if (this.clients.has(taskId)) {
+      this.clients.get(taskId).delete(ws)
+      
+      if (this.clients.get(taskId).size === 0) {
+        this.clients.delete(taskId)
       }
-      console.log(`📋 Client unsubscribed from task: ${taskId}`)
+    }
+
+    delete ws.taskId
+
+    ws.send(JSON.stringify({
+      type: 'unsubscribed',
+      task_id: taskId,
+      timestamp: new Date().toISOString()
+    }))
+
+    console.log(`🔕 Client unsubscribed from task: ${taskId}`)
+  }
+
+  /**
+   * Remove client from all subscriptions
+   * @param {WebSocket} ws - WebSocket connection
+   */
+  removeClient(ws) {
+    if (ws.taskId) {
+      this.unsubscribeFromTask(ws, ws.taskId)
+    }
+
+    // Remove from all task subscriptions
+    for (const [taskId, clientSet] of this.clients.entries()) {
+      clientSet.delete(ws)
+      if (clientSet.size === 0) {
+        this.clients.delete(taskId)
+      }
     }
   }
 
   /**
-   * Send message to specific client
-   * @param {WebSocket} ws - WebSocket instance
-   * @param {Object} message - Message to send
+   * Broadcast agent thinking update to subscribed clients
+   * @param {string} taskId - Task ID
+   * @param {Object} thinkingData - Agent thinking data
    */
-  sendToClient(ws, message) {
-    if (ws.readyState === ws.OPEN) {
+  broadcastAgentThinking(taskId, thinkingData) {
+    if (!this.clients.has(taskId)) {
+      return // No subscribers
+    }
+
+    const message = JSON.stringify({
+      type: 'agent_thinking',
+      task_id: taskId,
+      data: thinkingData,
+      timestamp: new Date().toISOString()
+    })
+
+    const clients = this.clients.get(taskId)
+    const disconnectedClients = new Set()
+
+    for (const client of clients) {
       try {
-        ws.send(JSON.stringify(message))
+        if (client.readyState === client.OPEN) {
+          client.send(message)
+        } else {
+          disconnectedClients.add(client)
+        }
       } catch (error) {
-        console.error('❌ Failed to send WebSocket message:', error)
+        console.error('❌ Error sending WebSocket message:', error)
+        disconnectedClients.add(client)
       }
+    }
+
+    // Clean up disconnected clients
+    for (const client of disconnectedClients) {
+      clients.delete(client)
+    }
+
+    if (clients.size === 0) {
+      this.clients.delete(taskId)
     }
   }
 
   /**
-   * Broadcast message to all clients subscribed to a task
+   * Broadcast agent action update
    * @param {string} taskId - Task ID
-   * @param {Object} message - Message to broadcast
+   * @param {Object} actionData - Agent action data
    */
-  broadcastToTask(taskId, message) {
-    const clients = this.taskSubscriptions.get(taskId)
-    if (clients) {
-      clients.forEach(ws => {
-        this.sendToClient(ws, message)
-      })
-      console.log(`📡 Broadcasted to ${clients.size} clients for task: ${taskId}`)
+  broadcastAgentAction(taskId, actionData) {
+    if (!this.clients.has(taskId)) {
+      return
+    }
+
+    const message = JSON.stringify({
+      type: 'agent_action',
+      task_id: taskId,
+      data: actionData,
+      timestamp: new Date().toISOString()
+    })
+
+    this.sendToTaskClients(taskId, message)
+  }
+
+  /**
+   * Broadcast agent observation update
+   * @param {string} taskId - Task ID
+   * @param {Object} observationData - Agent observation data
+   */
+  broadcastAgentObservation(taskId, observationData) {
+    if (!this.clients.has(taskId)) {
+      return
+    }
+
+    const message = JSON.stringify({
+      type: 'agent_observation',
+      task_id: taskId,
+      data: observationData,
+      timestamp: new Date().toISOString()
+    })
+
+    this.sendToTaskClients(taskId, message)
+  }
+
+  /**
+   * Broadcast agent goal update
+   * @param {string} taskId - Task ID
+   * @param {Object} goalData - Agent goal data
+   */
+  broadcastAgentGoal(taskId, goalData) {
+    if (!this.clients.has(taskId)) {
+      return
+    }
+
+    const message = JSON.stringify({
+      type: 'agent_goal',
+      task_id: taskId,
+      data: goalData,
+      timestamp: new Date().toISOString()
+    })
+
+    this.sendToTaskClients(taskId, message)
+  }
+
+  /**
+   * Broadcast agent memory update
+   * @param {string} taskId - Task ID
+   * @param {Object} memoryData - Agent memory data
+   */
+  broadcastAgentMemory(taskId, memoryData) {
+    if (!this.clients.has(taskId)) {
+      return
+    }
+
+    const message = JSON.stringify({
+      type: 'agent_memory',
+      task_id: taskId,
+      data: memoryData,
+      timestamp: new Date().toISOString()
+    })
+
+    this.sendToTaskClients(taskId, message)
+  }
+
+  /**
+   * Broadcast agent evaluation update
+   * @param {string} taskId - Task ID
+   * @param {Object} evaluationData - Agent evaluation data
+   */
+  broadcastAgentEvaluation(taskId, evaluationData) {
+    if (!this.clients.has(taskId)) {
+      return
+    }
+
+    const message = JSON.stringify({
+      type: 'agent_evaluation',
+      task_id: taskId,
+      data: evaluationData,
+      timestamp: new Date().toISOString()
+    })
+
+    this.sendToTaskClients(taskId, message)
+  }
+
+  /**
+   * Send message to all clients subscribed to a task
+   * @param {string} taskId - Task ID
+   * @param {string} message - JSON message to send
+   */
+  sendToTaskClients(taskId, message) {
+    if (!this.clients.has(taskId)) {
+      return
+    }
+
+    const clients = this.clients.get(taskId)
+    const disconnectedClients = new Set()
+
+    for (const client of clients) {
+      try {
+        if (client.readyState === client.OPEN) {
+          client.send(message)
+        } else {
+          disconnectedClients.add(client)
+        }
+      } catch (error) {
+        console.error('❌ Error sending WebSocket message:', error)
+        disconnectedClients.add(client)
+      }
+    }
+
+    // Clean up disconnected clients
+    for (const client of disconnectedClients) {
+      clients.delete(client)
+    }
+
+    if (clients.size === 0) {
+      this.clients.delete(taskId)
     }
   }
 
   /**
-   * Broadcast message to all connected clients
-   * @param {Object} message - Message to broadcast
-   */
-  broadcastToAll(message) {
-    this.clients.forEach((ws, sessionId) => {
-      this.sendToClient(ws, message)
-    })
-    console.log(`📡 Broadcasted to ${this.clients.size} clients`)
-  }
-
-  /**
-   * Send task status update
+   * Update agent status for a task
    * @param {string} taskId - Task ID
-   * @param {string} status - New status
-   * @param {Object} data - Additional data
+   * @param {Object} agentData - Agent status data
    */
-  sendTaskStatusUpdate(taskId, status, data = {}) {
-    this.broadcastToTask(taskId, {
-      type: 'status_change',
-      data: {
-        taskId: taskId,
-        status: status,
-        timestamp: new Date().toISOString(),
-        ...data
-      }
+  updateAgentStatus(taskId, agentData) {
+    this.activeAgents.set(taskId, {
+      ...this.activeAgents.get(taskId),
+      ...agentData,
+      last_updated: new Date().toISOString()
     })
+
+    // Broadcast to subscribers
+    const message = JSON.stringify({
+      type: 'agent_status',
+      task_id: taskId,
+      data: this.activeAgents.get(taskId),
+      timestamp: new Date().toISOString()
+    })
+
+    this.sendToTaskClients(taskId, message)
   }
 
   /**
-   * Send task log update
+   * Remove agent status when task completes
    * @param {string} taskId - Task ID
-   * @param {Object} logEntry - Log entry
    */
-  sendTaskLogUpdate(taskId, logEntry) {
-    this.broadcastToTask(taskId, {
-      type: 'log_update',
-      data: {
-        taskId: taskId,
-        log: logEntry,
-        timestamp: new Date().toISOString()
-      }
+  removeAgentStatus(taskId) {
+    this.activeAgents.delete(taskId)
+
+    // Notify subscribers that agent is no longer active
+    const message = JSON.stringify({
+      type: 'agent_completed',
+      task_id: taskId,
+      timestamp: new Date().toISOString()
     })
+
+    this.sendToTaskClients(taskId, message)
   }
 
   /**
-   * Send task start notification
-   * @param {string} taskId - Task ID
-   * @param {Object} data - Task data
-   */
-  sendTaskStart(taskId, data = {}) {
-    this.broadcastToTask(taskId, {
-      type: 'task_start',
-      data: {
-        taskId: taskId,
-        timestamp: new Date().toISOString(),
-        ...data
-      }
-    })
-  }
-
-  /**
-   * Send task completion notification
-   * @param {string} taskId - Task ID
-   * @param {Object} data - Task result data
-   */
-  sendTaskComplete(taskId, data = {}) {
-    this.broadcastToTask(taskId, {
-      type: 'task_completed',
-      data: {
-        taskId: taskId,
-        timestamp: new Date().toISOString(),
-        ...data
-      }
-    })
-  }
-
-  /**
-   * Send task error notification
-   * @param {string} taskId - Task ID
-   * @param {string} error - Error message
-   * @param {Object} data - Additional error data
-   */
-  sendTaskError(taskId, error, data = {}) {
-    this.broadcastToTask(taskId, {
-      type: 'task_error',
-      data: {
-        taskId: taskId,
-        error: error,
-        timestamp: new Date().toISOString(),
-        ...data
-      }
-    })
-  }
-
-  /**
-   * Get connection statistics
-   * @returns {Object} Connection stats
+   * Get current connection statistics
+   * @returns {Object} Connection statistics
    */
   getStats() {
     return {
-      totalConnections: this.clients.size,
-      activeSubscriptions: this.taskSubscriptions.size,
-      subscribedTasks: Array.from(this.taskSubscriptions.keys()),
-      connectedSessions: Array.from(this.clients.keys())
-    }
-  }
-
-  /**
-   * Close all connections and cleanup
-   */
-  close() {
-    if (this.wss) {
-      this.wss.close()
-      this.clients.clear()
-      this.taskSubscriptions.clear()
-      console.log('🔌 WebSocket server closed')
+      total_connections: this.wss ? this.wss.clients.size : 0,
+      active_tasks: this.clients.size,
+      active_agents: this.activeAgents.size,
+      tasks_with_subscribers: Array.from(this.clients.keys())
     }
   }
 }
 
-// Export singleton instance
-export default new WebSocketService() 
+export default new WebSocketService()

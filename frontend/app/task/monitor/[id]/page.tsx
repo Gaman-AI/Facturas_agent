@@ -25,25 +25,8 @@ export default function TaskMonitorPage() {
   useEffect(() => {
     const loadTaskData = async () => {
       try {
-        // Ensure taskId is valid before proceeding
-        if (!taskId || taskId === 'undefined') {
-          throw new Error('Invalid task ID')
-        }
-
         setIsLoading(true)
         setError(null)
-
-        // Check if this is a demo task
-        if (taskId.startsWith('demo_')) {
-          // Demo mode - create mock data
-          setTaskStatus('running')
-          setSessionId(`demo_session_${taskId}`)
-          setLiveViewUrl(null) // Use local browser automation for demo
-          setIsLoading(false)
-          return
-        }
-
-        console.log('🔍 Loading task data for:', taskId)
 
         // Fetch real task data from API
         const taskResponse = await ApiService.getBrowserUseTask(taskId).catch(error => {
@@ -57,12 +40,12 @@ export default function TaskMonitorPage() {
         // Handle task data
         if (taskResponse && taskResponse.success) {
           const task = taskResponse.data
-          console.log('✅ Task data loaded:', task)
           setTaskStatus(task.status as any)
           
-          // Set up local browser automation session
+          // Session management not implemented - use local execution mode
+          // For local browser execution, we don't need live view URLs
           setSessionId(`local_session_${taskId}`)
-          setLiveViewUrl(null) // No live view URL for local browser automation
+          setLiveViewUrl(null) // No live view for local browser execution
         } else {
           // If task fetch failed, show error
           const errorMessage = taskResponse?.error || 'Task not found or API unavailable'
@@ -77,12 +60,8 @@ export default function TaskMonitorPage() {
       }
     }
 
-    if (taskId && taskId !== 'undefined') {
+    if (taskId) {
       loadTaskData()
-    } else {
-      console.warn('⚠️ Invalid taskId:', taskId)
-      setError('Invalid task ID')
-      setIsLoading(false)
     }
   }, [taskId])
 

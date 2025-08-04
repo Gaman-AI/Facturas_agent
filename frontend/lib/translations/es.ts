@@ -19,7 +19,6 @@ const es: Translations = {
   'common.optional': 'Opcional',
   'common.yes': 'Sí',
   'common.no': 'No',
-  'common.charactersRemaining': 'caracteres restantes',
   'common.personaFisica': 'Persona Física',
   'common.personaMoral': 'Persona Moral',
   'common.mexicanPeso': 'Peso Mexicano',
@@ -146,8 +145,7 @@ const es: Translations = {
 
   // Dashboard
   'dashboard.title': 'Dashboard',
-  'dashboard.welcome': 'Bienvenido de vuelta',
-  'dashboard.subtitle': '¿Listo para automatizar tus tareas del navegador con IA? ¡Empecemos!',
+  'dashboard.welcome': 'Bienvenido al Dashboard',
   'dashboard.recentTasks': 'Tareas Recientes',
   'dashboard.statistics': 'Estadísticas',
   'dashboard.noTasks': 'No hay tareas disponibles',
@@ -208,77 +206,6 @@ const es: Translations = {
   'tasks.ivaPlaceholder': '160.00',
   'tasks.total': 'Total',
   'tasks.totalPlaceholder': '1160.00',
-
-  // Simple Task Submission
-  'tasks.simple.title': 'Envío Rápido de Tarea',
-  'tasks.simple.description': 'Describe qué quieres que haga el agente de navegador en lenguaje simple',
-  'tasks.simple.taskLabel': '¿Qué te gustaría que haga el agente?',
-  'tasks.simple.placeholder': 'Ejemplo: Busca las últimas actualizaciones de OpenAI en Google y resume los hallazgos',
-  'tasks.simple.hint': 'Sé específico sobre lo que quieres lograr',
-  'tasks.simple.quickExamples': 'Ejemplos Rápidos',
-  'tasks.simple.aiModel': 'Modelo de IA',
-  'tasks.simple.submit': 'Iniciar Tarea',
-  'tasks.simple.creating': 'Creando Tarea...',
-  'tasks.simple.userNote': 'La tarea será ejecutada como',
-  'tasks.quick.searchGoogle': 'Buscar noticias recientes sobre inteligencia artificial en Google',
-  'tasks.quick.checkWeather': 'Verificar el pronóstico del tiempo para Ciudad de México',
-  'tasks.quick.findProduct': 'Encontrar precios de laptops en MercadoLibre',
-  'tasks.quick.socialMedia': 'Revisar las últimas publicaciones en Twitter sobre tecnología',
-  'tasks.validation.taskRequired': 'La descripción de la tarea es requerida',
-  'tasks.validation.taskTooLong': 'La descripción de la tarea es muy larga',
-  'tasks.success.created': '¡Tarea creada exitosamente!',
-  'tasks.error.creation': 'Error al crear tarea: {{error}}',
-
-  // Monitoring and Analytics
-  'monitor.tabs.browser': 'Navegador',
-  'monitor.tabs.status': 'Estado',
-  'monitor.tabs.analytics': 'Analíticas',
-  'monitor.panes.status': 'Estado de Tarea',
-  'monitor.panes.analytics': 'Analíticas',
-  'monitor.sidebar.activityLog': 'Registro de Actividad',
-  'monitor.sidebar.realtimeUpdates': 'Actualizaciones en tiempo real',
-  'monitor.sidebar.noActivity': 'Aún no hay actividad',
-  'monitor.logs.searchPlaceholder': 'Buscar registros...',
-  'monitor.logs.noResults': 'No hay registros que coincidan con tus filtros',
-  
-  // Task Monitor
-  'tasks.monitor.title': 'Monitor de Tareas',
-  'tasks.monitor.loading': 'Cargando interfaz de monitoreo...',
-  'tasks.monitor.error': 'Error al cargar la interfaz de monitoreo',
-  'tasks.monitor.legacyView': 'Vista Legacy',
-  'tasks.monitor.useLegacy': 'Usar Monitor Legacy',
-  'tasks.monitor.backToDashboard': 'Volver al Dashboard',
-  
-  // Monitor Status
-  'monitor.status.running': 'Ejecutando',
-  'monitor.status.paused': 'Pausado',
-  'monitor.status.completed': 'Completado',
-  'monitor.status.failed': 'Fallido',
-  'monitor.status.connecting': 'Conectando',
-  'monitor.status.pending': 'Pendiente',
-  
-  // Monitor Live View
-  'monitor.liveView.title': 'Vista de Navegador en Vivo',
-  'monitor.liveView.loading': 'Cargando vista del navegador...',
-  'monitor.liveView.sessionId': 'Sesión',
-  'monitor.liveView.taskId': 'Tarea',
-  'monitor.liveView.takeControl': 'Tomar Control',
-  'monitor.liveView.resumeAgent': 'Reanudar Agente',
-  'monitor.liveView.openExternal': 'Abrir en Nueva Pestaña',
-  
-  // Monitor Sidebar
-  'monitor.sidebar.title': 'Monitor de Tareas',
-  'monitor.sidebar.taskId': 'ID de Tarea',
-  'monitor.sidebar.connection': 'Conexión',
-  'monitor.sidebar.controls': 'Controles',
-  
-  // Common Status
-  'common.disconnected': 'Desconectado',
-  'common.connected': 'Conectado',
-  'common.restart': 'Reiniciar',
-  'common.retry': 'Reintentar',
-  'analytics.title': 'Analíticas de Tarea',
-  'analytics.subtitle': 'Métricas e insights de rendimiento para la tarea',
 
   // Profile
   'profile.title': 'Mi Perfil',
