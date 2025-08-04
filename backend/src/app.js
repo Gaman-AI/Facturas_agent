@@ -7,11 +7,7 @@ import config from './config/index.js'
 // Import routes
 import healthRoutes from './routes/health.js'
 import taskRoutes from './routes/tasks.js'
-import authRoutes from './routes/auth.js'
-
-// Import services for initialization
-import { redisService } from './services/redisService.js'
-import { queueService } from './services/queueService.js'
+import websocketService from './services/websocketService.js'
 
 export function createApp() {
   const app = express()
@@ -34,15 +30,14 @@ export function createApp() {
     crossOriginEmbedderPolicy: false,
   }))
 
-  // CORS configuration
-  app.use(cors({
-    origin: process.env.NODE_ENV === 'production' 
-      ? [config.frontend.url] 
-      : ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000'],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-  }))
+// CORS configuration
+app.use(cors({
+  origin: config.cors.origins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-ID'],
+  exposedHeaders: ['X-Total-Count', 'X-Page-Count', 'X-Request-ID']
+}))
 
   // Request parsing middleware
   app.use(express.json({ limit: '10mb' }))
@@ -127,17 +122,46 @@ export function createApp() {
     })
   })
 
-  return app
+// Mount route modules
+apiRouter.use('/auth', authRoutes)
+apiRouter.use('/tasks', taskRoutes)
+
+// Mount API router
+app.use(`/api/${config.apiVersion}`, apiRouter)
+
+/**
+ * Static file serving (if needed)
+ */
+if (config.isDevelopment()) {
+  app.use('/docs', express.static('docs'))
 }
 
-// Initialize services function
-export async function initializeServices() {
-  try {
-    console.log('🚀 Initializing services...')
-    
-    // Connect to Redis
-    await redisService.connect()
-    console.log('✅ Redis connected')
+/**
+ * Error Handling
+ */
+
+// 404 handler for undefined routes
+app.use(notFoundHandler)
+
+// Global error handler
+app.use(errorHandler)
+
+/**
+ * Initialize WebSocket Server
+ */
+websocketService.initialize(server)
+
+/**
+ * Graceful Shutdown
+ */
+const gracefulShutdown = (signal) => {
+  console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`)
+  
+  // Close WebSocket server first
+  websocketService.close()
+  
+  server.close(() => {
+    console.log('✅ HTTP server closed')
     
     // Initialize queue service
     await queueService.initialize()

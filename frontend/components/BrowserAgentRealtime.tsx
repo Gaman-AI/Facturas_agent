@@ -178,13 +178,12 @@ const BrowserAgentRealtime: React.FC<BrowserAgentRealtimeProps> = ({
     // Wait a bit for connection to establish
     setTimeout(async () => {
       try {
-        const response = await ApiService.createBrowserTask({
-          task_description: task,
-          llm_provider: llmProvider,
+        const response = await ApiService.createBrowserUseTask({
+          prompt: task,
           model: model
         });
         
-        addLog(`📋 Task submitted successfully: ${response.task_id}`, 'success');
+        addLog(`📋 Task submitted successfully: ${response.data.task_id}`, 'success');
         setBrowserWindowOpened(true);
         addLog('🌐 Browser window should now be visible - the agent is working!', 'success');
         

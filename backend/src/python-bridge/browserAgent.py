@@ -31,8 +31,8 @@ except ImportError as e:
 # Load environment variables
 load_dotenv(current_dir.parent.parent / '.env')
 
-class CFDIBrowserAgent:
-    """CFDI-specific browser automation using browser-use library"""
+class BrowserAgent:
+    """Simplified browser automation using browser-use library"""
     
     def __init__(self):
         self.current_agent: Optional[Agent] = None
@@ -95,14 +95,17 @@ class CFDIBrowserAgent:
             self.log_event("error", f"Failed to initialize LLM client: {str(e)}")
             raise
     
-    async def execute_cfdi_task(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute CFDI automation task using browser-use"""
-        self.log_event("task_start", "Starting CFDI automation task", task_data)
+    async def execute_task(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute browser automation task using browser-use"""
+        self.log_event("task_start", "Starting browser automation task", task_data)
         
         try:
-            # Build CFDI-specific prompt
-            cfdi_prompt = self.build_cfdi_prompt(task_data)
-            self.log_event("prompt", "Generated CFDI prompt", {"prompt_length": len(cfdi_prompt)})
+            # Get the task description directly
+            task_description = task_data.get('task', '')
+            if not task_description:
+                raise ValueError("Task description is required")
+                
+            self.log_event("prompt", "Using task description", {"task_length": len(task_description)})
             
             # Get LLM client
             llm = self.get_llm_client(
@@ -110,12 +113,12 @@ class CFDIBrowserAgent:
                 task_data.get('model')
             )
             
-            # Create agent (following simple.py pattern)
+            # Create agent
             self.log_event("agent", "Creating browser-use agent")
             self.current_agent = Agent(
-                task=cfdi_prompt,
+                task=task_description,
                 llm=llm,
-                max_failures=task_data.get('max_retries', 3),
+                max_failures=3,
                 retry_delay=2
             )
             
@@ -131,8 +134,7 @@ class CFDIBrowserAgent:
                 "error": None,
                 "session_log": self.session_log,
                 "execution_time": self.calculate_execution_time(),
-                "vendor_url": task_data.get('vendor_url'),
-                "customer_rfc": task_data.get('ticket_details', {}).get('customer_details', {}).get('rfc')
+                "task_description": task_description
             }
             
         except Exception as e:
@@ -209,28 +211,7 @@ Begin the automation process now.
         
         return prompt.strip()
     
-    def format_address(self, address: Dict[str, Any]) -> str:
-        """Format address information for the prompt"""
-        if not address:
-            return "No address provided"
-            
-        parts = []
-        if address.get('street'):
-            parts.append(f"Street: {address['street']}")
-        if address.get('exterior_number'):
-            parts.append(f"Ext. #: {address['exterior_number']}")
-        if address.get('interior_number'):
-            parts.append(f"Int. #: {address['interior_number']}")
-        if address.get('colony'):
-            parts.append(f"Colony: {address['colony']}")
-        if address.get('municipality'):
-            parts.append(f"Municipality: {address['municipality']}")
-        if address.get('state'):
-            parts.append(f"State: {address['state']}")
-        if address.get('postal_code'):
-            parts.append(f"ZIP: {address['postal_code']}")
-            
-        return "\n".join(parts) if parts else "Address details not provided"
+
     
     def calculate_execution_time(self) -> float:
         """Calculate execution time from session log"""
@@ -268,19 +249,16 @@ async def main():
         task_data = json.loads(task_data_str)
         
         # Validate required fields
-        required_fields = ['vendor_url']
-        missing_fields = [field for field in required_fields if not task_data.get(field)]
-        
-        if missing_fields:
+        if not task_data.get('task'):
             print(json.dumps({
                 "success": False,
-                "error": f"Missing required fields: {', '.join(missing_fields)}"
+                "error": "Task description is required"
             }))
             sys.exit(1)
         
-        # Create and execute CFDI automation
-        agent = CFDIBrowserAgent()
-        result = await agent.execute_cfdi_task(task_data)
+        # Create and execute browser automation
+        agent = BrowserAgent()
+        result = await agent.execute_task(task_data)
         
         # Output result as JSON
         print(json.dumps(result, ensure_ascii=False, indent=2))
