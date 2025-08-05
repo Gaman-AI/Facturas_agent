@@ -51,8 +51,50 @@ export function DualPaneMonitor({
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Periodic log fetching for real-time updates
+  // Periodic task status and log fetching for real-time updates
   useEffect(() => {
+    const fetchTaskStatus = async () => {
+      try {
+        // Skip if taskId is invalid
+        if (!taskId || taskId === 'undefined') {
+          console.debug('Skipping status fetch - invalid taskId:', taskId)
+          return
+        }
+
+        const taskResponse = await ApiService.getBrowserUseTask(taskId)
+        if (taskResponse.success) {
+          const task = taskResponse.data
+          
+          // Update status if it has changed
+          setStatus(prev => {
+            if (prev !== task.status) {
+              console.log(`Task status updated: ${prev} → ${task.status}`)
+              addLog(`Status changed to: ${task.status}`, 'info')
+              
+              // Update progress based on status
+              if (task.status === 'completed') {
+                setProgress(100)
+              } else if (task.status === 'running') {
+                setProgress(50) // Approximate progress
+              } else if (task.status === 'failed') {
+                setProgress(0)
+              }
+              
+              return task.status
+            }
+            return prev
+          })
+
+          // Update start time if available
+          if (task.started_at && !taskStartTime) {
+            setTaskStartTime(task.started_at)
+          }
+        }
+      } catch (error) {
+        console.debug('Failed to fetch task status:', error)
+      }
+    }
+
     const fetchLogs = async () => {
       try {
         // Skip if taskId is invalid
@@ -87,12 +129,17 @@ export function DualPaneMonitor({
       }
     }
 
-    // Fetch logs immediately, then every 5 seconds
-    fetchLogs()
-    const logInterval = setInterval(fetchLogs, 5000)
+    const updateTaskData = async () => {
+      await fetchTaskStatus()
+      await fetchLogs()
+    }
 
-    return () => clearInterval(logInterval)
-  }, [taskId])
+    // Fetch status and logs immediately, then every 3 seconds for more responsive monitoring
+    updateTaskData()
+    const statusInterval = setInterval(updateTaskData, 3000)
+
+    return () => clearInterval(statusInterval)
+  }, [taskId, taskStartTime])
 
   // WebSocket connection management
   useEffect(() => {

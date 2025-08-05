@@ -7,7 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from 'lucide-react'
-import { DualPaneMonitor } from '@/components/DualPaneMonitor'
+import { AgentThinkingDisplay } from '@/components/AgentThinkingDisplay'
 import ApiService from '@/services/api'
 
 export default function TaskMonitorPage() {
@@ -218,15 +218,15 @@ export default function TaskMonitorPage() {
           </div>
         </header>
 
-        {/* Dual Pane Monitor */}
-        <main className="flex-1 relative">
-          <DualPaneMonitor
-            taskId={taskId}
-            sessionId={sessionId}
-            liveViewUrl={liveViewUrl}
-            initialStatus={taskStatus}
-            className="h-full"
-          />
+        {/* Agent Thinking Display */}
+        <main className="flex-1 relative p-4">
+          <div className="h-full max-w-4xl mx-auto">
+            <AgentThinkingDisplay
+              taskId={taskId}
+              autoRefresh={true}
+              refreshInterval={2000}
+            />
+          </div>
         </main>
       </div>
     </ProtectedRoute>
