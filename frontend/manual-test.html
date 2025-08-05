@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimpleTaskSubmission Manual Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .pass {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .fail {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 SimpleTaskSubmission Component Manual Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Instructions</h2>
+        <p>This manual test will help you verify that the SimpleTaskSubmission component is working correctly.</p>
+        
+        <div class="test-buttons">
+            <button onclick="runAllTests()">Run All Tests</button>
+            <button onclick="testComponentRendering()">Test Rendering</button>
+            <button onclick="testTextareaFunctionality()">Test Textarea</button>
+            <button onclick="testQuickTaskButtons()">Test Quick Tasks</button>
+            <button onclick="testDemoMode()">Test Demo Mode</button>
+            <button onclick="testLLMSelector()">Test LLM Selector</button>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Manual Verification Steps</h2>
+        <ol>
+            <li><strong>Navigate to your app</strong> - Go to the page with the SimpleTaskSubmission component</li>
+            <li><strong>Check component rendering</strong> - Verify the form is visible with all elements</li>
+            <li><strong>Test textarea</strong> - Try typing in the textarea</li>
+            <li><strong>Test quick task buttons</strong> - Click on quick task buttons to fill the textarea</li>
+            <li><strong>Test demo mode</strong> - Toggle the demo mode button</li>
+            <li><strong>Test LLM selector</strong> - Open the AI model dropdown</li>
+            <li><strong>Test form submission</strong> - Fill the form and click submit</li>
+        </ol>
+    </div>
+
+    <script>
+        let testResults = [];
+
+        function addTestResult(testName, passed, message = '') {
+            const result = {
+                name: testName,
+                passed: passed,
+                message: message,
+                timestamp: new Date().toLocaleTimeString()
+            };
+            testResults.push(result);
+            displayResults();
+        }
+
+        function displayResults() {
+            const container = document.getElementById('test-results');
+            container.innerHTML = '';
+            
+            testResults.forEach(result => {
+                const div = document.createElement('div');
+                div.className = `test-result ${result.passed ? 'pass' : 'fail'}`;
+                div.innerHTML = `
+                    <strong>${result.passed ? '✅ PASS' : '❌ FAIL'}</strong> - ${result.name}
+                    ${result.message ? `<br><small>${result.message}</small>` : ''}
+                    <br><small>Time: ${result.timestamp}</small>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function testComponentRendering() {
+            console.log('🔍 Testing component rendering...');
+            
+            // Check if we're on the right page
+            const textarea = document.querySelector('textarea');
+            const buttons = document.querySelectorAll('button');
+            const form = document.querySelector('form');
+            
+            if (textarea && buttons.length > 0 && form) {
+                addTestResult('Component Rendering', true, `Found ${buttons.length} buttons, textarea, and form`);
+            } else {
+                addTestResult('Component Rendering', false, 'Missing essential elements');
+            }
+        }
+
+        function testTextareaFunctionality() {
+            console.log('📝 Testing textarea functionality...');
+            
+            const textarea = document.querySelector('textarea');
+            if (!textarea) {
+                addTestResult('Textarea Functionality', false, 'Textarea not found');
+                return;
+            }
+
+            // Test if textarea is interactive
+            const initialValue = textarea.value;
+            textarea.focus();
+            
+            // Simulate typing
+            textarea.value = 'Test input';
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            
+            if (textarea.value === 'Test input') {
+                addTestResult('Textarea Functionality', true, 'Textarea accepts input');
+            } else {
+                addTestResult('Textarea Functionality', false, 'Textarea does not accept input');
+            }
+        }
+
+        function testQuickTaskButtons() {
+            console.log('⚡ Testing quick task buttons...');
+            
+            const buttons = Array.from(document.querySelectorAll('button'))
+                .filter(btn => btn.textContent.includes('...'));
+            
+            if (buttons.length === 0) {
+                addTestResult('Quick Task Buttons', false, 'No quick task buttons found');
+                return;
+            }
+
+            const textarea = document.querySelector('textarea');
+            if (!textarea) {
+                addTestResult('Quick Task Buttons', false, 'Textarea not found for testing');
+                return;
+            }
+
+            // Test clicking first quick task button
+            const initialValue = textarea.value;
+            buttons[0].click();
+            
+            setTimeout(() => {
+                if (textarea.value !== initialValue) {
+                    addTestResult('Quick Task Buttons', true, `Button click filled textarea with: "${textarea.value.substring(0, 50)}..."`);
+                } else {
+                    addTestResult('Quick Task Buttons', false, 'Button click did not fill textarea');
+                }
+            }, 100);
+        }
+
+        function testDemoMode() {
+            console.log('🎮 Testing demo mode toggle...');
+            
+            const demoButton = Array.from(document.querySelectorAll('button'))
+                .find(btn => btn.textContent.includes('Demo'));
+            
+            if (!demoButton) {
+                addTestResult('Demo Mode Toggle', false, 'Demo button not found');
+                return;
+            }
+
+            const initialText = demoButton.textContent;
+            demoButton.click();
+            
+            setTimeout(() => {
+                if (demoButton.textContent !== initialText) {
+                    addTestResult('Demo Mode Toggle', true, `Demo mode toggled from "${initialText}" to "${demoButton.textContent}"`);
+                } else {
+                    addTestResult('Demo Mode Toggle', false, 'Demo button did not toggle');
+                }
+            }, 100);
+        }
+
+        function testLLMSelector() {
+            console.log('🤖 Testing LLM selector...');
+            
+            const selectTrigger = document.querySelector('[role="combobox"]');
+            if (!selectTrigger) {
+                addTestResult('LLM Selector', false, 'LLM selector not found');
+                return;
+            }
+
+            // Try to open the select
+            selectTrigger.click();
+            
+            setTimeout(() => {
+                const options = document.querySelectorAll('[role="option"]');
+                if (options.length > 0) {
+                    addTestResult('LLM Selector', true, `Found ${options.length} LLM options`);
+                } else {
+                    addTestResult('LLM Selector', false, 'No LLM options found after clicking');
+                }
+            }, 100);
+        }
+
+        function runAllTests() {
+            console.log('🚀 Running all tests...');
+            testResults = [];
+            
+            // Run tests with delays to ensure proper execution
+            testComponentRendering();
+            
+            setTimeout(() => {
+                testTextareaFunctionality();
+            }, 200);
+            
+            setTimeout(() => {
+                testQuickTaskButtons();
+            }, 400);
+            
+            setTimeout(() => {
+                testDemoMode();
+            }, 600);
+            
+            setTimeout(() => {
+                testLLMSelector();
+            }, 800);
+            
+            setTimeout(() => {
+                const passedTests = testResults.filter(r => r.passed).length;
+                const totalTests = testResults.length;
+                
+                const summaryDiv = document.createElement('div');
+                summaryDiv.className = `test-result ${passedTests === totalTests ? 'pass' : 'fail'}`;
+                summaryDiv.innerHTML = `
+                    <strong>📊 Test Summary</strong><br>
+                    Passed: ${passedTests}/${totalTests}<br>
+                    ${passedTests === totalTests ? '🎉 All tests passed!' : '⚠️ Some tests failed'}
+                `;
+                document.getElementById('test-results').appendChild(summaryDiv);
+            }, 1000);
+        }
+
+        // Auto-run basic test when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                addTestResult('Page Load', true, 'Test page loaded successfully');
+                testComponentRendering();
+            }, 500);
+        });
+
+        console.log('🧪 SimpleTaskSubmission Manual Test Script Loaded');
+        console.log('💡 Run tests using the buttons above or call: runAllTests()');
+    </script>
+</body>
+</html> 

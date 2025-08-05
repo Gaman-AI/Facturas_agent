@@ -195,7 +195,7 @@ export function VirtualLogList({
         <div style={{ height: totalHeight, position: 'relative' }}>
           {visibleItems.map(({ index, log, top }) => (
             <div
-              key={`${index}-${log.timestamp}`}
+              key={`virtual-log-${log.timestamp}-${index}`}
               className="absolute left-0 right-0 px-4 py-2 flex items-start space-x-3 text-sm border-b border-slate-100 hover:bg-slate-50"
               style={{ 
                 top,
@@ -220,11 +220,11 @@ export function VirtualLogList({
                     <span>
                       {log.message.split(new RegExp(`(${searchQuery})`, 'gi')).map((part, partIndex) => 
                         part.toLowerCase() === searchQuery.toLowerCase() ? (
-                          <mark key={`highlight-${index}-${partIndex}-${part}`} className="bg-yellow-200 px-1 rounded">
+                          <mark key={`highlight-${log.timestamp}-${index}-${partIndex}`} className="bg-yellow-200 px-1 rounded">
                             {part}
                           </mark>
                         ) : (
-                          <span key={`text-${index}-${partIndex}-${part}`}>{part}</span>
+                          <span key={`text-${log.timestamp}-${index}-${partIndex}`}>{part}</span>
                         )
                       )}
                     </span>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Component Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .pass { background-color: #d4edda; color: #155724; }
+        .fail { background-color: #f8d7da; color: #721c24; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 Component Test Results</h1>
+        
+        <div id="results"></div>
+        
+        <button onclick="runTests()">Run Tests Again</button>
+        <button onclick="checkPage()">Check Current Page</button>
+    </div>
+
+    <script>
+        function addResult(testName, passed, message = '') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            div.innerHTML = `
+                <strong>${passed ? '✅ PASS' : '❌ FAIL'}</strong> - ${testName}
+                ${message ? `<br><small>${message}</small>` : ''}
+            `;
+            results.appendChild(div);
+        }
+
+        function checkPage() {
+            // Clear previous results
+            document.getElementById('results').innerHTML = '';
+            
+            console.log('🔍 Checking current page...');
+            
+            // Test 1: Check if we're on a page with the component
+            const textarea = document.querySelector('textarea');
+            const buttons = document.querySelectorAll('button');
+            const form = document.querySelector('form');
+            
+            addResult('Page Elements', 
+                textarea && buttons.length > 0, 
+                `Found ${buttons.length} buttons, textarea: ${!!textarea}, form: ${!!form}`
+            );
+            
+            // Test 2: Check for specific component elements
+            const quickTaskButtons = Array.from(buttons).filter(btn => 
+                btn.textContent.includes('...')
+            );
+            
+            addResult('Quick Task Buttons', 
+                quickTaskButtons.length > 0, 
+                `Found ${quickTaskButtons.length} quick task buttons`
+            );
+            
+            // Test 3: Check for demo mode
+            const demoButton = Array.from(buttons).find(btn => 
+                btn.textContent.includes('Demo')
+            );
+            
+            addResult('Demo Mode Button', 
+                !!demoButton, 
+                demoButton ? `Found: "${demoButton.textContent}"` : 'Demo button not found'
+            );
+            
+            // Test 4: Check for submit button
+            const submitButton = Array.from(buttons).find(btn => 
+                btn.textContent.includes('Start') || btn.textContent.includes('Submit')
+            );
+            
+            addResult('Submit Button', 
+                !!submitButton, 
+                submitButton ? `Found: "${submitButton.textContent}"` : 'Submit button not found'
+            );
+            
+            // Test 5: Check for AI model selector
+            const select = document.querySelector('select') || document.querySelector('[role="combobox"]');
+            
+            addResult('AI Model Selector', 
+                !!select, 
+                select ? 'Found AI model selector' : 'AI model selector not found'
+            );
+            
+            // Test 6: Check if textarea is interactive
+            if (textarea) {
+                const initialValue = textarea.value;
+                textarea.focus();
+                textarea.value = 'Test input';
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                addResult('Textarea Interaction', 
+                    textarea.value === 'Test input', 
+                    textarea.value === 'Test input' ? 'Textarea accepts input' : 'Textarea does not accept input'
+                );
+                
+                // Reset textarea
+                textarea.value = initialValue;
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+            
+            // Test 7: Check if quick task buttons are clickable
+            if (quickTaskButtons.length > 0) {
+                const textarea = document.querySelector('textarea');
+                if (textarea) {
+                    const initialValue = textarea.value;
+                    quickTaskButtons[0].click();
+                    
+                    setTimeout(() => {
+                        addResult('Quick Task Button Click', 
+                            textarea.value !== initialValue, 
+                            textarea.value !== initialValue ? 'Button click filled textarea' : 'Button click did not work'
+                        );
+                    }, 100);
+                }
+            }
+        }
+
+        function runTests() {
+            document.getElementById('results').innerHTML = '';
+            checkPage();
+        }
+
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            setTimeout(checkPage, 1000);
+        });
+
+        console.log('🧪 Component Test Script Loaded');
+        console.log('💡 Use checkPage() to test the current page');
+    </script>
+</body>
+</html> 

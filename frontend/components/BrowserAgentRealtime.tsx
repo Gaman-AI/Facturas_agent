@@ -377,7 +377,7 @@ const BrowserAgentRealtime: React.FC<BrowserAgentRealtimeProps> = ({
                 </p>
               ) : (
                 logs.map((log, index) => (
-                  <div key={index} className="flex items-start gap-2 p-2 bg-white rounded shadow-sm">
+                  <div key={`realtime-log-${log.timestamp}-${index}`} className="flex items-start gap-2 p-2 bg-white rounded shadow-sm">
                     <Badge className={getLogBadgeColor(log.type)}>
                       {log.timestamp}
                     </Badge>

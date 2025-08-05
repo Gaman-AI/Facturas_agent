@@ -182,7 +182,7 @@ export function StatusSidebar({
     const blob = new Blob([content], { type: mimeType })
     const url = URL.createObjectURL(blob)
     
-    // Use a hidden anchor element that's already in the DOM
+    // Create a hidden anchor element for download
     const downloadLink = document.createElement('a')
     downloadLink.href = url
     downloadLink.download = filename
@@ -194,8 +194,13 @@ export function StatusSidebar({
     
     // Use setTimeout to ensure the click event completes before removal
     setTimeout(() => {
-      if (document.body.contains(downloadLink)) {
-        document.body.removeChild(downloadLink)
+      try {
+        if (document.body.contains(downloadLink)) {
+          document.body.removeChild(downloadLink)
+        }
+      } catch (error) {
+        // Silently handle any DOM removal errors
+        console.warn('Download link cleanup error:', error)
       }
       URL.revokeObjectURL(url)
     }, 100)
@@ -493,7 +498,7 @@ export function StatusSidebar({
                 </div>
               ) : (
                 filteredLogs.map((log, index) => (
-                  <div key={index} className="flex items-start space-x-3 text-sm">
+                  <div key={`log-${log.timestamp}-${index}`} className="flex items-start space-x-3 text-sm">
                     <div className="mt-1">
                       {getLogIcon(log.type)}
                     </div>
@@ -512,11 +517,11 @@ export function StatusSidebar({
                           <span>
                             {log.message.split(new RegExp(`(${searchQuery})`, 'gi')).map((part, partIndex) => 
                               part.toLowerCase() === searchQuery.toLowerCase() ? (
-                                <mark key={`highlight-${index}-${partIndex}-${part}`} className="bg-yellow-200 px-1 rounded">
+                                <mark key={`highlight-${log.timestamp}-${index}-${partIndex}`} className="bg-yellow-200 px-1 rounded">
                                   {part}
                                 </mark>
                               ) : (
-                                <span key={`text-${index}-${partIndex}-${part}`}>{part}</span>
+                                <span key={`text-${log.timestamp}-${index}-${partIndex}`}>{part}</span>
                               )
                             )}
                           </span>

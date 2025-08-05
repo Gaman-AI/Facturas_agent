@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,30 +34,44 @@ export function SimpleTaskSubmission({
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [isDemoMode, setIsDemoMode] = useState(false)
+  const mountedRef = useRef(true)
 
   const characterLimit = 500
   const remainingChars = characterLimit - task.length
+
+  // Cleanup effect to prevent state updates on unmounted component
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!task.trim()) {
-      setError(t('tasks.validation.taskRequired'))
+      if (mountedRef.current) {
+        setError(t('tasks.validation.taskRequired'))
+      }
       return
     }
 
     if (task.length > characterLimit) {
-      setError(t('tasks.validation.taskTooLong'))
+      if (mountedRef.current) {
+        setError(t('tasks.validation.taskTooLong'))
+      }
       return
     }
 
-    setIsSubmitting(true)
-    setError(null)
-    setSuccess(null)
+    if (mountedRef.current) {
+      setIsSubmitting(true)
+      setError(null)
+      setSuccess(null)
+    }
 
     try {
       // Create a simple browser automation task
-      const response = await ApiService.createBrowserTask({
+      const response = await ApiService.createBrowserUseTask({
         task: task,
         llm_provider: llmProvider,
         model: llmProvider === 'openai' ? 'gpt-4o' : 
@@ -66,29 +80,54 @@ export function SimpleTaskSubmission({
       })
 
       const taskId = response.data.task_id
-      setSuccess(t('tasks.success.created'))
       
-      // Clear form
-      setTask('')
-      
-      // Callback for parent component
-      if (onTaskSubmit) {
-        onTaskSubmit(taskId)
-      }
-      
-      // Redirect to monitoring page
-      if (showRedirect) {
-        setTimeout(() => {
-          router.push(`/task/monitor/${taskId}`)
-        }, 1500)
+      // Only update state if component is still mounted
+      if (mountedRef.current) {
+        setSuccess(t('tasks.success.created'))
+        
+        // Clear form
+        setTask('')
+        
+        // Callback for parent component
+        if (onTaskSubmit) {
+          onTaskSubmit(taskId)
+        }
+        
+        // Redirect to monitoring page
+        if (showRedirect) {
+          setTimeout(() => {
+            if (mountedRef.current) {
+              router.push(`/task/monitor/${taskId}`)
+            }
+          }, 1500)
+        }
       }
 
     } catch (error: any) {
       console.error('Error creating task:', error)
-      const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error occurred'
-      setError(t('tasks.error.creation'))
+      
+      // Extract detailed error information
+      let errorMessage = 'Unknown error occurred'
+      
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error?.response?.data?.error?.message) {
+        errorMessage = error.response.data.error.message
+      } else if (error?.message) {
+        errorMessage = error.message
+      }
+      
+      // Set error state with detailed message (only if mounted)
+      if (mountedRef.current) {
+        setError(errorMessage)
+      }
+      
+      // Don't redirect on error to prevent React reconciliation issues
+      console.log('Task creation failed, not redirecting')
     } finally {
-      setIsSubmitting(false)
+      if (mountedRef.current) {
+        setIsSubmitting(false)
+      }
     }
   }
 
@@ -127,7 +166,9 @@ export function SimpleTaskSubmission({
               type="button"
               variant={isDemoMode ? "default" : "outline"}
               size="sm"
-              onClick={() => setIsDemoMode(!isDemoMode)}
+              onClick={() => {
+                setIsDemoMode(!isDemoMode)
+              }}
               className="flex items-center gap-2"
             >
               <Play className="w-4 h-4" />
@@ -144,7 +185,9 @@ export function SimpleTaskSubmission({
             </label>
             <Textarea
               value={task}
-              onChange={(e) => setTask(e.target.value)}
+              onChange={(e) => {
+                setTask(e.target.value)
+              }}
               placeholder={t('tasks.simple.placeholder')}
               className="min-h-[100px] resize-none"
               disabled={isSubmitting}
@@ -152,21 +195,21 @@ export function SimpleTaskSubmission({
             />
             <div className="flex justify-between items-center text-xs text-muted-foreground">
               <span>{t('tasks.simple.hint')}</span>
-              <span className={remainingChars < 50 ? 'text-orange-500' : remainingChars < 10 ? 'text-red-500' : ''}>
-                {remainingChars} {t('common.charactersRemaining')}
+              <span className={remainingChars < 50 ? 'text-red-500' : ''}>
+                {remainingChars} characters remaining
               </span>
             </div>
           </div>
 
-          {/* Quick Task Examples */}
+          {/* Quick Tasks */}
           <div className="space-y-2">
             <label className="text-sm font-medium">
-              {t('tasks.simple.quickExamples')}
+              {t('tasks.simple.quickTasks')}
             </label>
             <div className="flex flex-wrap gap-2">
               {quickTasks.map((quickTask, index) => (
                 <Button
-                  key={index}
+                  key={`quick-task-${index}`}
                   type="button"
                   variant="outline"
                   size="sm"
@@ -180,12 +223,15 @@ export function SimpleTaskSubmission({
             </div>
           </div>
 
-          {/* LLM Provider Selection */}
+          {/* LLM Selector */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">
-              {t('tasks.simple.aiModel')}
-            </label>
-            <Select value={llmProvider} onValueChange={(value: 'openai' | 'anthropic' | 'google') => setLlmProvider(value)}>
+            <label className="text-sm font-medium">{t('tasks.simple.aiModel')}</label>
+            <Select 
+              value={llmProvider} 
+              onValueChange={(value: any) => {
+                setLlmProvider(value)
+              }}
+            >
               <SelectTrigger disabled={isSubmitting}>
                 <SelectValue />
               </SelectTrigger>
@@ -212,58 +258,65 @@ export function SimpleTaskSubmission({
             </Select>
           </div>
 
-          {/* Error Display */}
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+          {/* Alerts - FIXED: Single stable container with proper conditional logic */}
+          <div className="space-y-2">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            {!error && success && (
+              <Alert className="border-green-200 bg-green-50">
+                <AlertDescription className="text-green-800">{success}</AlertDescription>
+              </Alert>
+            )}
+          </div>
 
-          {/* Success Display */}
-          {success && (
-            <Alert className="border-green-200 bg-green-50">
-              <AlertDescription className="text-green-800">{success}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Submit Button */}
+          {/* Actions */}
           <div className="flex gap-2">
-            <Button 
-              type="submit" 
-              className="flex-1" 
+            <Button
+              type="submit"
+              className="flex-1"
               disabled={isSubmitting || !task.trim() || task.length > characterLimit}
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {isDemoMode ? 'Creating Demo Task...' : t('tasks.simple.creating')}
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4 mr-2" />
-                  {isDemoMode ? 'Start Demo Task' : t('tasks.simple.submit')}
-                </>
-              )}
+              <div className="flex items-center gap-2">
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                <span>
+                  {isSubmitting
+                    ? isDemoMode
+                      ? 'Creating Demo Task...'
+                      : t('tasks.simple.creating')
+                    : isDemoMode
+                    ? 'Start Demo Task'
+                    : t('tasks.simple.submit')}
+                </span>
+              </div>
             </Button>
-            
-            <Button 
+
+            <Button
               type="button"
               variant="outline"
               onClick={() => router.push('/task/monitor/demo_task_456')}
               className="px-4"
-              title="Try demo without API credentials"
+              disabled={isSubmitting}
             >
               <Zap className="w-4 h-4" />
             </Button>
           </div>
 
-          {/* User Info */}
-          {user && !isDemoMode && (
-            <div className="text-xs text-muted-foreground text-center pt-2">
-              {t('tasks.simple.userNote')}: {user.email}
-            </div>
-          )}
+          {/* User Note - FIXED: Stable container with conditional content */}
+          <div className="text-xs text-muted-foreground text-center pt-2">
+            {user && !isDemoMode ? (
+              <span>{t('tasks.simple.userNote')}: {user.email}</span>
+            ) : (
+              <span>&nbsp;</span>
+            )}
+          </div>
         </form>
       </CardContent>
     </Card>

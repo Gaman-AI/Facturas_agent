@@ -1,5 +1,6 @@
 import { spawn } from 'child_process'
 import path from 'path'
+import process from 'process'
 import config from '../config/index.js'
 import { AppError, ServiceUnavailableError } from '../middleware/errorHandler.js'
 

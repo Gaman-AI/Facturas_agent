@@ -67,13 +67,13 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     }
   }
 
-  // Initialize language - always start with 'es' for consistent SSR
+  // Initialize language - HYDRATION SAFE APPROACH
   useEffect(() => {
     const initializeLanguage = () => {
       // Always start with 'es' for consistent server-client rendering
       let savedLanguage: Language = 'es'
       
-      // Only check localStorage after component is mounted
+      // Only check localStorage after component is mounted (client-side only)
       if (typeof window !== 'undefined') {
         const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) as Language
         if (saved === 'es' || saved === 'en') {
@@ -83,14 +83,17 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
           savedLanguage = navigator.language.toLowerCase().startsWith('en') ? 'en' : 'es'
         }
         
-        // Only update if different from 'es' to avoid hydration mismatch
+        // Only switch language after hydration is complete to avoid mismatch
         if (savedLanguage !== 'es') {
-          setLanguageState(savedLanguage)
-          loadTranslations(savedLanguage)
+          // Delay the language switch to ensure hydration is complete
+          setTimeout(() => {
+            setLanguageState(savedLanguage)
+            loadTranslations(savedLanguage)
+          }, 100)
         }
       }
       
-      // Always load Spanish translations first
+      // Always load Spanish translations first (consistent with server)
       loadTranslations('es')
       
       // Preload the other language
@@ -127,13 +130,42 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     }
   }
 
-  // Translation function
+  // Translation function - HYDRATION SAFE
   const t = (key: string, params?: Record<string, string | number>): string => {
-    if (!translations || Object.keys(translations).length === 0) {
+    // During SSR and initial hydration, always return Spanish fallbacks
+    if (!isMounted || !translations || Object.keys(translations).length === 0) {
       const loadingFallbacks: Record<string, string> = {
-        'language.switch': language === 'es' ? 'Cambiar idioma' : 'Switch language',
-        'common.loading': language === 'es' ? 'Cargando...' : 'Loading...',
-        'common.error': language === 'es' ? 'Error' : 'Error'
+        'language.switch': 'Cambiar idioma',
+        'common.loading': 'Cargando...',
+        'common.error': 'Error',
+        'home.loadingApp': 'Cargando aplicación...',
+        'home.redirectingToDashboard': 'Redirigiendo al dashboard...',
+        'home.title': 'Sistema de Automatización CFDI 4.0',
+        'home.subtitle': 'Automatiza el llenado de formularios CFDI con inteligencia artificial',
+        'home.getStarted': 'Comenzar',
+        'home.login': 'Iniciar Sesión',
+        'home.tryDemo': 'Probar Demo',
+        'features.secure': 'Seguro',
+        'features.intelligent': 'Inteligente',
+        'features.compatible': 'Compatible',
+        // SimpleTaskSubmission component translations
+        'tasks.validation.taskRequired': 'La descripción de la tarea es requerida',
+        'tasks.validation.taskTooLong': 'La descripción de la tarea es demasiado larga',
+        'tasks.success.created': 'Tarea creada exitosamente',
+        'tasks.quick.searchGoogle': 'Buscar noticias recientes sobre un tema específico en Google',
+        'tasks.quick.checkWeather': 'Verificar el pronóstico del tiempo para una ciudad',
+        'tasks.quick.findProduct': 'Encontrar precios de laptops en MercadoLibre',
+        'tasks.quick.socialMedia': 'Revisar las últimas publicaciones en Twitter',
+        'tasks.simple.title': 'Envío Rápido de Tareas',
+        'tasks.simple.description': 'Describe lo que quieres que el agente de IA haga en lenguaje simple',
+        'tasks.simple.taskLabel': '¿Qué te gustaría que haga el agente?',
+        'tasks.simple.placeholder': 'Ejemplo: Busca las últimas actualizaciones de OpenAI en Google y resume los hallazgos',
+        'tasks.simple.hint': 'Sé específico sobre lo que quieres lograr',
+        'tasks.simple.quickTasks': 'Tareas Rápidas',
+        'tasks.simple.aiModel': 'Modelo de IA',
+        'tasks.simple.creating': 'Creando Tarea...',
+        'tasks.simple.submit': 'Iniciar Tarea',
+        'tasks.simple.userNote': 'La tarea se ejecutará como'
       }
       return loadingFallbacks[key] || key
     }
