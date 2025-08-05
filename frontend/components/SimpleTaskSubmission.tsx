@@ -33,6 +33,7 @@ export function SimpleTaskSubmission({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [isDemoMode, setIsDemoMode] = useState(false)
 
   // Character limit removed - no longer needed
 
@@ -52,13 +53,12 @@ export function SimpleTaskSubmission({
 
     try {
       // Create a simple browser automation task
-      const response = await ApiService.executeBrowserTask({
+      const response = await ApiService.createBrowserTask({
         task: task,
-        model: llmProvider === 'openai' ? 'gpt-4o-mini' : 
-               llmProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' : 
-               'gemini-pro',
         llm_provider: llmProvider,
-        timeout_minutes: 30
+        model: llmProvider === 'openai' ? 'gpt-4o' : 
+               llmProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' : 
+               'gemini-pro'
       })
 
       const taskId = response.data.task_id
@@ -79,9 +79,9 @@ export function SimpleTaskSubmission({
         }, 1500)
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating task:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error occurred'
       setError(t('tasks.error.creation', `Failed to create task: ${errorMessage}`))
     } finally {
       setIsSubmitting(false)
@@ -221,7 +221,7 @@ export function SimpleTaskSubmission({
           </Button>
 
           {/* User Info */}
-          {user && (
+          {user && !isDemoMode && (
             <div className="text-xs text-muted-foreground text-center pt-2">
               {t('tasks.simple.userNote', 'Task will be executed as')}: {user.email}
             </div>

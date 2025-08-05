@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import { LogOut, User, Building2, FileText, BarChart3, Zap, Plus, Monitor, Globe, Activity, TrendingUp, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +10,10 @@ import { useAuth, useUserProfile } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
 import { SimpleTaskSubmission } from '@/components/SimpleTaskSubmission';
+import { TaskStats } from '@/components/TaskStats';
+import { TaskList } from '@/components/TaskList';
+import { TaskProgressList } from '@/components/TaskProgressIndicator';
+import { ApiService } from '@/services/api';
 
 export default function DashboardPage() {
   return (
@@ -23,6 +28,9 @@ function DashboardContent() {
   const { profile, getDisplayName, getRFCMasked, getFullAddress, isPersonaFisica } = useUserProfile();
   const { t } = useLanguage();
   const router = useRouter();
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -46,7 +54,7 @@ function DashboardContent() {
   };
 
   const handleViewHistory = () => {
-    // TODO: Implement task history page
+    // TODO: Implement dedicated task history page
     console.log('Navigate to task history');
   };
 
@@ -54,6 +62,28 @@ function DashboardContent() {
     // TODO: Implement profile update page
     console.log('Navigate to profile update');
   };
+
+  const handleRefreshData = () => {
+    setRefreshTrigger(prev => prev + 1);
+    fetchActiveTasks();
+  };
+
+  // Fetch active tasks for progress display
+  const fetchActiveTasks = async () => {
+    try {
+      setLoadingTasks(true);
+      const fetchedTasks = await ApiService.getTasks(0, 20);
+      setTasks(fetchedTasks);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    } finally {
+      setLoadingTasks(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchActiveTasks();
+  }, []);
 
   // Show dashboard even without profile (profile is optional now)
   const displayName = profile ? getDisplayName() : 'Usuario'
@@ -340,6 +370,62 @@ function DashboardContent() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Active Tasks Progress - Mobile Only */}
+            <div className="lg:hidden">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Tareas Activas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!loadingTasks && tasks.length > 0 ? (
+                    <TaskProgressList 
+                      tasks={tasks}
+                      maxTasks={3}
+                      variant="compact"
+                    />
+                  ) : (
+                    <p className="text-sm text-gray-600">No hay tareas activas</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Right Column - Task Management */}
+          <div className="lg:col-span-2 space-y-4 lg:space-y-6">
+            {/* Task Statistics */}
+            <TaskStats refreshTrigger={refreshTrigger} />
+
+            {/* Active Tasks Progress - Desktop Only */}
+            <div className="hidden lg:block">
+              {!loadingTasks && tasks.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Tareas en Progreso</CardTitle>
+                    <CardDescription>
+                      Monitoreo en tiempo real de tareas activas
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <TaskProgressList 
+                      tasks={tasks}
+                      maxTasks={5}
+                      variant="compact"
+                    />
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Recent Tasks */}
+            <TaskList 
+              maxTasks={6}
+              showHeader={true}
+              showFilters={true}
+              showPagination={false}
+              showProgress={true}
+            />
           </div>
         </div>
       </main>

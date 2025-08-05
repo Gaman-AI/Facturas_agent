@@ -63,19 +63,19 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="border-red-200 bg-red-50 text-red-700">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="email">{t('auth.email')}</Label>
+        <Label htmlFor="email" className="text-sm font-medium text-slate-700">{t('auth.email')}</Label>
         <Input
           id="email"
           type="email"
           placeholder={t('login.emailPlaceholder')}
           {...register('email')}
-          className={errors.email ? 'border-red-500' : ''}
+          className={`${errors.email ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-pink-500'} focus:ring-pink-500/20`}
         />
         {errors.email && (
           <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -83,26 +83,26 @@ export function LoginForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">{t('auth.password')}</Label>
+        <Label htmlFor="password" className="text-sm font-medium text-slate-700">{t('auth.password')}</Label>
         <div className="relative">
           <Input
             id="password"
             type={showPassword ? 'text' : 'password'}
             placeholder={t('login.passwordPlaceholder')}
             {...register('password')}
-            className={errors.password ? 'border-red-500 pr-10' : 'pr-10'}
+            className={`${errors.password ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-pink-500'} focus:ring-pink-500/20 pr-10`}
           />
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-slate-500 hover:text-slate-700"
             onClick={() => setShowPassword(!showPassword)}
           >
             {showPassword ? (
-              <EyeOff className="h-4 w-4 text-slate-500" />
+              <EyeOff className="h-4 w-4" />
             ) : (
-              <Eye className="h-4 w-4 text-slate-500" />
+              <Eye className="h-4 w-4" />
             )}
           </Button>
         </div>
@@ -113,7 +113,7 @@ export function LoginForm() {
 
       <Button
         type="submit"
-        className="w-full"
+        className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-medium py-2.5 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
         disabled={isLoading}
       >
         {isLoading ? (
