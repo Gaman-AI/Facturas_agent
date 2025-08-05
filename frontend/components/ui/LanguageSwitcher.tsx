@@ -169,28 +169,25 @@ export function LanguageToggle({ className = '' }: { className?: string }) {
     }
   }
 
-  // Always render the same structure, but with different content based on mounted state
+  // Render consistent structure to avoid hydration mismatch
+  // Use a more stable approach with proper key handling
   return (
-    <div className={`flex items-center gap-1 h-8 px-2 ${className}`}>
-      {!isMounted ? (
-        <>
-          <div className="w-4 h-4 bg-slate-400 rounded"></div>
-          <span className="text-xs font-medium text-slate-600">ES</span>
-        </>
-      ) : (
-        <>
-          <Globe className="h-4 w-4" />
-          <span className="text-xs font-medium">
-            {language === 'es' ? 'ES' : 'EN'}
-          </span>
-        </>
+    <div 
+      className={`flex items-center gap-1 h-8 px-2 ${className}`}
+      key={isMounted ? 'mounted' : 'loading'}
+    >
+      <Globe className="h-4 w-4" />
+      <span className="text-xs font-medium">
+        {isMounted ? (language === 'es' ? 'ES' : 'EN') : 'ES'}
+      </span>
+      {isMounted && (
+        <button
+          onClick={toggleLanguage}
+          disabled={isLoading || isChanging}
+          className="w-full h-full opacity-0 cursor-pointer"
+          title="Toggle language / Cambiar idioma"
+        />
       )}
-      <button
-        onClick={isMounted ? toggleLanguage : undefined}
-        disabled={!isMounted || isLoading || isChanging}
-        className="w-full h-full opacity-0 cursor-pointer"
-        title={isMounted ? "Toggle language / Cambiar idioma" : "Loading..."}
-      />
     </div>
   )
 } 

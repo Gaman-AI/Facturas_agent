@@ -13,7 +13,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function HomePage() {
   const { isAuthenticated, loading, isInitialized } = useAuth();
-  const { t, isLoading: languageLoading } = useLanguage();
+  const { t } = useLanguage();
   const router = useRouter();
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export default function HomePage() {
         <div className="text-center">
           <LoadingSpinner size="lg" />
           <p className="mt-4 text-slate-600">
-            {languageLoading ? 'Cargando aplicación...' : t('home.loadingApp')}
+            {t('home.loadingApp')}
           </p>
         </div>
       </div>
@@ -43,7 +43,7 @@ export default function HomePage() {
         <div className="text-center">
           <LoadingSpinner size="lg" />
           <p className="mt-4 text-slate-600">
-            {languageLoading ? 'Redirigiendo al dashboard...' : t('home.redirectingToDashboard')}
+            {t('home.redirectingToDashboard')}
           </p>
         </div>
       </div>
@@ -52,7 +52,7 @@ export default function HomePage() {
 
   // OPTIMIZED: Show content even if language is still loading with fallback text
   const getText = (key: string, fallback: string) => {
-    return languageLoading ? fallback : t(key);
+    return t(key);
   };
 
   return (

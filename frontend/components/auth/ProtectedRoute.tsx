@@ -1,79 +1,54 @@
-'use client';
+'use client'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/hooks/useAuth'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { useLanguage } from '@/contexts/LanguageContext'
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+export const ProtectedRoute = ({ children, redirectTo = '/login', requiredProfile = false }: { children: React.ReactNode, redirectTo?: string, requiredProfile?: boolean }) => {
+  const { isAuthenticated, loading, isInitialized, profile } = useAuth()
+  const { t } = useLanguage()
+  const router = useRouter()
+  const [hydrated, setHydrated] = useState(false)
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  redirectTo?: string;
-  requiredProfile?: boolean;
-}
-
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
-  redirectTo = '/login',
-  requiredProfile = false 
-}) => {
-  const { isAuthenticated, loading, isInitialized, profile } = useAuth();
-  const router = useRouter();
+  // Wait for hydration to complete
+  useEffect(() => {
+    setHydrated(true)
+  }, [])
 
   useEffect(() => {
-    // Wait for auth to initialize
-    if (!isInitialized) return;
+    if (!hydrated || !isInitialized) return
 
-    // Redirect if not authenticated
     if (!isAuthenticated) {
-      router.push(redirectTo);
-      return;
+      router.push(redirectTo)
+      return
     }
 
-    // Redirect if profile is required but missing
     if (requiredProfile && !profile) {
-      router.push('/setup-profile');
-      return;
+      router.push('/setup-profile')
+      return
     }
-  }, [isAuthenticated, loading, isInitialized, profile, router, redirectTo, requiredProfile]);
+  }, [hydrated, isAuthenticated, isInitialized, profile, redirectTo, requiredProfile, router])
 
-  // Show loading while initializing or redirecting
-  if (!isInitialized || loading) {
+  if (!hydrated || !isInitialized || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
         <div className="text-center">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-slate-600">Verificando autenticación...</p>
+          {/* Avoid SSR mismatch by only rendering translated string on client */}
+          {hydrated ? (
+            <p className="mt-4 text-slate-600">{t('app.loading')}</p>
+          ) : (
+            <p className="mt-4 text-slate-600">Loading...</p>
+          )}
         </div>
       </div>
-    );
+    )
   }
 
-  // Show loading if not authenticated (while redirecting)
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="text-center">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-slate-600">Redirigiendo...</p>
-        </div>
-      </div>
-    );
-  }
+  return <>{children}</>
+}
 
-  // Show loading if profile is required but missing (while redirecting)
-  if (requiredProfile && !profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="text-center">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-slate-600">Configurando perfil...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-};
 
 // HOC version for class components or additional functionality
 export const withProtectedRoute = <P extends object>(
@@ -93,4 +68,4 @@ export const withProtectedRoute = <P extends object>(
       </ProtectedRoute>
     );
   };
-}; 
+};

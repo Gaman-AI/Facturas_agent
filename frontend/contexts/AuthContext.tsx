@@ -95,8 +95,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initializeAuth = async () => {
       if (!supabase) {
         console.warn('Supabase client not initialized - skipping auth initialization')
-        setIsInitialized(true)
-        setLoading(false)
+        safeSetIsInitialized(true)
+        safeSetLoading(false)
         return
       }
       
@@ -124,14 +124,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
           if (event === 'SIGNED_IN' && session?.user) {
-            setUser(session.user)
-            setError(null)
+            safeSetUser(session.user)
+            safeSetError(null)
             // Load profile in background - don't block UI
             loadUserProfile(session.user.id).catch(console.error)
           } else if (event === 'SIGNED_OUT') {
-            setUser(null)
-            setProfile(null)
-            setError(null)
+            safeSetUser(null)
+            safeSetProfile(null)
+            safeSetError(null)
           }
         }
       )
@@ -145,7 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     if (!supabase) {
       const error = new Error('Supabase client not initialized. Please check your environment variables.')
-      setError(error.message)
+      safeSetError(error.message)
       throw error
     }
     
@@ -191,7 +191,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     if (!supabase) {
       const error = new Error('Supabase client not initialized. Please check your environment variables.')
-      setError(error.message)
+      safeSetError(error.message)
       throw error
     }
     
@@ -205,7 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('✅ Logged out and cleared token manager state')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Logout failed'
-      setError(message)
+      safeSetError(message)
       // Clear token state even if logout fails
       tokenManager.clearState()
       throw err
@@ -249,12 +249,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshSession = useCallback(async () => {
     if (!supabase) {
       const error = new Error('Supabase client not initialized. Please check your environment variables.')
-      setError(error.message)
+      safeSetError(error.message)
       throw error
     }
     
     try {
-      setError(null)
+      safeSetError(null)
       console.log('🔄 Refreshing session via token manager...')
       
       // Use centralized token manager for session refresh
@@ -266,24 +266,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (refreshedSession.user) {
         console.log('✅ Session refreshed successfully via token manager')
-        setUser(refreshedSession.user)
+        safeSetUser(refreshedSession.user)
         await loadUserProfile(refreshedSession.user.id)
       } else {
         console.warn('⚠️  No user in refreshed session')
-        setUser(null)
-        setProfile(null)
+        safeSetUser(null)
+        safeSetProfile(null)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Session refresh failed'
       console.error('❌ Session refresh error:', message)
-      setError(message)
+      safeSetError(message)
       // Clear user state and token manager state on refresh failure
-      setUser(null)
-      setProfile(null)
+      safeSetUser(null)
+      safeSetProfile(null)
       tokenManager.clearState()
       throw err
     }
-  }, [safeSetUser, loadUserProfile])
+  }, [safeSetUser, safeSetProfile, safeSetError, loadUserProfile])
 
   const clearError = useCallback(() => {
     safeSetError(null)

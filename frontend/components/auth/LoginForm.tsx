@@ -1,4 +1,6 @@
 'use client'
+import { useEffect, useRef } from 'react'
+
 
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -34,6 +36,14 @@ export function LoginForm() {
       .min(1, t('validation.password.required'))
       .min(6, t('validation.password.minLength', { min: 6 })),
   })
+  // inside the LoginForm component
+const mountedRef = useRef(true)
+
+useEffect(() => {
+  return () => {
+    mountedRef.current = false
+  }
+}, [])
 
   type LoginFormData = z.infer<typeof loginSchema>
 
@@ -49,16 +59,27 @@ export function LoginForm() {
     try {
       setIsLoading(true)
       setError(null)
-      
+  
       await login(data.email, data.password)
-      router.push('/dashboard')
+  
+      // Delay navigation slightly to avoid overlapping state updates
+      setTimeout(() => {
+        router.push('/dashboard')
+      }, 100)
+  
     } catch (err) {
       console.error('Login error:', err)
-      setError(err instanceof Error ? err.message : t('login.error.generic'))
+  
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : t('login.error.generic'))
+      }
     } finally {
-      setIsLoading(false)
+      if (mountedRef.current) {
+        setIsLoading(false)
+      }
     }
   }
+  
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

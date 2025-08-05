@@ -152,6 +152,84 @@ router.post('/', validateCreateTask, asyncHandler(async (req, res) => {
 }))
 
 /**
+ * @route   GET /api/v1/tasks/browser-use
+ * @desc    Get all browser tasks for the authenticated user
+ * @access  Private
+ */
+router.get('/browser-use', asyncHandler(async (req, res) => {
+  const userId = 'anonymous'
+  const { 
+    limit = 20, 
+    offset = 0, 
+    status = null,
+    sort_by = 'createdAt',
+    sort_order = 'desc'
+  } = req.query
+
+  try {
+    // Check if browserAgentService is available
+    if (!browserAgentService) {
+      throw new Error('Browser agent service not initialized')
+    }
+
+    const result = browserAgentService.getUserTasks(userId, {
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      status,
+      sortBy: sort_by,
+      sortOrder: sort_order
+    })
+
+    res.json({
+      success: true,
+      data: {
+        tasks: result.tasks.map(task => ({
+          task_id: task.id,
+          status: task.status,
+          created_at: task.createdAt,
+          started_at: task.startedAt,
+          completed_at: task.completedAt,
+          execution_time_ms: task.executionTimeMs,
+          model: task.model,
+          vendor_url: task.vendorUrl,
+          result: task.status === 'completed' ? task.result : null,
+          error: task.error,
+          prompt_preview: task.prompt ? task.prompt.substring(0, 100) + '...' : null
+        })),
+        total_count: result.totalCount,
+        has_more: result.hasMore,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+
+  } catch (error) {
+    console.error('❌ Failed to get browser tasks:', error)
+    
+    // Return empty result instead of error to prevent frontend crashes
+    res.json({
+      success: true,
+      data: {
+        tasks: [],
+        total_count: 0,
+        has_more: false,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id,
+        warning: 'Browser agent service temporarily unavailable'
+      }
+    })
+  }
+}))
+
+/**
  * @route   GET /api/v1/tasks/:taskId
  * @desc    Get specific task details with steps
  * @access  Private
@@ -201,7 +279,7 @@ router.get('/:taskId', validateTaskParams, asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    data: taskWithSteps,
+    data: mockTask,
     meta: {
       timestamp: new Date().toISOString(),
       requestId: req.id
@@ -874,84 +952,6 @@ router.get('/browser-use/:taskId', validateTaskParams, asyncHandler(async (req, 
       meta: {
         timestamp: new Date().toISOString(),
         requestId: req.id
-      }
-    })
-  }
-}))
-
-/**
- * @route   GET /api/v1/tasks/browser-use
- * @desc    Get all browser tasks for the authenticated user
- * @access  Private
- */
-router.get('/browser-use', asyncHandler(async (req, res) => {
-  const userId = 'anonymous'
-  const { 
-    limit = 20, 
-    offset = 0, 
-    status = null,
-    sort_by = 'createdAt',
-    sort_order = 'desc'
-  } = req.query
-
-  try {
-    // Check if browserAgentService is available
-    if (!browserAgentService) {
-      throw new Error('Browser agent service not initialized')
-    }
-
-    const result = browserAgentService.getUserTasks(userId, {
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      status,
-      sortBy: sort_by,
-      sortOrder: sort_order
-    })
-
-    res.json({
-      success: true,
-      data: {
-        tasks: result.tasks.map(task => ({
-          task_id: task.id,
-          status: task.status,
-          created_at: task.createdAt,
-          started_at: task.startedAt,
-          completed_at: task.completedAt,
-          execution_time_ms: task.executionTimeMs,
-          model: task.model,
-          vendor_url: task.vendorUrl,
-          result: task.status === 'completed' ? task.result : null,
-          error: task.error,
-          prompt_preview: task.prompt ? task.prompt.substring(0, 100) + '...' : null
-        })),
-        total_count: result.totalCount,
-        has_more: result.hasMore,
-        limit: parseInt(limit),
-        offset: parseInt(offset)
-      },
-      meta: {
-        timestamp: new Date().toISOString(),
-        requestId: req.id
-      }
-    })
-
-  } catch (error) {
-    console.error('❌ Failed to get browser tasks:', error)
-    
-    // Return empty result instead of error to prevent frontend crashes
-    res.json({
-      success: true,
-      data: {
-        tasks: [],
-        total_count: 0,
-        has_more: false,
-        limit: parseInt(limit),
-        offset: parseInt(offset)
-      },
-      meta: {
-        timestamp: new Date().toISOString(),
-        requestId: req.id,
-        warning: 'Browser agent service temporarily unavailable'
       }
     })
   }

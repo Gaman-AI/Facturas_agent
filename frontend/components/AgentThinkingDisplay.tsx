@@ -49,6 +49,7 @@ export function AgentThinkingDisplay({
   const [error, setError] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const lastStepCountRef = useRef(initialSteps.length)
+  const mountedRef = useRef(true)
 
   // Auto-scroll to bottom when new steps are added
   const scrollToBottom = () => {
@@ -71,12 +72,16 @@ export function AgentThinkingDisplay({
       const data = await response.json()
       if (data.success) {
         const newSteps = data.data.thinking_steps || []
-        setThinkingSteps(newSteps)
         
-        // Auto-scroll if new steps were added
-        if (newSteps.length > lastStepCountRef.current) {
-          setTimeout(scrollToBottom, 100)
-          lastStepCountRef.current = newSteps.length
+        // Only update state if component is still mounted
+        if (mountedRef.current) {
+          setThinkingSteps(newSteps)
+          
+          // Auto-scroll if new steps were added
+          if (newSteps.length > lastStepCountRef.current) {
+            setTimeout(scrollToBottom, 100)
+            lastStepCountRef.current = newSteps.length
+          }
         }
       } else {
         throw new Error(data.error?.message || 'Failed to fetch thinking steps')
@@ -102,6 +107,13 @@ export function AgentThinkingDisplay({
 
     return () => clearInterval(interval)
   }, [taskId, autoRefresh, refreshInterval])
+
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   // Get status icon and color
   const getStatusDisplay = (status: string) => {
@@ -172,18 +184,19 @@ export function AgentThinkingDisplay({
       
       <CardContent className="flex-1 p-0">
         <ScrollArea className="h-full px-6 pb-6" ref={scrollRef}>
-          {thinkingSteps.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-gray-500">
-              {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading thinking steps...
-                </div>
-              ) : (
-                'No thinking steps available yet'
-              )}
-            </div>
-          ) : (
+          <div className="min-h-32">
+            {thinkingSteps.length === 0 ? (
+              <div className="flex items-center justify-center h-32 text-gray-500">
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading thinking steps...
+                  </div>
+                ) : (
+                  'No thinking steps available yet'
+                )}
+              </div>
+            ) : (
             <div className="space-y-4">
               {thinkingSteps.map((step) => {
                 const statusDisplay = getStatusDisplay(step.status)
@@ -250,7 +263,7 @@ export function AgentThinkingDisplay({
                             <strong className="text-orange-700">Planned Actions:</strong>
                             <ul className="mt-1 text-xs space-y-1">
                               {step.planned_actions.map((action) => (
-                                <li key={action.index} className="flex items-center gap-2">
+                                <li key={`planned-action-${step.id}-${action.index}`} className="flex items-center gap-2">
                                   <Badge variant="outline" className="text-xs">
                                     {action.action_type}
                                   </Badge>
@@ -285,6 +298,7 @@ export function AgentThinkingDisplay({
               })}
             </div>
           )}
+          </div>
         </ScrollArea>
       </CardContent>
     </Card>

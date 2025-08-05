@@ -5,6 +5,7 @@
  * Node.js + Express backend for CFDI 4.0 invoice automation
  */
 
+import process from 'process'
 import { app, server } from './app.js'
 import config from './config/index.js'
 import redisService from './services/redisService.js'

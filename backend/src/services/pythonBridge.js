@@ -10,11 +10,12 @@
 import { spawn } from 'child_process'
 import path from 'path'
 import fs from 'fs/promises'
+import process from 'process'
 import config from '../config/index.js'
 
 class PythonBridge {
   constructor() {
-    this.pythonExecutable = config.python.executable || 'python3'
+    this.pythonExecutable = path.join(process.cwd(), 'browser-use', '.venv', 'bin', 'python')
     this.scriptPath = path.join(process.cwd(), 'browser_agent.py')
     this.timeout = config.python.timeout || 300000 // 5 minutes default
   }
@@ -51,12 +52,14 @@ class PythonBridge {
 
     return new Promise((resolve, reject) => {
       const taskJson = JSON.stringify(taskData)
-      const process = spawn(this.pythonExecutable, [this.scriptPath, taskJson], {
+      const pythonProcess = spawn(this.pythonExecutable, [this.scriptPath, taskJson], {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
           ...process.env,
           PYTHONPATH: path.join(process.cwd(), 'browser-use'),
-          BROWSER_USE_SETUP_LOGGING: 'true'
+          BROWSER_USE_SETUP_LOGGING: 'true',
+          VIRTUAL_ENV: path.join(process.cwd(), 'browser-use', '.venv'),
+          PATH: `${path.join(process.cwd(), 'browser-use', '.venv', 'bin')}:${process.env.PATH}`
         }
       })
 
@@ -68,23 +71,23 @@ class PythonBridge {
       const timeoutId = setTimeout(() => {
         if (!isResolved) {
           isResolved = true
-          process.kill('SIGTERM')
+          pythonProcess.kill('SIGTERM')
           reject(new Error(`Python process timed out after ${this.timeout}ms`))
         }
       }, this.timeout)
 
       // Collect stdout data
-      process.stdout.on('data', (data) => {
+      pythonProcess.stdout.on('data', (data) => {
         stdout += data.toString()
       })
 
       // Collect stderr data
-      process.stderr.on('data', (data) => {
+      pythonProcess.stderr.on('data', (data) => {
         stderr += data.toString()
       })
 
       // Handle process completion
-      process.on('close', (code) => {
+      pythonProcess.on('close', (code) => {
         clearTimeout(timeoutId)
         
         if (isResolved) {
@@ -124,7 +127,7 @@ class PythonBridge {
       })
 
       // Handle process errors
-      process.on('error', (error) => {
+      pythonProcess.on('error', (error) => {
         clearTimeout(timeoutId)
         
         if (isResolved) {
