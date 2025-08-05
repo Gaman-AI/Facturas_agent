@@ -76,6 +76,8 @@ function DashboardContent() {
       setTasks(fetchedTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
+      // Set empty tasks instead of leaving undefined
+      setTasks([]);
     } finally {
       setLoadingTasks(false);
     }

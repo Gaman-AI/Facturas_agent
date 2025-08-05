@@ -499,10 +499,29 @@ export class ApiService {
   }
 
   static async getTasks(skip: number = 0, limit: number = 100): Promise<Task[]> {
-    const response = await apiClient.get('/tasks', {
-      params: { skip, limit }
-    });
-    return response.data as Task[];
+    try {
+      // Use the browser-use tasks endpoint instead of legacy /tasks
+      const response = await apiClient.get('/tasks/browser-use', {
+        params: { offset: skip, limit }
+      });
+      
+      // Transform the response to match the Task interface
+      const browserUseResponse = response.data as BrowserUseTasksResponse;
+      return browserUseResponse.data.tasks.map(task => ({
+        id: task.task_id,
+        prompt: task.prompt_preview || 'Browser automation task',
+        status: task.status as 'pending' | 'running' | 'paused' | 'completed' | 'failed',
+        created_at: task.created_at,
+        completed_at: task.completed_at,
+        error_message: task.error,
+        result: task.result,
+        steps: [] // Browser-use tasks don't have steps in the same format
+      }));
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      // Return empty array as fallback
+      return [];
+    }
   }
 
   static async getTask(taskId: string): Promise<Task> {
@@ -538,8 +557,13 @@ export class ApiService {
 
   // Browser Agent Realtime (Legacy - kept for compatibility)
   static async createBrowserTask(request: BrowserTaskRequest): Promise<BrowserTaskResponse> {
-    const response = await apiClient.post('/browser-agent/realtime', request);
-    return response.data as BrowserTaskResponse;
+    try {
+      const response = await apiClient.post('/tasks/browser-use', request);
+      return response.data as BrowserTaskResponse;
+    } catch (error) {
+      console.error('Error creating browser task:', error);
+      throw error;
+    }
   }
 
   static async getBrowserTaskLogs(sessionId: string): Promise<any[]> {
@@ -547,12 +571,6 @@ export class ApiService {
     return response.data as any[];
   }
 
-  // Simplified Browser Task Integration
-  static async createBrowserTask(request: BrowserTaskRequest): Promise<BrowserTaskResponse> {
-    const response = await apiClient.post('/tasks', request);
-    return response.data as BrowserTaskResponse;
-  }
-  
   // Execute task immediately (for testing)
   static async executeBrowserTask(request: BrowserTaskRequest): Promise<BrowserTaskResponse> {
     const response = await apiClient.post('/tasks/execute', request);
@@ -611,44 +629,23 @@ export class ApiService {
       data: {
         task_id: taskId,
         session_id: `local_session_${taskId}`,
-        live_view_url: null, // No live view for local execution
+        live_view_url: undefined, // No live view for local execution
         browser_type: 'local',
         status: 'running',
+        created_at: new Date().toISOString(),
         capabilities: {
-          live_view: false,
-          session_control: false,
-          real_time_logs: false
+          can_pause: false,
+          can_resume: false,
+          can_stop: false,
+          can_restart: false,
+          can_takeover: false
         }
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: 'mock'
       }
-    } as TaskSession;
-  }
-
-  static async pauseTask(taskId: string): Promise<{ success: boolean; message: string }> {
-    // Session control not implemented for local execution
-    console.warn('Task pause not implemented for local browser execution');
-    return { success: false, message: 'Session control not available for local execution' };
-  }
-
-  static async resumeTask(taskId: string): Promise<{ success: boolean; message: string }> {
-    // Session control not implemented for local execution
-    console.warn('Task resume not implemented for local browser execution');
-    return { success: false, message: 'Session control not available for local execution' };
-  }
-
-  static async stopTask(taskId: string): Promise<{ success: boolean; message: string }> {
-    // Session control not implemented for local execution
-    console.warn('Task stop not implemented for local browser execution');
-    return { success: false, message: 'Session control not available for local execution' };
-  }
-
-  static async restartTask(taskId: string): Promise<BrowserUseTaskResponse> {
-    // Session control not implemented for local execution
-    console.warn('Task restart not implemented for local browser execution');
-    return { 
-      success: false, 
-      data: null,
-      error: { message: 'Session control not available for local execution' }
-    } as BrowserUseTaskResponse;
+    };
   }
 
   static async getTaskLogs(taskId: string, options?: {

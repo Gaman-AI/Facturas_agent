@@ -162,35 +162,15 @@ const gracefulShutdown = (signal) => {
   
   server.close(() => {
     console.log('✅ HTTP server closed')
-    
-    // Initialize queue service
-    await queueService.initialize()
-    console.log('✅ Queue service initialized')
-    
-    console.log('🎉 All services initialized successfully')
-    return true
-  } catch (error) {
-    console.error('❌ Service initialization failed:', error.message)
-    throw error
-  }
+    process.exit(0)
+  })
 }
 
-// Graceful shutdown
-export async function gracefulShutdown() {
-  try {
-    console.log('🛑 Shutting down gracefully...')
-    
-    await queueService.shutdown()
-    console.log('✅ Queue service shutdown')
-    
-    await redisService.disconnect()
-    console.log('✅ Redis disconnected')
-    
-    console.log('👋 Graceful shutdown complete')
-  } catch (error) {
-    console.error('❌ Shutdown error:', error.message)
-    throw error
-  }
+// Graceful shutdown handlers
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
+process.on('SIGINT', () => gracefulShutdown('SIGINT'))
+
+  return app
 }
 
 export default createApp 

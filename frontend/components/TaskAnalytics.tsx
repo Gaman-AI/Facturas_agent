@@ -161,20 +161,31 @@ export function TaskAnalytics({
       taskId,
       status,
       metrics,
-      logDistribution,
+      logs: logs.slice(0, 1000), // Limit logs for export size
       timeline: timeline.slice(0, 100), // Limit timeline for export size
       generatedAt: new Date().toISOString()
     }
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `task-${taskId}-analytics-${new Date().toISOString().slice(0, 10)}.json`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+    
+    // Use a hidden anchor element that's already in the DOM
+    const downloadLink = document.createElement('a')
+    downloadLink.href = url
+    downloadLink.download = `task-${taskId}-analytics-${new Date().toISOString().slice(0, 10)}.json`
+    downloadLink.style.display = 'none'
+    
+    // Add to body, click, and remove safely
+    document.body.appendChild(downloadLink)
+    downloadLink.click()
+    
+    // Use setTimeout to ensure the click event completes before removal
+    setTimeout(() => {
+      if (document.body.contains(downloadLink)) {
+        document.body.removeChild(downloadLink)
+      }
+      URL.revokeObjectURL(url)
+    }, 100)
   }
 
   return (

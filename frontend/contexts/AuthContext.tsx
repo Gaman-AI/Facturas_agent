@@ -5,6 +5,7 @@ import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { authService } from '@/services/auth'
 import { RegisterData, UserProfile } from '@/types/auth'
+import { tokenManager } from '@/utils/tokenManager'
 
 export interface AuthContextType {
   user: User | null
@@ -308,4 +309,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   )
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
 }

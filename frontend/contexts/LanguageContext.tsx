@@ -67,22 +67,31 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     }
   }
 
-  // Initialize language
+  // Initialize language - always start with 'es' for consistent SSR
   useEffect(() => {
     const initializeLanguage = () => {
+      // Always start with 'es' for consistent server-client rendering
       let savedLanguage: Language = 'es'
       
+      // Only check localStorage after component is mounted
       if (typeof window !== 'undefined') {
         const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) as Language
         if (saved === 'es' || saved === 'en') {
           savedLanguage = saved
         } else {
+          // Default to browser language, but fallback to 'es'
           savedLanguage = navigator.language.toLowerCase().startsWith('en') ? 'en' : 'es'
+        }
+        
+        // Only update if different from 'es' to avoid hydration mismatch
+        if (savedLanguage !== 'es') {
+          setLanguageState(savedLanguage)
+          loadTranslations(savedLanguage)
         }
       }
       
-      setLanguageState(savedLanguage)
-      loadTranslations(savedLanguage)
+      // Always load Spanish translations first
+      loadTranslations('es')
       
       // Preload the other language
       const otherLang = savedLanguage === 'es' ? 'en' : 'es'
@@ -92,6 +101,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     }
 
     initializeLanguage()
+    setIsMounted(true)
   }, [])
 
   // Load initial Spanish translations immediately to avoid hydration issues

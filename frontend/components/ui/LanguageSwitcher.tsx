@@ -169,36 +169,28 @@ export function LanguageToggle({ className = '' }: { className?: string }) {
     }
   }
 
-  // Render consistent content during hydration
-  if (!isMounted) {
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={true}
-        className={`flex items-center gap-1 h-8 px-2 ${className}`}
-        title="Toggle language / Cambiar idioma"
-      >
-        <Globe className="h-4 w-4" />
-        <span className="text-xs font-medium">ES</span>
-      </Button>
-    )
-  }
-
+  // Always render the same structure, but with different content based on mounted state
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={toggleLanguage}
-      disabled={isLoading || isChanging}
-      className={`flex items-center gap-1 h-8 px-2 ${className}`}
-      title="Toggle language / Cambiar idioma"
-      suppressHydrationWarning={true}
-    >
-      <Globe className="h-4 w-4" />
-      <span className="text-xs font-medium" suppressHydrationWarning={true}>
-        {language === 'es' ? 'ES' : 'EN'}
-      </span>
-    </Button>
+    <div className={`flex items-center gap-1 h-8 px-2 ${className}`}>
+      {!isMounted ? (
+        <>
+          <div className="w-4 h-4 bg-slate-400 rounded"></div>
+          <span className="text-xs font-medium text-slate-600">ES</span>
+        </>
+      ) : (
+        <>
+          <Globe className="h-4 w-4" />
+          <span className="text-xs font-medium">
+            {language === 'es' ? 'ES' : 'EN'}
+          </span>
+        </>
+      )}
+      <button
+        onClick={isMounted ? toggleLanguage : undefined}
+        disabled={!isMounted || isLoading || isChanging}
+        className="w-full h-full opacity-0 cursor-pointer"
+        title={isMounted ? "Toggle language / Cambiar idioma" : "Loading..."}
+      />
+    </div>
   )
 } 
