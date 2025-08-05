@@ -6,11 +6,14 @@ import config from './config/index.js'
 
 // Import routes
 import healthRoutes from './routes/health.js'
+import authRoutes from './routes/auth.js'
 import taskRoutes from './routes/tasks.js'
 import websocketService from './services/websocketService.js'
 
-export function createApp() {
-  const app = express()
+import { createServer } from 'http'
+
+const app = express()
+const server = createServer(app)
 
   // Security middleware
   app.use(helmet({
@@ -122,33 +125,7 @@ app.use(cors({
     })
   })
 
-// Mount route modules
-apiRouter.use('/auth', authRoutes)
-apiRouter.use('/tasks', taskRoutes)
-
-// Mount API router
-app.use(`/api/${config.apiVersion}`, apiRouter)
-
-/**
- * Static file serving (if needed)
- */
-if (config.isDevelopment()) {
-  app.use('/docs', express.static('docs'))
-}
-
-/**
- * Error Handling
- */
-
-// 404 handler for undefined routes
-app.use(notFoundHandler)
-
-// Global error handler
-app.use(errorHandler)
-
-/**
- * Initialize WebSocket Server
- */
+// Initialize WebSocket Server
 websocketService.initialize(server)
 
 /**
@@ -170,7 +147,4 @@ const gracefulShutdown = (signal) => {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
 process.on('SIGINT', () => gracefulShutdown('SIGINT'))
 
-  return app
-}
-
-export default createApp 
+export { app, server } 

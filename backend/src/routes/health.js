@@ -1,17 +1,14 @@
 import express from 'express'
-import { TaskService } from '../services/taskService.js'
-import { RedisService } from '../services/redisService.js'
-import { QueueService } from '../services/queueService.js'
+import taskService from '../services/taskService.js'
+import redisService from '../services/redisService.js'
+import queueService from '../services/queueService.js'
 
 const router = express.Router()
 
 // Basic health check
 router.get('/', async (req, res) => {
   try {
-    // Initialize services for health check
-    const taskService = new TaskService()
-    const redisService = new RedisService()
-    const queueService = new QueueService()
+    // All services are already instantiated as singletons
 
     // Check each service
     const [dbHealth, redisHealth, queueHealth] = await Promise.allSettled([
@@ -55,9 +52,7 @@ router.get('/', async (req, res) => {
 // Detailed health check
 router.get('/detailed', async (req, res) => {
   try {
-    const taskService = new TaskService()
-    const redisService = new RedisService()
-    const queueService = new QueueService()
+    // All services are already instantiated as singletons
 
     const [dbHealth, redisHealth, queueHealth] = await Promise.allSettled([
       taskService.healthCheck(),

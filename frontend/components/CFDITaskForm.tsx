@@ -15,7 +15,7 @@ import { Loader2, FileText, AlertCircle, CheckCircle, Play } from 'lucide-react'
 import { useAuth, useUserProfile } from '@/hooks/useAuth'
 import { useSessionManager } from '@/hooks/useSessionManager'
 import { useLanguage } from '@/contexts/LanguageContext'
-import ApiService, { type BrowserUseTaskRequest, type BrowserUseTaskResponse } from '@/services/api'
+import ApiService, { type CFDITaskRequest, type CFDITaskResponse } from '@/services/api'
 
 // Form validation schema
 const cfdiTaskSchema = z.object({
@@ -187,21 +187,20 @@ export function CFDITaskForm() {
       await ensureValidSession()
       console.log('✅ Session validated, proceeding with task creation...')
       // Prepare browser-use task data using user profile and form data
-      const taskData: BrowserUseTaskRequest = {
+      const taskData: CFDITaskRequest = {
         vendor_url: formData.vendor_url,
-        customer_details: {
-          rfc: profile.rfc,
-          email: user.email,
-          company_name: profile.company_name,
+                customer_details: {
+          rfc: profile.rfc || '',
+          email: user.email || '',
+          company_name: profile.company_name || '',
           address: {
-            street: profile.street,
-            exterior_number: profile.exterior_number,
+            street: profile.street || '',
+            exterior_number: profile.exterior_number || '',
             interior_number: profile.interior_number || undefined,
-            colony: profile.colony,
-            municipality: profile.municipality,
-            state: profile.state,
-            zip_code: profile.zip_code,
-            country: 'Mexico'
+            colony: profile.colony || '',
+            municipality: profile.municipality || '',
+            state: profile.state || '',
+            postal_code: profile.zip_code || ''
           }
         },
         invoice_details: {
@@ -213,10 +212,12 @@ export function CFDITaskForm() {
           total: formData.total,
           currency: formData.currency
         },
-        model: formData.model || 'gpt-4.1-mini',
-        temperature: 1.0,
-        max_steps: 50,
-        timeout_minutes: formData.timeout_minutes
+        automation_config: {
+          llm_provider: formData.llm_provider,
+          model: formData.model || 'gpt-4.1-mini',
+          max_retries: formData.max_retries,
+          timeout_minutes: formData.timeout_minutes
+        }
       }
 
       console.log('🚀 Enviando tarea Browser-Use:', taskData)

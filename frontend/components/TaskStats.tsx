@@ -49,7 +49,13 @@ export function TaskStats({ refreshTrigger = 0 }: TaskStatsProps) {
 
       // Fetch all tasks to calculate statistics
       // In a real implementation, you might have a dedicated stats endpoint
-      const tasks = await ApiService.getTasks(0, 1000); // Get a large number to calculate stats
+      let tasks: any[] = [];
+      try {
+        tasks = await ApiService.getTasks(0, 1000); // Get a large number to calculate stats
+      } catch (apiError) {
+        console.warn('Failed to fetch tasks, using empty stats:', apiError);
+        // Continue with empty tasks array
+      }
       
       const stats: TaskStats = {
         total: tasks.length,

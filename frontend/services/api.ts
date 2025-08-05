@@ -206,7 +206,7 @@ const apiClient = new ApiClient();
 export interface Task {
   id: string;
   prompt: string;
-  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
   created_at: string;
   completed_at?: string;
   error_message?: string;

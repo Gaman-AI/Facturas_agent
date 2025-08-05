@@ -356,7 +356,7 @@ export function StatusSidebar({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-lg">
-                {t('monitor.sidebar.activityLog', 'Activity Log')}
+                {t('monitor.sidebar.activityLog')}
               </CardTitle>
               <CardDescription>
                 {filteredLogs.length !== logs.length 
@@ -381,7 +381,7 @@ export function StatusSidebar({
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
-                  placeholder={t('monitor.logs.searchPlaceholder', 'Search logs...')}
+                  placeholder={t('monitor.logs.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 pr-10 h-8"
@@ -427,7 +427,7 @@ export function StatusSidebar({
                   {autoScroll ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                 </Button>
 
-                <Select onValueChange={(value) => exportLogs(value as any)}>
+                <Select onValueChange={(value) => exportLogs(value as 'json' | 'csv' | 'txt')}>
                   <SelectTrigger className="h-8 w-20">
                     <Download className="w-3 h-3" />
                   </SelectTrigger>
@@ -476,8 +476,8 @@ export function StatusSidebar({
                   <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">
                     {logs.length === 0 
-                      ? t('monitor.sidebar.noActivity', 'No activity yet')
-                      : t('monitor.logs.noResults', 'No logs match your filters')
+                      ? t('monitor.sidebar.noActivity')
+                      : t('monitor.logs.noResults')
                     }
                   </p>
                   {logs.length > 0 && filteredLogs.length === 0 && (
