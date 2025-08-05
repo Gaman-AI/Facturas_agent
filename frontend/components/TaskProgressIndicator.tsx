@@ -121,7 +121,7 @@ export function TaskProgressIndicator({
           
           <div className="flex justify-between text-xs text-gray-500">
             <span>Elapsed: {getElapsedTime()}</span>
-            {hasSteps && <span>{task.steps.length} steps</span>}
+            {hasSteps && <span>{task.steps?.length || 0} steps</span>}
           </div>
         </CardContent>
       </Card>
@@ -188,7 +188,7 @@ export function TaskProgressIndicator({
                 {hasSteps && (
                   <div>
                     <span className="text-gray-500">Steps:</span>
-                    <p className="font-medium">{task.steps.length} executed</p>
+                    <p className="font-medium">{task.steps?.length || 0} executed</p>
                   </div>
                 )}
                 {task.completed_at && (
@@ -213,11 +213,11 @@ export function TaskProgressIndicator({
               )}
 
               {/* Recent Steps */}
-              {hasSteps && task.steps.length > 0 && (
+              {hasSteps && task.steps && task.steps.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium text-gray-900">Recent Activity</h4>
                   <div className="space-y-1 max-h-32 overflow-y-auto">
-                    {task.steps.slice(-3).map((step, index) => (
+                    {task.steps?.slice(-3).map((step, index) => (
                       <div key={index} className="text-xs text-gray-600 bg-gray-50 rounded px-2 py-1">
                         <span className="font-medium">{step.step_type || 'action'}:</span> {
                           typeof step.content === 'string' 

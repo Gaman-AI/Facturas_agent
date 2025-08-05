@@ -1,6 +1,7 @@
 import express from 'express'
 import { validateCreateTask, validateTaskQuery, validateTaskParams } from '../middleware/validation.js'
 import { asyncHandler } from '../middleware/errorHandler.js'
+import { authenticate } from '../middleware/auth.js'
 import browserService from '../services/browserService.js'
 import browserAgentService from '../services/browserAgentService.js'
 import taskService from '../services/taskService.js'
@@ -894,6 +895,11 @@ router.get('/browser-use', asyncHandler(async (req, res) => {
   } = req.query
 
   try {
+    // Check if browserAgentService is available
+    if (!browserAgentService) {
+      throw new Error('Browser agent service not initialized')
+    }
+
     const result = browserAgentService.getUserTasks(userId, {
       limit: parseInt(limit),
       offset: parseInt(offset),
@@ -932,16 +938,20 @@ router.get('/browser-use', asyncHandler(async (req, res) => {
   } catch (error) {
     console.error('❌ Failed to get browser tasks:', error)
     
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'BROWSER_TASKS_FETCH_FAILED',
-        message: 'Failed to retrieve browser tasks',
-        details: error.message
+    // Return empty result instead of error to prevent frontend crashes
+    res.json({
+      success: true,
+      data: {
+        tasks: [],
+        total_count: 0,
+        has_more: false,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
       },
       meta: {
         timestamp: new Date().toISOString(),
-        requestId: req.id
+        requestId: req.id,
+        warning: 'Browser agent service temporarily unavailable'
       }
     })
   }

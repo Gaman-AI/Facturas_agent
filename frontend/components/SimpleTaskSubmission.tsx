@@ -42,12 +42,12 @@ export function SimpleTaskSubmission({
     e.preventDefault()
     
     if (!task.trim()) {
-      setError(t('tasks.validation.taskRequired', 'Task description is required'))
+      setError(t('tasks.validation.taskRequired'))
       return
     }
 
     if (task.length > characterLimit) {
-      setError(t('tasks.validation.taskTooLong', 'Task description is too long'))
+      setError(t('tasks.validation.taskTooLong'))
       return
     }
 
@@ -66,7 +66,7 @@ export function SimpleTaskSubmission({
       })
 
       const taskId = response.data.task_id
-      setSuccess(t('tasks.success.created', 'Task created successfully!'))
+      setSuccess(t('tasks.success.created'))
       
       // Clear form
       setTask('')
@@ -86,7 +86,7 @@ export function SimpleTaskSubmission({
     } catch (error: any) {
       console.error('Error creating task:', error)
       const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error occurred'
-      setError(t('tasks.error.creation', `Failed to create task: ${errorMessage}`))
+      setError(t('tasks.error.creation'))
     } finally {
       setIsSubmitting(false)
     }
@@ -97,10 +97,10 @@ export function SimpleTaskSubmission({
   }
 
   const quickTasks = [
-    t('tasks.quick.searchGoogle', 'Search for recent news about artificial intelligence on Google'),
-    t('tasks.quick.checkWeather', 'Check the weather forecast for Mexico City'),
-    t('tasks.quick.findProduct', 'Find laptop prices on MercadoLibre'),
-    t('tasks.quick.socialMedia', 'Check latest posts on Twitter about technology')
+    t('tasks.quick.searchGoogle'),
+    t('tasks.quick.checkWeather'),
+    t('tasks.quick.findProduct'),
+    t('tasks.quick.socialMedia')
   ]
 
   return (
@@ -108,10 +108,10 @@ export function SimpleTaskSubmission({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Zap className="w-5 h-5 text-primary" />
-          {t('tasks.simple.title', 'Quick Task Submission')}
+          {t('tasks.simple.title')}
         </CardTitle>
         <CardDescription>
-          {t('tasks.simple.description', 'Describe what you want the browser agent to do in plain language')}
+          {t('tasks.simple.description')}
         </CardDescription>
       </CardHeader>
       
@@ -140,20 +140,20 @@ export function SimpleTaskSubmission({
           {/* Task Description */}
           <div className="space-y-2">
             <label className="text-sm font-medium">
-              {t('tasks.simple.taskLabel', 'What would you like the agent to do?')}
+              {t('tasks.simple.taskLabel')}
             </label>
             <Textarea
               value={task}
               onChange={(e) => setTask(e.target.value)}
-              placeholder={t('tasks.simple.placeholder', 'Example: Search for OpenAI latest updates on Google and summarize the findings')}
+              placeholder={t('tasks.simple.placeholder')}
               className="min-h-[100px] resize-none"
               disabled={isSubmitting}
               maxLength={characterLimit}
             />
             <div className="flex justify-between items-center text-xs text-muted-foreground">
-              <span>{t('tasks.simple.hint', 'Be specific about what you want to accomplish')}</span>
+              <span>{t('tasks.simple.hint')}</span>
               <span className={remainingChars < 50 ? 'text-orange-500' : remainingChars < 10 ? 'text-red-500' : ''}>
-                {remainingChars} {t('common.charactersRemaining', 'characters remaining')}
+                {remainingChars} {t('common.charactersRemaining')}
               </span>
             </div>
           </div>
@@ -161,7 +161,7 @@ export function SimpleTaskSubmission({
           {/* Quick Task Examples */}
           <div className="space-y-2">
             <label className="text-sm font-medium">
-              {t('tasks.simple.quickExamples', 'Quick Examples')}
+              {t('tasks.simple.quickExamples')}
             </label>
             <div className="flex flex-wrap gap-2">
               {quickTasks.map((quickTask, index) => (
@@ -183,7 +183,7 @@ export function SimpleTaskSubmission({
           {/* LLM Provider Selection */}
           <div className="space-y-2">
             <label className="text-sm font-medium">
-              {t('tasks.simple.aiModel', 'AI Model')}
+              {t('tasks.simple.aiModel')}
             </label>
             <Select value={llmProvider} onValueChange={(value: 'openai' | 'anthropic' | 'google') => setLlmProvider(value)}>
               <SelectTrigger disabled={isSubmitting}>
@@ -237,12 +237,12 @@ export function SimpleTaskSubmission({
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {isDemoMode ? 'Creating Demo Task...' : t('tasks.simple.creating', 'Creating Task...')}
+                  {isDemoMode ? 'Creating Demo Task...' : t('tasks.simple.creating')}
                 </>
               ) : (
                 <>
                   <Send className="w-4 h-4 mr-2" />
-                  {isDemoMode ? 'Start Demo Task' : t('tasks.simple.submit', 'Start Task')}
+                  {isDemoMode ? 'Start Demo Task' : t('tasks.simple.submit')}
                 </>
               )}
             </Button>
@@ -261,7 +261,7 @@ export function SimpleTaskSubmission({
           {/* User Info */}
           {user && !isDemoMode && (
             <div className="text-xs text-muted-foreground text-center pt-2">
-              {t('tasks.simple.userNote', 'Task will be executed as')}: {user.email}
+              {t('tasks.simple.userNote')}: {user.email}
             </div>
           )}
         </form>
