@@ -7,7 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from 'lucide-react'
-import { DualPaneMonitor } from '@/components/DualPaneMonitor'
+import { AgentThinkingDisplay } from '@/components/AgentThinkingDisplay'
 import ApiService from '@/services/api'
 
 export default function TaskMonitorPage() {
@@ -25,8 +25,25 @@ export default function TaskMonitorPage() {
   useEffect(() => {
     const loadTaskData = async () => {
       try {
+        // Ensure taskId is valid before proceeding
+        if (!taskId || taskId === 'undefined') {
+          throw new Error('Invalid task ID')
+        }
+
         setIsLoading(true)
         setError(null)
+
+        // Check if this is a demo task
+        if (taskId.startsWith('demo_')) {
+          // Demo mode - create mock data
+          setTaskStatus('running')
+          setSessionId(`demo_session_${taskId}`)
+          setLiveViewUrl(null) // Use local browser automation for demo
+          setIsLoading(false)
+          return
+        }
+
+        console.log('🔍 Loading task data for:', taskId)
 
         // Fetch real task data from API
         const taskResponse = await ApiService.getBrowserUseTask(taskId).catch(error => {
@@ -40,12 +57,12 @@ export default function TaskMonitorPage() {
         // Handle task data
         if (taskResponse && taskResponse.success) {
           const task = taskResponse.data
+          console.log('✅ Task data loaded:', task)
           setTaskStatus(task.status as any)
           
-          // Session management not implemented - use local execution mode
-          // For local browser execution, we don't need live view URLs
+          // Set up local browser automation session
           setSessionId(`local_session_${taskId}`)
-          setLiveViewUrl(null) // No live view for local browser execution
+          setLiveViewUrl(null) // No live view URL for local browser automation
         } else {
           // If task fetch failed, show error
           const errorMessage = taskResponse?.error || 'Task not found or API unavailable'
@@ -60,8 +77,12 @@ export default function TaskMonitorPage() {
       }
     }
 
-    if (taskId) {
+    if (taskId && taskId !== 'undefined') {
       loadTaskData()
+    } else {
+      console.warn('⚠️ Invalid taskId:', taskId)
+      setError('Invalid task ID')
+      setIsLoading(false)
     }
   }, [taskId])
 
@@ -197,15 +218,15 @@ export default function TaskMonitorPage() {
           </div>
         </header>
 
-        {/* Dual Pane Monitor */}
-        <main className="flex-1 relative">
-          <DualPaneMonitor
-            taskId={taskId}
-            sessionId={sessionId}
-            liveViewUrl={liveViewUrl}
-            initialStatus={taskStatus}
-            className="h-full"
-          />
+        {/* Agent Thinking Display */}
+        <main className="flex-1 relative p-4">
+          <div className="h-full max-w-4xl mx-auto">
+            <AgentThinkingDisplay
+              taskId={taskId}
+              autoRefresh={true}
+              refreshInterval={2000}
+            />
+          </div>
         </main>
       </div>
     </ProtectedRoute>

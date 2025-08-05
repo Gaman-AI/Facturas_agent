@@ -294,7 +294,7 @@ Please use only the necessary details and complete the facturación process.`)
                 </p>
               </div>
               <div>
-                <h4 className="font-semibold mb-2">3. Monitor Progress</h4>
+                <h4 className="font-semibull mb-2">3. Monitor Progress</h4>
                 <p className="text-muted-foreground">
                   Watch the agent's thinking process, actions, observations, and memory updates in real-time.
                 </p>

@@ -5,7 +5,6 @@ import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { authService } from '@/services/auth'
 import { RegisterData } from '@/types/auth'
-import { tokenManager } from '@/utils/tokenManager'
 
 interface UserProfile {
   id?: string
@@ -54,6 +53,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const initRef = useRef(false)
 
   const loadUserProfile = useCallback(async (userId: string) => {
+    if (!supabase) {
+      console.warn('Supabase client not initialized - skipping profile load')
+      return
+    }
+    
     try {
       const { data, error } = await supabase
         .from('user_profiles')
@@ -77,6 +81,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initRef.current = true
 
     const initializeAuth = async () => {
+      if (!supabase) {
+        console.warn('Supabase client not initialized - skipping auth initialization')
+        setIsInitialized(true)
+        setLoading(false)
+        return
+      }
+      
       try {
         // Get session and handle profile loading in parallel if user exists
         const { data: { session } } = await supabase.auth.getSession()
@@ -100,28 +111,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initializeAuth()
 
-    // Auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_IN' && session?.user) {
-          setUser(session.user)
-          setError(null)
-          // Load profile in background - don't block UI
-          loadUserProfile(session.user.id).catch(console.error)
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null)
-          setProfile(null)
-          setError(null)
+    // Auth state listener - only if supabase is available
+    if (supabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          if (event === 'SIGNED_IN' && session?.user) {
+            setUser(session.user)
+            setError(null)
+            // Load profile in background - don't block UI
+            loadUserProfile(session.user.id).catch(console.error)
+          } else if (event === 'SIGNED_OUT') {
+            setUser(null)
+            setProfile(null)
+            setError(null)
+          }
         }
-      }
-    )
+      )
 
-    return () => {
-      subscription.unsubscribe()
+      return () => {
+        subscription.unsubscribe()
+      }
     }
   }, [loadUserProfile])
 
   const login = useCallback(async (email: string, password: string) => {
+    if (!supabase) {
+      const error = new Error('Supabase client not initialized. Please check your environment variables.')
+      setError(error.message)
+      throw error
+    }
+    
     try {
       setError(null)
       setLoading(true)
@@ -160,6 +179,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const logout = useCallback(async () => {
+    if (!supabase) {
+      const error = new Error('Supabase client not initialized. Please check your environment variables.')
+      setError(error.message)
+      throw error
+    }
+    
     try {
       setError(null)
       const { error } = await supabase.auth.signOut()
@@ -178,6 +203,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const updateProfile = useCallback(async (profileData: Partial<UserProfile>) => {
+    if (!supabase) {
+      const error = new Error('Supabase client not initialized. Please check your environment variables.')
+      setError(error.message)
+      throw error
+    }
+    
     if (!user) throw new Error('No authenticated user')
 
     try {
@@ -206,6 +237,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user])
 
   const refreshSession = useCallback(async () => {
+    if (!supabase) {
+      const error = new Error('Supabase client not initialized. Please check your environment variables.')
+      setError(error.message)
+      throw error
+    }
+    
     try {
       setError(null)
       console.log('🔄 Refreshing session via token manager...')

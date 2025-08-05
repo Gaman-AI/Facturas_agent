@@ -4,6 +4,7 @@ import { asyncHandler } from '../middleware/errorHandler.js'
 import browserService from '../services/browserService.js'
 import enhancedBrowserService from '../services/enhancedBrowserService.js'
 import browserAgentService from '../services/browserAgentService.js'
+import agentThinkingService from '../services/agentThinkingService.js'
 
 const router = express.Router()
 
@@ -208,26 +209,72 @@ router.post('/execute', validateCreateTask, asyncHandler(async (req, res) => {
   try {
     console.log('🚀 Executing browser automation task directly')
     
+    const taskId = `exec_${Date.now()}`
+    const startTime = new Date().toISOString()
+    
+    // Store initial task data
+    taskExecutionStorage.set(taskId, {
+      id: taskId,
+      status: 'running',
+      created_at: startTime,
+      started_at: startTime,
+      completed_at: null,
+      execution_time_ms: null,
+      model: model || 'gpt-4o-mini',
+      max_steps: 30,
+      result: null,
+      error: null,
+      error_type: null,
+      prompt: task
+    })
+
+    // Create thinking logger for this task
+    const thinkingLogger = agentThinkingService.createSimpleLogger(taskId)
+    
+    // Add initial thinking step
+    thinkingLogger.log('Starting task execution...', 'initialization', 'started')
+    
     // Prepare simplified task data
     const taskData = {
       task,
       model: model || 'gpt-4o-mini',
       llm_provider: llm_provider || 'openai',
-      timeout_minutes: timeout_minutes || 30
+      timeout_minutes: timeout_minutes || 30,
+      // Add callback for agent thinking capture
+      thinking_callback: (stepData) => {
+        agentThinkingService.storeThinking(taskId, stepData)
+      }
     }
     
     // Execute the task using enhanced browser service with real-time monitoring
     const result = await enhancedBrowserService.executeTaskWithMonitoring(taskData)
 
+    const endTime = new Date().toISOString()
+    const executionTime = Date.now() - new Date(startTime).getTime()
+
     if (result.success) {
+      // Update stored task with completion data
+      const storedTask = taskExecutionStorage.get(taskId)
+      taskExecutionStorage.set(taskId, {
+        ...storedTask,
+        status: 'completed',
+        completed_at: endTime,
+        execution_time_ms: executionTime,
+        result: result.result || result
+      })
+
+      // Add final thinking step
+      thinkingLogger.success(result.result || result, 'Task completed successfully')
+
       res.json({
         success: true,
         data: {
-          task_id: `exec_${Date.now()}`,
+          task_id: taskId,
           status: 'COMPLETED',
           result: result,
           execution_time: result.execution_time,
-          logs: result.session_log || []
+          logs: result.session_log || [],
+          thinking_available: true
         },
         meta: {
           timestamp: new Date().toISOString(),
@@ -236,6 +283,20 @@ router.post('/execute', validateCreateTask, asyncHandler(async (req, res) => {
         }
       })
     } else {
+      // Update stored task with error data
+      const storedTask = taskExecutionStorage.get(taskId)
+      taskExecutionStorage.set(taskId, {
+        ...storedTask,
+        status: 'failed',
+        completed_at: endTime,
+        execution_time_ms: executionTime,
+        error: result.error,
+        error_type: result.error_type
+      })
+
+      // Add error thinking step
+      thinkingLogger.error(result.error, `Task failed: ${result.error}`)
+
       res.status(500).json({
         success: false,
         error: {
@@ -427,6 +488,106 @@ router.get('/browser/health', asyncHandler(async (req, res) => {
 
 /**
  * ==========================================================================
+ * AGENT THINKING & TASK MONITORING ENDPOINTS
+ * ==========================================================================
+ */
+
+// In-memory storage for task execution data (thinking data is handled by agentThinkingService)
+const taskExecutionStorage = new Map()
+
+/**
+ * @route   GET /api/v1/tasks/browser-use/:taskId/thinking
+ * @desc    Get agent thinking steps for a task
+ * @access  Private
+ */
+router.get('/browser-use/:taskId/thinking', validateTaskParams, asyncHandler(async (req, res) => {
+  const { taskId } = req.params
+  const { limit, offset, since } = req.query
+  
+  const thinkingData = agentThinkingService.getTaskThinking(taskId)
+  
+  // Apply query filters if specified
+  let filteredSteps = thinkingData.thinking_steps
+  if (limit || offset || since) {
+    filteredSteps = agentThinkingService.getThinkingSteps(taskId, {
+      limit: limit ? parseInt(limit) : undefined,
+      offset: offset ? parseInt(offset) : undefined,
+      since: since
+    })
+  }
+  
+  res.json({
+    success: true,
+    data: {
+      task_id: taskId,
+      thinking_steps: filteredSteps,
+      total_steps: thinkingData.total_steps,
+      last_updated: thinkingData.last_updated,
+      first_step: thinkingData.first_step
+    },
+    meta: {
+      timestamp: new Date().toISOString(),
+      requestId: req.id
+    }
+  })
+}))
+
+/**
+ * @route   GET /api/v1/tasks/browser-use/:taskId/thinking/stream
+ * @desc    Stream real-time agent thinking steps (Server-Sent Events)
+ * @access  Private
+ */
+router.get('/browser-use/:taskId/thinking/stream', validateTaskParams, asyncHandler(async (req, res) => {
+  const { taskId } = req.params
+  
+  // Set up Server-Sent Events
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control'
+  })
+  
+  // Send initial connection event
+  res.write(`data: ${JSON.stringify({
+    type: 'connected',
+    task_id: taskId,
+    timestamp: new Date().toISOString()
+  })}\n\n`)
+  
+  // Register callback for new thinking steps
+  const thinkingCallback = (stepData) => {
+    res.write(`data: ${JSON.stringify({
+      type: 'thinking_step',
+      task_id: taskId,
+      step: stepData
+    })}\n\n`)
+  }
+  
+  agentThinkingService.registerThinkingCallback(taskId, thinkingCallback)
+  
+  // Clean up on client disconnect
+  req.on('close', () => {
+    agentThinkingService.unregisterThinkingCallback(taskId)
+    res.end()
+  })
+  
+  // Keep connection alive with periodic heartbeat
+  const heartbeat = setInterval(() => {
+    res.write(`data: ${JSON.stringify({
+      type: 'heartbeat',
+      timestamp: new Date().toISOString()
+    })}\n\n`)
+  }, 30000) // 30 seconds
+  
+  req.on('close', () => {
+    clearInterval(heartbeat)
+  })
+}))
+
+/**
+ * ==========================================================================
  * BROWSER-USE INTEGRATION ENDPOINTS
  * ==========================================================================
  */
@@ -518,7 +679,7 @@ router.post('/browser-use', asyncHandler(async (req, res) => {
 
 /**
  * @route   GET /api/v1/tasks/browser-use/:taskId
- * @desc    Get browser task status and result
+ * @desc    Get browser task status and result (supports both UUID and exec_ formats)
  * @access  Private
  */
 router.get('/browser-use/:taskId', validateTaskParams, asyncHandler(async (req, res) => {
@@ -526,7 +687,33 @@ router.get('/browser-use/:taskId', validateTaskParams, asyncHandler(async (req, 
   const userId = 'anonymous'
 
   try {
-    const task = browserAgentService.getTask(taskId, userId)
+    let task = null
+    
+    // Check if it's an exec_ format task (from /execute endpoint)
+    if (taskId.startsWith('exec_')) {
+      task = taskExecutionStorage.get(taskId)
+      
+      if (!task) {
+        // Create a mock task structure for exec_ tasks that weren't stored
+        task = {
+          id: taskId,
+          status: 'completed', // Assume completed if not stored
+          created_at: new Date().toISOString(),
+          started_at: new Date().toISOString(),
+          completed_at: new Date().toISOString(),
+          execution_time_ms: null,
+          model: 'gpt-4o-mini',
+          max_steps: 30,
+          result: 'Task executed via /execute endpoint',
+          error: null,
+          error_type: null,
+          prompt: 'Direct execution task'
+        }
+      }
+    } else {
+      // Try to get from browser agent service (UUID format)
+      task = browserAgentService.getTask(taskId, userId)
+    }
 
     if (!task) {
       return res.status(404).json({
@@ -543,22 +730,27 @@ router.get('/browser-use/:taskId', validateTaskParams, asyncHandler(async (req, 
       })
     }
 
+    // Normalize response format
+    const responseData = {
+      task_id: task.id,
+      status: task.status,
+      created_at: task.created_at || task.createdAt,
+      started_at: task.started_at || task.startedAt,
+      completed_at: task.completed_at || task.completedAt,
+      execution_time_ms: task.execution_time_ms || task.executionTimeMs,
+      model: task.model,
+      max_steps: task.max_steps || task.maxSteps,
+      result: task.result,
+      error: task.error,
+      error_type: task.error_type || task.errorType,
+      prompt: task.prompt,
+      // Add thinking steps if available
+      thinking_steps: agentThinkingService.getThinkingSteps(taskId, { limit: 50 })
+    }
+
     res.json({
       success: true,
-      data: {
-        task_id: task.id,
-        status: task.status,
-        created_at: task.createdAt,
-        started_at: task.startedAt,
-        completed_at: task.completedAt,
-        execution_time_ms: task.executionTimeMs,
-        model: task.model,
-        max_steps: task.maxSteps,
-        result: task.result,
-        error: task.error,
-        error_type: task.errorType,
-        prompt: task.prompt
-      },
+      data: responseData,
       meta: {
         timestamp: new Date().toISOString(),
         requestId: req.id

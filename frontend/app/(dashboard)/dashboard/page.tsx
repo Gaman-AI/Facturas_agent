@@ -1,6 +1,6 @@
 'use client';
 
-import { LogOut, User, Building2, FileText, BarChart3, Zap, Plus } from 'lucide-react';
+import { LogOut, User, Building2, FileText, BarChart3, Zap, Plus, Monitor, Globe, Activity, TrendingUp, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,7 @@ export default function DashboardPage() {
 }
 
 function DashboardContent() {
-  const { logout, loading } = useAuth();
+  const { logout, loading, user } = useAuth();
   const { profile, getDisplayName, getRFCMasked, getFullAddress, isPersonaFisica } = useUserProfile();
   const { t } = useLanguage();
   const router = useRouter();
@@ -60,29 +60,38 @@ function DashboardContent() {
   const hasProfile = !!profile
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-slate-200/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
-                <FileText className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl flex items-center justify-center shadow-lg">
+                <FileText className="w-6 h-6 text-white" />
               </div>
-              <h1 className="text-xl font-semibold text-slate-900">
-                {t('home.title')}
-              </h1>
+              <div>
+                <h1 className="text-xl font-bold text-slate-900">
+                  Browser Automation Hub
+                </h1>
+                <p className="text-sm text-slate-500">AI-Powered Task Management</p>
+              </div>
             </div>
             
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-slate-600">
-                {displayName}
-              </span>
+              <div className="flex items-center space-x-2 bg-white/60 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-200/50">
+                <div className="w-8 h-8 bg-gradient-to-r from-pink-400 to-rose-400 rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-sm font-medium text-slate-700">
+                  {displayName}
+                </span>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleLogout}
                 disabled={loading}
+                className="border-slate-200 hover:bg-slate-50"
               >
                 <LogOut className="w-4 h-4 mr-2" />
                 {t('auth.logout')}
@@ -94,120 +103,241 @@ function DashboardContent() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            {t('dashboard.welcome')}
-          </h2>
-          <p className="text-slate-600">
-            {t('dashboard.title')}
-          </p>
+        {/* Welcome Section */}
+        <div className="mb-6">
+          <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-xl p-6 text-white shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">
+                  {t('dashboard.welcome')}, {displayName}! 👋
+                </h2>
+                <p className="text-pink-100 text-base">
+                  {t('dashboard.subtitle')}
+                </p>
+              </div>
+              <div className="hidden md:block">
+                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
+                  <Zap className="w-10 h-10 text-white" />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Quick Task Submission */}
         <div className="mb-8">
-          <SimpleTaskSubmission 
-            onTaskSubmit={handleTaskSubmit}
-            showRedirect={false}
-            className="mb-6"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* User Profile Card */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <User className="w-5 h-5" />
-                <span>{t('profile.title')}</span>
+          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center space-x-2 text-xl">
+                <Zap className="w-6 h-6 text-yellow-500" />
+                <span>Quick Task Creation</span>
               </CardTitle>
-              <CardDescription>
-                {hasProfile ? t('profile.companyInfo') : t('profile.edit')}
+              <CardDescription className="text-slate-600">
+                Describe what you want the AI agent to do in plain language
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
+              <SimpleTaskSubmission 
+                onTaskSubmit={handleTaskSubmit}
+                showRedirect={false}
+                className="mb-0"
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* User Profile Card */}
+          <Card className="lg:col-span-2 border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
+                  <User className="w-5 h-5 text-white" />
+                </div>
+                <span>Profile Information</span>
+              </CardTitle>
+              <CardDescription>
+                {hasProfile ? 'Your account details and preferences' : 'Complete your profile to unlock advanced features'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
               {hasProfile ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-slate-700">{t('auth.email')}</label>
-                    <p className="text-slate-900">{profile.email}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-slate-700">{t('register.rfc.label')}</label>
-                    <div className="flex items-center space-x-2">
-                      <p className="text-slate-900">{getRFCMasked()}</p>
-                      <Badge variant={isPersonaFisica() ? "default" : "secondary"}>
-                        {isPersonaFisica() ? t('common.personaFisica', 'Persona Física') : t('common.personaMoral', 'Persona Moral')}
-                      </Badge>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
+                      <label className="text-sm font-semibold text-slate-700 mb-1 block">Email Address</label>
+                                             <p className="text-slate-900 font-medium">{user?.email || 'Not provided'}</p>
+                    </div>
+                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
+                      <label className="text-sm font-semibold text-slate-700 mb-1 block">RFC</label>
+                      <div className="flex items-center space-x-2">
+                        <p className="text-slate-900 font-medium">{getRFCMasked()}</p>
+                        <Badge variant={isPersonaFisica() ? "default" : "secondary"} className="bg-gradient-to-r from-pink-500 to-rose-500">
+                          {isPersonaFisica() ? t('common.personaFisica') : t('common.personaMoral')}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="text-sm font-medium text-slate-700">{t('register.companyName.label')}</label>
-                    <p className="text-slate-900">{profile.company_name || profile.razon_social}</p>
+                  <div className="space-y-4">
+                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
+                      <label className="text-sm font-semibold text-slate-700 mb-1 block">Company Name</label>
+                                             <p className="text-slate-900 font-medium">{profile.company_name}</p>
+                    </div>
+                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
+                      <label className="text-sm font-semibold text-slate-700 mb-1 block">Tax Address</label>
+                      <p className="text-slate-900 font-medium">{getFullAddress()}</p>
+                    </div>
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="text-sm font-medium text-slate-700">{t('register.addressInfo')}</label>
-                    <p className="text-slate-900">{getFullAddress()}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-slate-700">{t('register.taxRegime.label')}</label>
-                    <p className="text-slate-900">{profile.tax_regime || profile.regimen_fiscal}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-slate-700">{t('register.cfdiUse.label')}</label>
-                    <p className="text-slate-900">{profile.cfdi_use || profile.uso_cfdi}</p>
+                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
+                      <label className="text-sm font-semibold text-slate-700 mb-1 block">Tax Regime</label>
+                                             <p className="text-slate-900 font-medium">{profile.tax_regime}</p>
+                    </div>
+                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
+                      <label className="text-sm font-semibold text-slate-700 mb-1 block">CFDI Use</label>
+                                             <p className="text-slate-900 font-medium">{profile.cfdi_use}</p>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <User className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                  <p className="text-slate-600 mb-4">{t('profile.noProfile', 'No se ha encontrado información de perfil')}</p>
-                  <p className="text-sm text-slate-500">{t('profile.basicFunctions', 'Puede usar las funciones básicas del sistema sin completar su perfil')}</p>
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 bg-gradient-to-r from-slate-200 to-slate-300 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <User className="w-10 h-10 text-slate-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Profile Not Complete</h3>
+                  <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                    Complete your profile to unlock advanced features and personalized experiences
+                  </p>
+                                     <Button onClick={handleUpdateProfile} className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600">
+                    <User className="w-4 h-4 mr-2" />
+                    Complete Profile
+                  </Button>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
+          {/* Quick Actions & Stats */}
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Building2 className="w-5 h-5" />
-                  <span>{t('dashboard.quickActions', 'Acciones Rápidas')}</span>
+            {/* Quick Actions */}
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+              <CardHeader className="pb-4">
+                                 <CardTitle className="flex items-center space-x-2">
+                   <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
+                     <Zap className="w-5 h-5 text-white" />
+                   </div>
+                   <span>Quick Actions</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button className="w-full" onClick={handleSimpleTask}>
+                                 <Button 
+                   className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg" 
+                   onClick={handleSimpleTask}
+                 >
                   <Zap className="w-4 h-4 mr-2" />
-                  {t('tasks.simple.quickCreate', 'Quick Task')}
+                  Create Quick Task
                 </Button>
-                <Button className="w-full" variant="outline" onClick={handleNewTask}>
-                  <FileText className="w-4 h-4 mr-2" />
-                  {t('tasks.create')}
+                                 <Button 
+                   className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg" 
+                   onClick={handleNewTask}
+                 >
+                  <Monitor className="w-4 h-4 mr-2" />
+                  Advanced Task
                 </Button>
-                <Button className="w-full" variant="outline" onClick={handleViewHistory}>
+                                 <Button 
+                   className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg" 
+                   onClick={handleViewHistory}
+                 >
                   <BarChart3 className="w-4 h-4 mr-2" />
-                  {t('dashboard.viewHistory', 'Ver Historial')}
+                  View History
                 </Button>
-                <Button className="w-full" variant="outline" onClick={handleUpdateProfile}>
+                <Button 
+                  variant="outline" 
+                  className="w-full border-slate-200 hover:bg-slate-50" 
+                  onClick={handleUpdateProfile}
+                >
                   <User className="w-4 h-4 mr-2" />
-                  {t('profile.edit')}
+                  Edit Profile
                 </Button>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('dashboard.systemStatus', 'Estado del Sistema')}</CardTitle>
+            {/* System Status */}
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+              <CardHeader className="pb-4">
+                                 <CardTitle className="flex items-center space-x-2">
+                   <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
+                     <CheckCircle className="w-5 h-5 text-white" />
+                   </div>
+                   <span>System Status</span>
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-slate-600">{t('dashboard.systemOperational', 'Sistema Operativo')}</span>
+              <CardContent className="space-y-4">
+                                 <div className="flex items-center justify-between p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
+                   <div className="flex items-center space-x-3">
+                     <div className="w-3 h-3 bg-pink-500 rounded-full animate-pulse"></div>
+                     <span className="text-sm font-medium text-slate-700">AI Agent</span>
+                   </div>
+                   <Badge variant="default" className="bg-pink-500">Online</Badge>
+                 </div>
+                 <div className="flex items-center justify-between p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
+                   <div className="flex items-center space-x-3">
+                     <div className="w-3 h-3 bg-pink-500 rounded-full animate-pulse"></div>
+                     <span className="text-sm font-medium text-slate-700">Browser Automation</span>
+                   </div>
+                   <Badge variant="default" className="bg-pink-500">Ready</Badge>
+                 </div>
+                 <div className="flex items-center justify-between p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
+                   <div className="flex items-center space-x-3">
+                     <div className="w-3 h-3 bg-pink-500 rounded-full animate-pulse"></div>
+                     <span className="text-sm font-medium text-slate-700">WebSocket</span>
+                   </div>
+                   <Badge variant="default" className="bg-pink-500">Connected</Badge>
                 </div>
-                <p className="text-xs text-slate-500 mt-2">
-                  {t('dashboard.allServicesWorking', 'Todos los servicios funcionando correctamente')}
-                </p>
+              </CardContent>
+            </Card>
+
+            {/* Recent Activity */}
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+              <CardHeader className="pb-4">
+                                 <CardTitle className="flex items-center space-x-2">
+                   <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
+                     <Activity className="w-5 h-5 text-white" />
+                   </div>
+                   <span>Recent Activity</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                                 <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
+                   <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center">
+                     <CheckCircle className="w-4 h-4 text-white" />
+                   </div>
+                   <div className="flex-1">
+                     <p className="text-sm font-medium text-slate-900">Task completed</p>
+                     <p className="text-xs text-slate-500">Google search automation</p>
+                   </div>
+                   <span className="text-xs text-slate-400">2m ago</span>
+                 </div>
+                 <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
+                   <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center">
+                     <Clock className="w-4 h-4 text-white" />
+                   </div>
+                   <div className="flex-1">
+                     <p className="text-sm font-medium text-slate-900">Task started</p>
+                     <p className="text-xs text-slate-500">Weather check automation</p>
+                   </div>
+                   <span className="text-xs text-slate-400">5m ago</span>
+                 </div>
+                 <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
+                   <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center">
+                     <TrendingUp className="w-4 h-4 text-white" />
+                   </div>
+                   <div className="flex-1">
+                     <p className="text-sm font-medium text-slate-900">System updated</p>
+                     <p className="text-xs text-slate-500">New features available</p>
+                   </div>
+                   <span className="text-xs text-slate-400">1h ago</span>
+                </div>
               </CardContent>
             </Card>
           </div>

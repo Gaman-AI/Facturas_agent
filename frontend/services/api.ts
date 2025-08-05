@@ -397,17 +397,7 @@ export interface TaskLogsResponse {
   };
 }
 
-export interface BrowserTaskRequest {
-  task_description: string;
-  llm_provider?: string;
-  model?: string;
-}
 
-export interface BrowserTaskResponse {
-  task_id: string;
-  status: string;
-  message: string;
-}
 
 // CFDI Task Types to match backend validation
 export interface CFDITaskRequest {
@@ -566,6 +556,35 @@ export class ApiService {
   // Execute task immediately (for testing)
   static async executeBrowserTask(request: BrowserTaskRequest): Promise<BrowserTaskResponse> {
     const response = await apiClient.post('/tasks/execute', request);
+    return response.data as BrowserTaskResponse;
+  }
+
+  // Browser-Use Task Creation (main method for browser automation)
+  static async createBrowserUseTask(request: {
+    prompt?: string;
+    task?: string;
+    vendor_url?: string;
+    customer_details?: any;
+    invoice_details?: any;
+    model?: string;
+    temperature?: number;
+    max_steps?: number;
+    timeout_minutes?: number;
+    llm_provider?: string;
+  }): Promise<BrowserTaskResponse> {
+    // Normalize the request - handle both 'prompt' and 'task' parameters
+    const normalizedRequest = {
+      prompt: request.prompt || request.task,
+      vendor_url: request.vendor_url,
+      customer_details: request.customer_details,
+      invoice_details: request.invoice_details,
+      model: request.model || 'gpt-4o-mini',
+      temperature: request.temperature || 0.7,
+      max_steps: request.max_steps || 30,
+      timeout_minutes: request.timeout_minutes || 30
+    };
+
+    const response = await apiClient.post('/tasks/browser-use', normalizedRequest);
     return response.data as BrowserTaskResponse;
   }
 

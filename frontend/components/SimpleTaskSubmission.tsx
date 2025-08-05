@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Send, Zap, AlertCircle } from 'lucide-react'
+import { Loader2, Send, AlertCircle, Zap } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useLanguage } from '@/contexts/LanguageContext'
 import ApiService from '@/services/api'
@@ -112,6 +112,8 @@ export function SimpleTaskSubmission({
       </CardHeader>
       
       <CardContent>
+
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Task Description */}
           <div className="space-y-2">
@@ -165,7 +167,7 @@ export function SimpleTaskSubmission({
                 <SelectItem value="openai">
                   <div className="flex items-center gap-2">
                     <Badge variant="default">OpenAI</Badge>
-                    <span>GPT-4O (Recommended)</span>
+                    <span>GPT-4O-Mini (Recommended)</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="anthropic">
@@ -203,7 +205,7 @@ export function SimpleTaskSubmission({
           <Button 
             type="submit" 
             className="w-full" 
-                          disabled={isSubmitting || !task.trim()}
+            disabled={isSubmitting || !task.trim()}
           >
             {isSubmitting ? (
               <>
