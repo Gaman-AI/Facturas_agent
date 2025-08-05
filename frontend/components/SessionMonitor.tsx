@@ -42,8 +42,9 @@ export function SessionMonitor({
     return () => clearInterval(interval)
   }, [user, getTokenInfo])
 
+  // Don't render anything if no user, but maintain consistent structure
   if (!user) {
-    return null
+    return <div className="hidden" />;
   }
 
   const getStatusColor = () => {
@@ -182,7 +183,8 @@ export function SessionStatusIndicator() {
   const { user } = useAuth()
   const { error, isTokenValid, isRefreshing } = useSessionManager()
 
-  if (!user) return null
+  // Don't render anything if no user, but maintain consistent structure
+  if (!user) return <div className="hidden" />
 
   const getStatusColor = () => {
     if (error) return 'bg-red-500'

@@ -142,13 +142,6 @@ export function VirtualLogList({
     }
   }
 
-  const highlightText = (text: string, query: string) => {
-    if (!query || !highlightSearch) return text
-    
-    const regex = new RegExp(`(${query})`, 'gi')
-    return text.replace(regex, '<mark class="bg-yellow-200 px-1 rounded">$1</mark>')
-  }
-
   const scrollToTop = () => {
     if (containerRef.current) {
       containerRef.current.scrollTo({ top: 0, behavior: 'smooth' })
@@ -224,11 +217,17 @@ export function VirtualLogList({
                 </div>
                 <p className="text-slate-900 break-words line-clamp-2">
                   {highlightSearch && searchQuery ? (
-                    <span
-                      dangerouslySetInnerHTML={{
-                        __html: highlightText(log.message, searchQuery)
-                      }}
-                    />
+                    <span>
+                      {log.message.split(new RegExp(`(${searchQuery})`, 'gi')).map((part, partIndex) => 
+                        part.toLowerCase() === searchQuery.toLowerCase() ? (
+                          <mark key={`highlight-${index}-${partIndex}-${part}`} className="bg-yellow-200 px-1 rounded">
+                            {part}
+                          </mark>
+                        ) : (
+                          <span key={`text-${index}-${partIndex}-${part}`}>{part}</span>
+                        )
+                      )}
+                    </span>
                   ) : (
                     log.message
                   )}

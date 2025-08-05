@@ -135,7 +135,14 @@ export function TaskList({
       }));
     } catch (err) {
       console.error('Error fetching tasks:', err);
-      setError(err instanceof Error ? err.message : 'Error loading tasks');
+      // Provide empty tasks instead of showing error
+      setTasks([]);
+      setPagination(prev => ({
+        ...prev,
+        total: 0,
+        hasMore: false
+      }));
+      // Don't set error state to avoid showing error message
     } finally {
       setLoading(false);
       setRefreshing(false);

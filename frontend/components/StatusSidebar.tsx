@@ -181,13 +181,24 @@ export function StatusSidebar({
   const downloadFile = (content: string, filename: string, mimeType: string) => {
     const blob = new Blob([content], { type: mimeType })
     const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+    
+    // Use a hidden anchor element that's already in the DOM
+    const downloadLink = document.createElement('a')
+    downloadLink.href = url
+    downloadLink.download = filename
+    downloadLink.style.display = 'none'
+    
+    // Add to body, click, and remove safely
+    document.body.appendChild(downloadLink)
+    downloadLink.click()
+    
+    // Use setTimeout to ensure the click event completes before removal
+    setTimeout(() => {
+      if (document.body.contains(downloadLink)) {
+        document.body.removeChild(downloadLink)
+      }
+      URL.revokeObjectURL(url)
+    }, 100)
   }
 
   const clearSearch = () => {
@@ -238,7 +249,7 @@ export function StatusSidebar({
           <CardTitle className="flex items-center justify-between text-lg">
             <div className="flex items-center gap-2">
               <Activity className="w-5 h-5" />
-              {t('monitor.sidebar.title', 'Task Status')}
+              {t('monitor.sidebar.title')}
             </div>
             <div className={`px-2 py-1 rounded-full border ${getStatusColor()}`}>
               {getStatusIcon()}
@@ -246,7 +257,7 @@ export function StatusSidebar({
           </CardTitle>
           {taskId && (
             <CardDescription className="text-xs">
-              {t('monitor.sidebar.taskId', 'Task ID')}: {taskId.slice(0, 12)}...
+              {t('monitor.sidebar.taskId')}: {taskId.slice(0, 12)}...
             </CardDescription>
           )}
         </CardHeader>
@@ -254,9 +265,9 @@ export function StatusSidebar({
         <CardContent className="space-y-4">
           {/* Connection Status */}
           <div className="flex items-center justify-between text-sm">
-            <span>{t('monitor.sidebar.connection', 'Connection')}</span>
+            <span>{t('monitor.sidebar.connection')}</span>
             <Badge variant={isConnected ? 'default' : 'secondary'}>
-              {isConnected ? t('common.connected', 'Connected') : t('common.disconnected', 'Disconnected')}
+              {isConnected ? t('common.connected') : t('common.disconnected')}
             </Badge>
           </div>
 
@@ -264,7 +275,7 @@ export function StatusSidebar({
           {progress > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span>{t('monitor.sidebar.progress', 'Progress')}</span>
+                <span>{t('monitor.sidebar.progress')}</span>
                 <span className="text-slate-600">{Math.round(progress)}%</span>
               </div>
               <Progress value={progress} className="h-2" />
@@ -274,7 +285,7 @@ export function StatusSidebar({
           {/* Elapsed Time */}
           {getElapsedTime() && (
             <div className="flex items-center justify-between text-sm">
-              <span>{t('monitor.sidebar.elapsed', 'Elapsed Time')}</span>
+              <span>{t('monitor.sidebar.elapsed')}</span>
               <span className="text-slate-600">{getElapsedTime()}</span>
             </div>
           )}
@@ -284,7 +295,7 @@ export function StatusSidebar({
             <>
               <Separator />
               <div className="space-y-2">
-                <h4 className="text-sm font-medium">{t('monitor.sidebar.controls', 'Controls')}</h4>
+                <h4 className="text-sm font-medium">{t('monitor.sidebar.controls')}</h4>
                 <div className="grid grid-cols-2 gap-2">
                   {canPause && (
                     <Button 
@@ -294,7 +305,7 @@ export function StatusSidebar({
                       className="w-full"
                     >
                       <Pause className="w-4 h-4 mr-1" />
-                      {t('common.pause', 'Pause')}
+                      {t('common.pause')}
                     </Button>
                   )}
                   
@@ -305,7 +316,7 @@ export function StatusSidebar({
                       className="w-full"
                     >
                       <Play className="w-4 h-4 mr-1" />
-                      {t('common.resume', 'Resume')}
+                      {t('common.resume')}
                     </Button>
                   )}
                   
@@ -317,7 +328,7 @@ export function StatusSidebar({
                       className="w-full"
                     >
                       <Square className="w-4 h-4 mr-1" />
-                      {t('common.stop', 'Stop')}
+                      {t('common.stop')}
                     </Button>
                   )}
                   
@@ -329,7 +340,7 @@ export function StatusSidebar({
                       className="w-full"
                     >
                       <RotateCcw className="w-4 h-4 mr-1" />
-                      {t('common.restart', 'Restart')}
+                      {t('common.restart')}
                     </Button>
                   )}
                 </div>
@@ -498,14 +509,17 @@ export function StatusSidebar({
                       <p className="text-slate-900 break-words">
                         {/* Highlight search terms */}
                         {searchQuery ? (
-                          <span
-                            dangerouslySetInnerHTML={{
-                              __html: log.message.replace(
-                                new RegExp(`(${searchQuery})`, 'gi'),
-                                '<mark class="bg-yellow-200 px-1 rounded">$1</mark>'
+                          <span>
+                            {log.message.split(new RegExp(`(${searchQuery})`, 'gi')).map((part, partIndex) => 
+                              part.toLowerCase() === searchQuery.toLowerCase() ? (
+                                <mark key={`highlight-${index}-${partIndex}-${part}`} className="bg-yellow-200 px-1 rounded">
+                                  {part}
+                                </mark>
+                              ) : (
+                                <span key={`text-${index}-${partIndex}-${part}`}>{part}</span>
                               )
-                            }}
-                          />
+                            )}
+                          </span>
                         ) : (
                           log.message
                         )}
