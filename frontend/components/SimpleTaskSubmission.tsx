@@ -36,7 +36,7 @@ export function SimpleTaskSubmission({
   const [isDemoMode, setIsDemoMode] = useState(false)
   const mountedRef = useRef(true)
 
-  const characterLimit = 500
+  const characterLimit = 2000
   const remainingChars = characterLimit - task.length
 
   // Cleanup effect to prevent state updates on unmounted component

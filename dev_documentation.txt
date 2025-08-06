@@ -2,6 +2,41 @@
 
 ## Latest Updates
 
+### 2025-08-06 16:10 - Frontend Task Input Limit Increase
+
+**Issue**: The frontend dashboard had a restrictive 500 character limit for task input, which was insufficient for detailed task descriptions.
+
+**Root Cause**: The `SimpleTaskSubmission` component had a hardcoded `characterLimit = 500` which was too restrictive for complex automation tasks that require detailed instructions.
+
+**Fix Applied**:
+- Increased the character limit from 500 to 2000 characters in `SimpleTaskSubmission.tsx`
+- Updated all related test files to reflect the new character limit
+- Updated manual test file to use the new limit
+- Maintained all existing validation logic and UI feedback
+
+**Files Modified**:
+- `frontend/components/SimpleTaskSubmission.tsx` - Increased characterLimit from 500 to 2000
+- `frontend/components/__tests__/SimpleTaskSubmission.test.tsx` - Updated test expectations for new character limit
+- `frontend/test-simple-task-submission.js` - Updated manual test to use new limit
+
+**Key Changes**:
+- Character limit: 500 → 2000 characters
+- Updated test cases to expect 2000 characters remaining initially
+- Updated test cases to use 1960 characters for "approaching limit" tests
+- Maintained all existing validation and UI feedback mechanisms
+- No changes to backend validation (still requires minimum 10 characters)
+
+**Testing**: 
+- ✅ Frontend builds successfully with new character limit
+- ✅ All validation logic remains intact
+- ✅ Character counter displays correctly with new limit
+- ✅ UI feedback (red text when approaching limit) still works
+- ✅ Backend validation still enforces minimum 10 characters
+
+**Status**: COMPLETE - Task input limit increased from 500 to 2000 characters
+
+---
+
 ### 2025-08-05 22:30 - Frontend UI Language Update to English
 
 **Issue**: Frontend UI was defaulting to Spanish language, but user requested English as the primary language.
