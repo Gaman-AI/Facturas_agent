@@ -39,7 +39,7 @@ from browser_use.llm import ChatOpenAI
 from browser_use.browser.profile import BrowserProfile
 
 
-async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", temperature: float = 0.7, max_steps: int = 30):
+async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", temperature: float = 0.5, max_steps: int = 30):
     """
     Run a browser automation task - simplified version like simple.py
     

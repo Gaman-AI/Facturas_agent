@@ -6,7 +6,7 @@
  */
 
 import config from './src/config/index.js'
-import redisService from './src/services/redisService.js'
+// Redis service removed - using in-memory queue instead
 import queueService from './src/services/queueService.js'
 import taskService from './src/services/taskService.js'
 import crypto from 'crypto'
@@ -43,14 +43,14 @@ const runQuickTests = async () => {
     assert(config.supabase.url, 'Supabase URL configured')
     assert(config.supabase.serviceKey, 'Supabase service key configured')
     
-    // Test 2: Redis Connection
-    log('Testing Redis connection...')
-    const redisConnected = await redisService.connect()
-    assert(redisConnected, 'Redis connected successfully')
+    // Test 2: Queue Service (In-Memory)
+    log('Testing queue service...')
+    const queueInitialized = await queueService.initialize()
+    assert(queueInitialized, 'Queue service initialized successfully')
     
-    if (redisConnected) {
-      const health = await redisService.healthCheck()
-      assert(health.status === 'healthy', `Redis healthy (latency: ${health.latency}ms)`)
+    if (queueInitialized) {
+      const health = await queueService.healthCheck()
+      assert(health.status === 'healthy', `Queue service healthy (in-memory mode)`)
     }
     
     // Test 3: Database Operations
@@ -206,9 +206,7 @@ const runQuickTests = async () => {
       if (queueService.isInitialized) {
         await queueService.shutdown()
       }
-      if (redisService.isConnected) {
-        await redisService.disconnect()
-      }
+          // Queue service is in-memory - no cleanup needed
     } catch (cleanupError) {
       log(`⚠️  Cleanup warning: ${cleanupError.message}`)
     }
@@ -240,7 +238,7 @@ process.on('SIGINT', async () => {
   log('🛑 Tests interrupted')
   try {
     await queueService.shutdown()
-    await redisService.disconnect()
+    // Redis service removed - no cleanup needed
   } catch (error) {
     // Silent cleanup
   }

@@ -15,7 +15,8 @@ import config from '../config/index.js'
 
 class PythonBridge {
   constructor() {
-    this.pythonExecutable = path.join(process.cwd(), 'browser-use', '.venv', 'bin', 'python')
+    // Use the correct virtual environment path for Windows
+    this.pythonExecutable = path.join(process.cwd(), 'browser-use', '.venv', 'Scripts', 'python.exe')
     this.scriptPath = path.join(process.cwd(), 'browser_agent.py')
     this.timeout = config.python.timeout || 300000 // 5 minutes default
   }
@@ -59,7 +60,7 @@ class PythonBridge {
           PYTHONPATH: path.join(process.cwd(), 'browser-use'),
           BROWSER_USE_SETUP_LOGGING: 'true',
           VIRTUAL_ENV: path.join(process.cwd(), 'browser-use', '.venv'),
-          PATH: `${path.join(process.cwd(), 'browser-use', '.venv', 'bin')}:${process.env.PATH}`
+          PATH: `${path.join(process.cwd(), 'browser-use', '.venv', 'Scripts')};${process.env.PATH}`
         }
       })
 
