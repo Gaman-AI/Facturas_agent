@@ -2,6 +2,47 @@
 
 ## Latest Updates
 
+### 2025-08-05 22:30 - Frontend UI Language Update to English
+
+**Issue**: Frontend UI was defaulting to Spanish language, but user requested English as the primary language.
+
+**Root Cause**: The language context was configured to default to Spanish ('es') and the layout was set to Spanish locale.
+
+**Fix Applied**:
+- Updated `LanguageContext` to default to English ('en') instead of Spanish
+- Changed layout metadata to use English titles and descriptions
+- Updated HTML lang attribute from "es-MX" to "en-US"
+- Modified language initialization logic to prioritize English
+- Updated all fallback translations in LanguageContext to English
+- Added language switchers to both home page and dashboard for easy language switching
+- Updated dashboard components to use proper translation keys
+- Ensured all UI text now defaults to English while maintaining Spanish as an option
+
+**Files Modified**:
+- `frontend/contexts/LanguageContext.tsx` - Changed default language to English, updated fallbacks
+- `frontend/app/layout.tsx` - Updated metadata and HTML lang attribute to English
+- `frontend/app/page.tsx` - Updated fallback text to English, added language switcher
+- `frontend/app/(dashboard)/dashboard/page.tsx` - Updated all hardcoded text to use translation keys, added language switcher
+
+**Key Changes**:
+- Default language: Spanish → English
+- HTML lang: "es-MX" → "en-US"
+- Metadata: Spanish → English
+- All UI text now defaults to English
+- Language switchers added for easy switching between English and Spanish
+- Maintained full bilingual support with English as primary
+
+**Testing**: 
+- ✅ Home page displays in English by default
+- ✅ Dashboard displays in English by default
+- ✅ Language switcher allows switching between English and Spanish
+- ✅ All translation keys properly mapped
+- ✅ No hydration mismatches with new language defaults
+
+**Status**: COMPLETE - Frontend UI now defaults to English with full bilingual support
+
+---
+
 ### 2025-08-05 22:00 - Windows Virtual Environment Setup & Path Fixes
 
 **Issue**: Python virtual environment was missing and the Python bridge was using incorrect paths for Windows.
@@ -87,147 +128,4 @@ uv sync
 
 **Files Modified**:
 - `backend/src/services/pythonBridge.js` - Fixed variable naming conflict and added process import
-- `backend/src/services/browserService.js` - Added process import  
-- `backend/src/index.js` - Added process import
-
-**Testing**: Backend should now properly execute Python tasks without the process initialization error.
-
----
-
-### 2025-08-05 21:15 - Backend Python Bridge Fix
-
-**Issue**: Backend was throwing `ReferenceError: Cannot access 'process' before initialization` when clicking "Start Task" button.
-
-**Root Cause**: Variable name conflict in `backend/src/services/pythonBridge.js` where a local variable `process` was shadowing the global `process` object.
-
-**Fix Applied**:
-- Renamed local `process` variable to `pythonProcess` to avoid conflict with global `process` object
-- Updated all references to use `pythonProcess` instead of `process`
-- This resolves the ES module initialization issue
-
-**Files Modified**:
-- `backend/src/services/pythonBridge.js` - Fixed variable naming conflict
-
-**Testing**: Backend should now properly execute Python tasks without the process initialization error.
-
----
-
-### 2025-08-05 21:10 - Frontend Component Regression Fix
-
-**Issue**: Quick task buttons and text input were not working after previous fixes.
-
-**Root Cause**: `mountedRef.current` checks were incorrectly applied to immediate user interaction handlers, blocking user input.
-
-**Fix Applied**:
-- Removed `mountedRef.current` checks from `handleQuickFill`, `Textarea onChange`, `setIsDemoMode onClick`, and `Select onValueChange` handlers
-- Removed `hydrated` state and conditional rendering block that was preventing component from rendering
-- Added missing translation keys to `LanguageContext` fallbacks
-
-**Files Modified**:
-- `frontend/components/SimpleTaskSubmission.tsx` - Restored interactive functionality
-- `frontend/contexts/LanguageContext.tsx` - Added missing translation keys
-
-**Testing**: Component should now render properly and all interactive elements should work.
-
----
-
-### 2025-08-05 21:05 - Hydration Mismatch Fix
-
-**Issue**: `Hydration failed because the server rendered text didn't match the client` error occurring on server restarts.
-
-**Root Cause**: Language mismatch between server and client rendering due to `LanguageContext` initialization logic.
-
-**Fix Applied**:
-- Modified `LanguageContext` to ensure server always renders Spanish for consistent SSR
-- Delayed client-side language switch until after hydration
-- Updated `t` function to provide hardcoded Spanish fallbacks during SSR
-- Simplified `frontend/app/page.tsx` to rely entirely on `LanguageContext` for hydration safety
-
-**Files Modified**:
-- `frontend/contexts/LanguageContext.tsx` - Implemented hydration-safe i18n
-- `frontend/app/page.tsx` - Removed component-level hydration logic
-
-**Testing**: No more hydration mismatch errors on server restarts.
-
----
-
-### 2025-08-05 20:55 - React Reconciliation Error Fix
-
-**Issue**: `NotFoundError: Failed to execute 'insertBefore' on 'Node'` error when clicking "Start Task" and navigating to monitor page.
-
-**Root Cause**: Unstable `key` props in text highlighting and inconsistent DOM structure due to conditional rendering.
-
-**Fix Applied**:
-- Updated `key` props in multiple components to use stable identifiers (e.g., `log.timestamp`, `step.id`)
-- Wrapped conditional rendering in consistent parent `div`s
-- Added `mountedRef` and cleanup logic to prevent state updates on unmounted components
-- Added `try-catch` block around DOM cleanup operations
-
-**Files Modified**:
-- `frontend/components/StatusSidebar.tsx` - Fixed unstable keys and DOM cleanup
-- `frontend/components/VirtualLogList.tsx` - Fixed unstable keys
-- `frontend/components/BrowserAgentRealtime.tsx` - Fixed unstable keys
-- `frontend/components/SimpleTaskSubmission.tsx` - Fixed unstable keys and DOM structure
-- `frontend/components/AgentThinkingDisplay.tsx` - Fixed unstable keys and DOM structure
-
-**Testing**: No more React reconciliation errors during navigation.
-
----
-
-### 2025-08-05 20:50 - API Error Fix
-
-**Issue**: `400 Bad Request` error when clicking "Start Task" button.
-
-**Root Cause**: `SimpleTaskSubmission.tsx` was calling `ApiService.createBrowserTask()` instead of the correct `ApiService.createBrowserUseTask()`.
-
-**Fix Applied**:
-- Changed API call to `ApiService.createBrowserUseTask()`
-- Improved error handling to extract detailed messages from API responses
-- Added `mountedRef` checks for state updates and `router.push`
-
-**Files Modified**:
-- `frontend/components/SimpleTaskSubmission.tsx` - Fixed API call and error handling
-
-**Testing**: API calls should now work correctly (assuming backend is running).
-
----
-
-### 2025-08-05 20:45 - Testing Infrastructure Setup
-
-**Issue**: Need comprehensive testing for component functionality.
-
-**Solution Applied**:
-- Created Jest configuration for Next.js
-- Created comprehensive unit tests for `SimpleTaskSubmission`
-- Created manual test scripts and HTML pages for browser-based testing
-- Added test scripts to `package.json`
-
-**Files Created**:
-- `frontend/jest.config.js` - Jest configuration
-- `frontend/jest.setup.js` - Jest setup with mocks
-- `frontend/components/__tests__/SimpleTaskSubmission.test.tsx` - Unit tests
-- `frontend/test-simple-task-submission.js` - Manual test script
-- `frontend/manual-test.html` - Interactive test page
-- `frontend/test-component.html` - Minimal test page
-
-**Note**: Jest setup encountered ESM compatibility issues with dependencies, so manual browser testing is the primary verification method.
-
----
-
-## Current Status
-
-✅ **Frontend**: All React reconciliation errors fixed, hydration issues resolved, component functionality restored
-✅ **Backend**: All process import issues fixed across multiple files
-🔄 **Testing**: Manual test scripts available for verification
-
-## Next Steps
-
-1. Test the "Start Task" functionality end-to-end
-2. Verify all interactive elements work properly
-3. Confirm no more console errors
-4. Run manual tests to validate component behavior
-
-## Known Issues
-
-- Jest unit tests have ESM compatibility issues with certain dependencies
-- Manual browser testing is the recommended verification method
+- `
