@@ -128,13 +128,13 @@ describe('SimpleTaskSubmission Component', () => {
       const textarea = screen.getByRole('textbox') as HTMLTextAreaElement
       
       // Check initial character count
-      expect(screen.getByText('500 characters remaining')).toBeInTheDocument()
+      expect(screen.getByText('2000 characters remaining')).toBeInTheDocument()
       
       // Type some text
       await user.type(textarea, 'Hello world')
       
       // Check updated character count
-      expect(screen.getByText('489 characters remaining')).toBeInTheDocument()
+      expect(screen.getByText('1989 characters remaining')).toBeInTheDocument()
     })
 
     it('should show red text when approaching character limit', async () => {
@@ -148,7 +148,7 @@ describe('SimpleTaskSubmission Component', () => {
       const textarea = screen.getByRole('textbox') as HTMLTextAreaElement
       
       // Type a long text to approach the limit
-      const longText = 'A'.repeat(460) // 40 characters remaining
+      const longText = 'A'.repeat(1960) // 40 characters remaining
       await user.type(textarea, longText)
       
       // Check if character count is red
