@@ -28,10 +28,13 @@ To verify that the browser window opens correctly:
 cd backend
 
 # Activate virtual environment
-.\browser_env\Scripts\activate
+venv/Scripts/activate
 
-# Run the visibility test
-python test_browser_visibility.py
+#install dependencies if not already installed
+npm i
+
+#Run
+npm run dev
 ```
 
 ### 3. Test Real-time Endpoint
@@ -94,13 +97,14 @@ browser_config = {
 1. **Start Backend:**
    ```bash
    cd backend
-   .\browser_env\Scripts\activate
-   python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+   venv/Scripts/activate
+   npm run dev
    ```
 
 2. **Start Frontend:**
    ```bash
    cd frontend
+   
    npm run dev
    ```
 

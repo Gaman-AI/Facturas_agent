@@ -21,7 +21,7 @@ jest.setTimeout(30000) // 30 seconds for integration tests
 // Mock external services by default
 process.env.NODE_ENV = 'test'
 process.env.JWT_SECRET = 'test-jwt-secret-key-for-testing-only'
-process.env.REDIS_URL = 'redis://localhost:6379/1' // Use test database
+// Redis removed - using in-memory queue instead
 
 // Global test utilities
 global.testUtils = {

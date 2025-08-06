@@ -16,11 +16,6 @@ const config = {
     serviceKey: process.env.SUPABASE_SERVICE_KEY,
   },
 
-  // Redis Configuration
-  redis: {
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
-  },
-
   // JWT Configuration
   jwt: {
     secret: process.env.JWT_SECRET,

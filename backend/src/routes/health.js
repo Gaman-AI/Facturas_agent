@@ -1,6 +1,5 @@
 import express from 'express'
 import taskService from '../services/taskService.js'
-import redisService from '../services/redisService.js'
 import queueService from '../services/queueService.js'
 
 const router = express.Router()
@@ -11,15 +10,13 @@ router.get('/', async (req, res) => {
     // All services are already instantiated as singletons
 
     // Check each service
-    const [dbHealth, redisHealth, queueHealth] = await Promise.allSettled([
+    const [dbHealth, queueHealth] = await Promise.allSettled([
       taskService.healthCheck(),
-      redisService.healthCheck(),
       queueService.healthCheck()
     ])
 
     const services = {
       database: dbHealth.status === 'fulfilled' ? 'healthy' : 'unhealthy',
-      redis: redisHealth.status === 'fulfilled' ? 'healthy' : 'unhealthy', 
       queue: queueHealth.status === 'fulfilled' ? 'healthy' : 'unhealthy'
     }
 
@@ -42,7 +39,6 @@ router.get('/', async (req, res) => {
       error: error.message,
       services: {
         database: 'unknown',
-        redis: 'unknown',
         queue: 'unknown'
       }
     })
@@ -54,9 +50,8 @@ router.get('/detailed', async (req, res) => {
   try {
     // All services are already instantiated as singletons
 
-    const [dbHealth, redisHealth, queueHealth] = await Promise.allSettled([
+    const [dbHealth, queueHealth] = await Promise.allSettled([
       taskService.healthCheck(),
-      redisService.healthCheck(),
       queueService.healthCheck()
     ])
 
@@ -76,10 +71,6 @@ router.get('/detailed', async (req, res) => {
         database: {
           status: dbHealth.status === 'fulfilled' ? 'healthy' : 'unhealthy',
           details: dbHealth.status === 'fulfilled' ? dbHealth.value : dbHealth.reason?.message
-        },
-        redis: {
-          status: redisHealth.status === 'fulfilled' ? 'healthy' : 'unhealthy',
-          details: redisHealth.status === 'fulfilled' ? redisHealth.value : redisHealth.reason?.message
         },
         queue: {
           status: queueHealth.status === 'fulfilled' ? 'healthy' : 'unhealthy',
@@ -106,14 +97,8 @@ router.get('/detailed', async (req, res) => {
 // Readiness check (for Kubernetes)
 router.get('/ready', async (req, res) => {
   try {
-    const taskService = new TaskService()
-    const redisService = new RedisService()
-
-    // Quick readiness checks
-    await Promise.all([
-      taskService.healthCheck(),
-      redisService.healthCheck()
-    ])
+    // Quick readiness checks - Redis removed, using in-memory queue
+    await taskService.healthCheck()
 
     res.json({
       status: 'ready',

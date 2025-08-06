@@ -2,7 +2,7 @@
 
 import config from './src/config/index.js'
 import taskService from './src/services/taskService.js'
-import redisService from './src/services/redisService.js'
+// Redis service removed - using in-memory queue instead
 import queueService from './src/services/queueService.js'
 import crypto from 'crypto'
 
@@ -33,30 +33,28 @@ async function runFinalTests() {
     console.log('\n📊 Test 1: Environment Configuration')
     assert(config.supabase.url, 'Supabase URL configured')
     assert(config.supabase.serviceKey, 'Supabase service key configured')
-    assert(config.redis.url, 'Redis URL configured')
+    // Redis removed - using in-memory queue instead
     
     console.log(`   Supabase URL: ${config.supabase.url}`)
     console.log(`   Service key format: ${config.supabase.serviceKey?.substring(0, 20)}...`)
 
-    // Test 2: Redis & Queue
-    console.log('\n📊 Test 2: Redis & Queue Services')
+    // Test 2: Queue Service (In-Memory)
+    console.log('\n📊 Test 2: Queue Service')
     try {
-      const redisConnected = await redisService.connect()
-      assert(redisConnected, 'Redis connection successful')
+      const queueInitialized = await queueService.initialize()
+      assert(queueInitialized, 'Queue service initialized')
       
-      if (redisConnected) {
-        const redisHealth = await redisService.healthCheck()
-        assert(redisHealth.status === 'healthy', `Redis health check passed (${redisHealth.latency}ms)`)
-        
-        const queueInitialized = await queueService.initialize()
-        assert(queueInitialized, 'Queue service initialized')
-        
+      if (queueInitialized) {
         const queueHealth = await queueService.healthCheck()
-        assert(queueHealth.status === 'healthy', 'Queue health check passed')
+        assert(queueHealth.status === 'healthy', 'Queue health check passed (in-memory mode)')
+        
+        // Test queue stats
+        const { stats } = await queueService.getQueueStats()
+        assert(typeof stats.total === 'number', 'Queue statistics available')
       }
-    } catch (redisError) {
-      console.log(`⚠️  Redis/Queue tests failed: ${redisError.message}`)
-      assert(false, 'Redis/Queue services working')
+    } catch (queueError) {
+      console.log(`⚠️  Queue tests failed: ${queueError.message}`)
+      assert(false, 'Queue service working')
     }
 
     // Test 3: Database Operations
@@ -138,7 +136,7 @@ async function runFinalTests() {
     // Cleanup connections
     try {
       await queueService.shutdown()
-      await redisService.disconnect()
+      // Queue service is in-memory - no cleanup needed
     } catch (cleanupError) {
       console.log(`⚠️  Connection cleanup warning: ${cleanupError.message}`)
     }

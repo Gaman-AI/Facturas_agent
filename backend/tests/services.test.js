@@ -148,49 +148,70 @@ describe('External Services Integration Tests', () => {
     })
   })
 
-  describe('Redis Integration', () => {
-    test('should have Redis configuration', () => {
-      const redisUrl = process.env.REDIS_URL
+  describe('Queue Service (In-Memory)', () => {
+    test('should initialize queue service', async () => {
+      // Mock queue service for testing
+      const mockQueueService = {
+        initialize: jest.fn().mockResolvedValue(true),
+        healthCheck: jest.fn().mockResolvedValue({ status: 'healthy' }),
+        getQueueStats: jest.fn().mockResolvedValue({ 
+          stats: { total: 0, waiting: 0, active: 0, completed: 0, failed: 0 } 
+        })
+      }
       
-      expect(redisUrl).toBeDefined()
-      expect(redisUrl).toMatch(/^redis:\/\//)
+      const result = await mockQueueService.initialize()
+      expect(result).toBe(true)
     })
 
-    test('should connect to Redis (mocked)', async () => {
-      // Mock Redis connection test
-      const mockRedisConnection = {
-        ping: jest.fn().mockResolvedValue('PONG'),
-        set: jest.fn().mockResolvedValue('OK'),
-        get: jest.fn().mockResolvedValue('test-value'),
-        del: jest.fn().mockResolvedValue(1),
-        quit: jest.fn().mockResolvedValue('OK')
+    test('should provide health check', async () => {
+      const mockQueueService = {
+        healthCheck: jest.fn().mockResolvedValue({ 
+          status: 'healthy',
+          initialized: true,
+          processing: false,
+          totalTasks: 0
+        })
       }
 
-      // Test basic Redis operations
-      const pingResult = await mockRedisConnection.ping()
-      expect(pingResult).toBe('PONG')
-
-      const setResult = await mockRedisConnection.set('test-key', 'test-value')
-      expect(setResult).toBe('OK')
-
-      const getValue = await mockRedisConnection.get('test-key')
-      expect(getValue).toBe('test-value')
-
-      const delResult = await mockRedisConnection.del('test-key')
-      expect(delResult).toBe(1)
+      const health = await mockQueueService.healthCheck()
+      expect(health.status).toBe('healthy')
+      expect(health.initialized).toBe(true)
     })
 
-    test('should handle Redis connection errors', async () => {
-      const mockRedisError = {
-        connect: jest.fn().mockRejectedValue(new Error('Connection refused'))
+    test('should provide queue statistics', async () => {
+      const mockQueueService = {
+        getQueueStats: jest.fn().mockResolvedValue({ 
+          success: true,
+          stats: { 
+            total: 0, 
+            waiting: 0, 
+            active: 0, 
+            completed: 0, 
+            failed: 0,
+            processing: false,
+            initialized: true
+          } 
+        })
       }
 
-      try {
-        await mockRedisError.connect()
-        fail('Should have thrown an error')
-      } catch (error) {
-        expect(error.message).toBe('Connection refused')
+      const { stats } = await mockQueueService.getQueueStats()
+      expect(stats).toBeDefined()
+      expect(typeof stats.total).toBe('number')
+      expect(stats.processing).toBeDefined()
+    })
+
+    test('should handle task addition', async () => {
+      const mockQueueService = {
+        addTask: jest.fn().mockResolvedValue({ 
+          success: true, 
+          taskId: 'task_123',
+          task: { id: 'task_123', type: 'test', status: 'waiting' }
+        })
       }
+
+      const result = await mockQueueService.addTask('test', { data: 'test' })
+      expect(result.success).toBe(true)
+      expect(result.taskId).toBeDefined()
     })
   })
 
@@ -245,7 +266,7 @@ describe('External Services Integration Tests', () => {
       const services = {
         openai: process.env.OPENAI_API_KEY ? 'configured' : 'not_configured',
         browserbase: process.env.BROWSERBASE_API_KEY ? 'configured' : 'not_configured',
-        redis: process.env.REDIS_URL ? 'configured' : 'not_configured',
+        queue: 'in-memory',
         supabase: process.env.SUPABASE_URL ? 'configured' : 'not_configured'
       }
 
