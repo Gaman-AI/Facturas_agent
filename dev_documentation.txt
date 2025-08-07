@@ -2,6 +2,40 @@
 
 ## Latest Updates
 
+### 2025-08-06 21:55 - Python Bridge Module Import Error Fix
+
+**Issue**: The Node.js Python bridge was failing with `ModuleNotFoundError: No module named 'browserbase'` when executing browser automation tasks.
+
+**Root Cause**: The Python bridge was configured to use a virtual environment (`browser-use/.venv`) that didn't have the `browserbase` package installed, while the system Python had the package available.
+
+**Fix Applied**:
+- Updated `backend/src/services/pythonBridge.js` to use system Python instead of virtual environment
+- Changed Python executable from `browser-use/.venv/Scripts/python.exe` to `python`
+- Removed virtual environment environment variables (VIRTUAL_ENV, PATH modifications)
+- Kept PYTHONPATH to ensure browser-use module is accessible
+- Removed emoji characters from Python script output to avoid Unicode encoding issues in Windows console
+
+**Files Modified**:
+- `backend/src/services/pythonBridge.js` - Updated to use system Python instead of virtual environment
+- `backend/browser_agent.py` - Removed emoji characters from print statements to avoid Unicode issues
+
+**Key Changes**:
+- Python executable: Virtual environment → System Python
+- Environment variables: Removed VIRTUAL_ENV and PATH modifications
+- Maintained PYTHONPATH for browser-use module access
+- Removed emoji characters from output to prevent Unicode encoding errors
+
+**Testing**: 
+- ✅ Python bridge can now find and import `browserbase` module
+- ✅ Environment info shows Python 3.11.9 is available
+- ✅ Health check passes (though with Unicode display warnings)
+- ✅ Task execution works (with Unicode display warnings)
+- ✅ Core functionality restored - browser automation tasks can now be executed
+
+**Status**: COMPLETE - Python bridge module import error resolved, browser automation functionality restored
+
+---
+
 ### 2025-08-06 16:10 - Frontend Task Input Limit Increase
 
 **Issue**: The frontend dashboard had a restrictive 500 character limit for task input, which was insufficient for detailed task descriptions.

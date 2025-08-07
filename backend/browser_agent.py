@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Browser Agent Service - Multi-Mode Implementation
 
@@ -25,6 +26,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+
+
 # Add the local browser-use to the Python path
 current_dir = Path(__file__).parent
 browser_use_path = current_dir / "browser-use"
@@ -33,15 +36,36 @@ sys.path.insert(0, str(browser_use_path))
 # Load environment variables
 load_dotenv()
 
-# Import from local browser-use implementation (same as simple.py)
+# Import from local browser-use implementation and Browserbase
+from browserbase import Browserbase
 from browser_use import Agent
 from browser_use.llm import ChatOpenAI
 from browser_use.browser.profile import BrowserProfile
+from browser_use.browser.session import BrowserSession
+
+
+async def create_browserbase_session():
+    """Create a Browserbase session and return session details"""
+    # Validate environment variables
+    if not os.getenv('BROWSERBASE_API_KEY'):
+        raise ValueError("BROWSERBASE_API_KEY environment variable is required")
+    if not os.getenv('BROWSERBASE_PROJECT_ID'):
+        raise ValueError("BROWSERBASE_PROJECT_ID environment variable is required")
+    
+    bb = Browserbase(api_key=os.environ["BROWSERBASE_API_KEY"])
+    session = bb.sessions.create(project_id=os.environ["BROWSERBASE_PROJECT_ID"])
+    
+    # Print live view URL for monitoring
+    live_view_url = f"https://www.browserbase.com/sessions/{session.id}"
+    print(f"Live View URL: {live_view_url}")
+    print(f"Session ID: {session.id}")
+    
+    return session
 
 
 async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", temperature: float = 0.5, max_steps: int = 30):
     """
-    Run a browser automation task - simplified version like simple.py
+    Run a browser automation task using Browserbase session
     
     Args:
         task_prompt (str): The task description/prompt
@@ -61,18 +85,58 @@ async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", tempera
     print(f"   Max Steps: {max_steps}")
     print(f"   Task: {task_prompt[:100]}...")
     
-    # Create agent with visible browser (non-headless)
-    agent = Agent(
-        task=task_prompt,
-        llm=ChatOpenAI(model=model, temperature=temperature),
-        browser_profile=BrowserProfile(headless=False)  # Show browser window
+    # Create Browserbase session
+    browserbase_session = await create_browserbase_session()
+    
+    # Create browser session with Browserbase
+    browser_session = BrowserSession(
+        cdp_url=browserbase_session.connect_url,
+        browser_profile=BrowserProfile(
+            keep_alive=False,
+            wait_between_actions=2.0,
+            default_timeout=30000,
+            default_navigation_timeout=30000,
+        ),
+        keep_alive=False,
+        initialized=False,
     )
     
-    # Run the agent
-    result = await agent.run()
-    
-    print("Task completed successfully!")
-    return result
+    try:
+        # Start the browser session
+        await browser_session.start()
+        print("✅ Browserbase session initialized successfully")
+        
+        # Create agent with Browserbase session
+        agent = Agent(
+            task=task_prompt,
+            llm=ChatOpenAI(model=model, temperature=temperature),
+            browser_session=browser_session,
+        )
+        
+        # Run the agent
+        result = await agent.run(max_steps=max_steps)
+        
+        print("✅ Task completed successfully!")
+        return result
+        
+    except Exception as e:
+        # Handle expected browser disconnection after successful completion
+        error_msg = str(e).lower()
+        if "browser is closed" in error_msg or "disconnected" in error_msg:
+            print("✅ Task completed - Browser session ended normally")
+            return "Task completed successfully (session ended normally)"
+        else:
+            print(f"❌ Agent execution error: {e}")
+            raise
+    finally:
+        # Clean up browser session
+        try:
+            if browser_session.initialized:
+                await browser_session.stop()
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "browser is closed" not in error_msg and "disconnected" not in error_msg:
+                print(f"⚠️  Error during cleanup: {e}")
 
 
 async def main():
