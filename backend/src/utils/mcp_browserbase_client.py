@@ -130,10 +130,21 @@ class MCPBrowserbaseClient:
                     session_data = response["result"]
                     self.active_session_id = session_data.get("sessionId")
                     
+                    # Try to get proper debug URL, fallback to session URL
+                    live_view_url = f"https://www.browserbase.com/sessions/{self.active_session_id}"
+                    try:
+                        from browserbase import Browserbase
+                        import os
+                        bb = Browserbase(api_key=os.getenv('BROWSERBASE_API_KEY'))
+                        debug_info = bb.sessions.debug(self.active_session_id)
+                        live_view_url = debug_info.debugger_fullscreen_url
+                    except Exception:
+                        pass  # Keep fallback URL
+                    
                     return {
                         "success": True,
                         "session_id": self.active_session_id,
-                        "live_view_url": f"https://www.browserbase.com/sessions/{self.active_session_id}",
+                        "live_view_url": live_view_url,
                         "data": session_data
                     }
                 else:

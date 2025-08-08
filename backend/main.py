@@ -21,7 +21,7 @@ class ManagedBrowserSession:
             self.browser_session = BrowserSession(
                 cdp_url=self.cdp_url,
                 browser_profile=self.browser_profile,
-                keep_alive=False,  # Essential for proper cleanup
+                keep_alive=True,  # Keep session alive for live viewing
                 initialized=False,
             )
             

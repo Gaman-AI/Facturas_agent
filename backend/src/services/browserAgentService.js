@@ -64,6 +64,11 @@ class BrowserAgentService {
       error: null,
       errorType: null,
       
+      // Browser session information
+      sessionId: null,
+      liveViewUrl: null,
+      browserSessionId: null,
+      
       // Metadata
       metadata: {
         userAgent: taskData.user_agent || null,
@@ -307,7 +312,11 @@ class BrowserAgentService {
           result: result.result,
           executionTimeMs: executionTime,
           modelUsed: result.model_used,
-          stepsTaken: result.steps_taken
+          stepsTaken: result.steps_taken,
+          // Store session information if available
+          sessionId: result.session_id,
+          liveViewUrl: result.live_view_url,
+          browserSessionId: result.browser_session_id
         })
       } else {
         this.updateTaskStatus(taskId, 'failed', {
