@@ -35,7 +35,7 @@ import { useLanguage } from '@/contexts/LanguageContext'
 export interface LogEntry {
   timestamp: string
   message: string
-  type: 'info' | 'success' | 'error' | 'warning' | 'thinking' | 'action'
+  type: 'info' | 'success' | 'error' | 'warning' | 'action'
   details?: any
 }
 
@@ -133,7 +133,6 @@ export function StatusSidebar({
       case 'success': return <CheckCircle className="w-4 h-4 text-green-600" />
       case 'error': return <XCircle className="w-4 h-4 text-red-600" />
       case 'warning': return <AlertCircle className="w-4 h-4 text-yellow-600" />
-      case 'thinking': return <Bot className="w-4 h-4 text-purple-600" />
       case 'action': return <Zap className="w-4 h-4 text-blue-600" />
       default: return <MessageSquare className="w-4 h-4 text-slate-600" />
     }
@@ -217,7 +216,6 @@ export function StatusSidebar({
       success: 0,
       error: 0,
       warning: 0,
-      thinking: 0,
       action: 0
     }
     logs.forEach(log => {
