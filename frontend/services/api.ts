@@ -511,16 +511,36 @@ export class ApiService {
       
       // Transform the response to match the Task interface
       const browserUseResponse = response.data as BrowserUseTasksResponse;
-      return browserUseResponse.data.tasks.map(task => ({
-        id: task.task_id,
-        prompt: task.prompt_preview || 'Browser automation task',
-        status: task.status as 'pending' | 'running' | 'paused' | 'completed' | 'failed',
-        created_at: task.created_at,
-        completed_at: task.completed_at,
-        error_message: task.error,
-        result: task.result,
-        steps: [] // Browser-use tasks don't have steps in the same format
-      }));
+      
+      if (!browserUseResponse?.data?.tasks || !Array.isArray(browserUseResponse.data.tasks)) {
+        console.warn('Invalid response structure from /tasks/browser-use endpoint');
+        return [];
+      }
+      
+      const transformedTasks = browserUseResponse.data.tasks
+        .filter(task => task && task.task_id && typeof task.task_id === 'string')
+        .map(task => ({
+          id: task.task_id,
+          prompt: task.prompt_preview || 'Browser automation task',
+          status: task.status as 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled',
+          created_at: task.created_at,
+          completed_at: task.completed_at,
+          error_message: task.error,
+          result: task.result,
+          steps: [] // Browser-use tasks don't have steps in the same format
+        }))
+        .filter(task => 
+          task.id && 
+          task.status && 
+          task.created_at &&
+          ['pending', 'running', 'paused', 'completed', 'failed', 'cancelled'].includes(task.status)
+        );
+      
+      if (transformedTasks.length !== browserUseResponse.data.tasks.length) {
+        console.warn(`Filtered out ${browserUseResponse.data.tasks.length - transformedTasks.length} invalid tasks during transformation`);
+      }
+      
+      return transformedTasks;
     } catch (error) {
       console.error('Error fetching tasks:', error);
       // Return empty array as fallback
@@ -600,7 +620,7 @@ export class ApiService {
       vendor_url: request.vendor_url,
       customer_details: request.customer_details,
       invoice_details: request.invoice_details,
-      model: request.model || 'gpt-4o-mini',
+      model: request.model || 'gpt-4o-mini-2024-07-18',
       temperature: request.temperature || 0.7,
       max_steps: request.max_steps || 30,
       timeout_minutes: request.timeout_minutes || 30
@@ -608,6 +628,60 @@ export class ApiService {
 
     const response = await apiClient.post('/tasks/browser-use', normalizedRequest);
     return response.data as BrowserTaskResponse;
+  }
+
+  // Browserbase Task Creation (uses Browserbase cloud service)
+  static async createBrowserbaseTask(request: {
+    task: string;
+    vendor_url?: string;
+    model?: string;
+    llm_provider?: string;
+    max_steps?: number;
+  }): Promise<BrowserTaskResponse> {
+    try {
+      // Step 1: Create a Browserbase session
+      const sessionResponse = await apiClient.post('/api/v1/browserbase/sessions', {
+        context_name: `task_${Date.now()}`,
+        keep_alive: true
+      });
+
+      if (!sessionResponse.data.success) {
+        throw new Error(`Failed to create Browserbase session: ${sessionResponse.data.error}`);
+      }
+
+      const sessionId = sessionResponse.data.session_id;
+      const liveViewUrl = sessionResponse.data.live_view_url;
+
+      // Step 2: Execute the task in the Browserbase session
+      const taskResponse = await apiClient.post('/api/v1/browserbase/execute', {
+        session_id: sessionId,
+        task: request.task,
+        llm_provider: request.llm_provider || 'openai',
+        model: request.model || 'gpt-4o-mini-2024-07-18',
+        max_steps: request.max_steps || 30
+      });
+
+      if (!taskResponse.data.success) {
+        throw new Error(`Failed to execute task: ${taskResponse.data.error}`);
+      }
+
+      // Return the combined response
+      return {
+        success: true,
+        data: {
+          task_id: sessionId, // Use session ID as task ID
+          session_id: sessionId,
+          live_view_url: liveViewUrl,
+          status: 'running',
+          result: taskResponse.data.result
+        },
+        message: 'Task created and started successfully in Browserbase'
+      } as BrowserTaskResponse;
+
+    } catch (error: any) {
+      console.error('Error creating Browserbase task:', error);
+      throw error;
+    }
   }
 
   static async getBrowserUseTask(taskId: string): Promise<BrowserUseTask> {

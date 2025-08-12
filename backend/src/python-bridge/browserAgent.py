@@ -66,7 +66,7 @@ class BrowserAgent:
                 if not api_key:
                     raise ValueError("OPENAI_API_KEY not found in environment")
                 return ChatOpenAI(
-                    model=model or "gpt-4o-mini", 
+                    model=model or "gpt-4o-mini-2024-07-18", 
                     api_key=api_key,
                     temperature=0.1
                 )
@@ -94,7 +94,7 @@ class BrowserAgent:
                 if not api_key:
                     raise ValueError("OPENAI_API_KEY not found in environment")
                 return ChatOpenAI(
-                    model=model or "gpt-4o-mini",
+                    model=model or "gpt-4o-mini-2024-07-18",
                     api_key=api_key,
                     temperature=0.1
                 )
@@ -197,20 +197,21 @@ class BrowserAgent:
                 task_data.get('model')
             )
             
-            # Create agent with Browserbase session
-            self.log_event("agent", "Creating browser-use agent with Browserbase session")
-            self.current_agent = Agent(
+            # Create agent with browser-use
+            agent = Agent(
                 task=task_description,
                 llm=llm,
+                model=task_data.get('model') or "gpt-4o-mini-2024-07-18",
+                use_vision=task_data.get('use_vision', True),
                 browser_session=self.browser_session,
-                max_failures=3,
-                retry_delay=2,
-                use_vision=True
+                max_failures=task_data.get('max_failures', 3),
+                retry_delay=task_data.get('retry_delay', 2),
+                save_conversation_path=task_data.get('save_conversation_path')
             )
             
             # Execute task
             self.log_event("execution", "Starting agent execution on Browserbase")
-            result = await self.current_agent.run()
+            result = await agent.run()
             
             self.log_event("success", "Task completed successfully on Browserbase")
             

@@ -53,7 +53,7 @@ class AgentService:
 
             # Get LLM
             llm_provider = config.get("llm_provider", "openai")
-            llm_model = config.get("llm_model", "gpt-4o")
+            llm_model = config.get("llm_model", "gpt-4o-mini-2024-07-18")
             llm = get_llm_model(llm_provider, model_name=llm_model)
 
             # Create agent

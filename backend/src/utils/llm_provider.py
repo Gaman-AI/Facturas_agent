@@ -200,10 +200,10 @@ def get_llm_model(provider: str, **kwargs):
             base_url = kwargs.get("base_url")
 
         return ChatOpenAI(
-            model=kwargs.get("model_name", "gpt-4o"),
-            temperature=kwargs.get("temperature", 0.0),
-            base_url=base_url,
-            api_key=api_key,
+            model=kwargs.get("model_name", "gpt-4o-mini-2024-07-18"),
+            api_key=kwargs.get("api_key", settings.OPENAI_API_KEY),
+            temperature=kwargs.get("temperature", 0.7),
+            max_tokens=kwargs.get("max_tokens", 4000),
         )
     elif provider == "grok":
         if not kwargs.get("base_url", ""):
@@ -271,7 +271,7 @@ def get_llm_model(provider: str, **kwargs):
             base_url = kwargs.get("base_url")
         api_version = kwargs.get("api_version", "") or os.getenv("AZURE_OPENAI_API_VERSION", "2025-01-01-preview")
         return AzureChatOpenAI(
-            model=kwargs.get("model_name", "gpt-4o"),
+            model=kwargs.get("model_name", "gpt-4o-mini-2024-07-18"),
             temperature=kwargs.get("temperature", 0.0),
             api_version=api_version,
             azure_endpoint=base_url,
@@ -315,7 +315,7 @@ def get_llm_model(provider: str, **kwargs):
         )
     elif provider == "unbound":
         return ChatOpenAI(
-            model=kwargs.get("model_name", "gpt-4o-mini"),
+            model=kwargs.get("model_name", "gpt-4o-mini-2024-07-18"),
             temperature=kwargs.get("temperature", 0.0),
             base_url=os.getenv("UNBOUND_ENDPOINT", "https://api.getunbound.ai"),
             api_key=api_key,
