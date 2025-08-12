@@ -2,7 +2,8 @@
 
 import config from './src/config/index.js'
 import taskService from './src/services/taskService.js'
-import redisService from './src/services/redisService.js'
+import queueService from './src/services/queueService.js'
+// Redis service removed - using in-memory queue instead
 
 console.log('⚡ QUICK VALIDATION TEST')
 console.log('═'.repeat(40))
@@ -37,22 +38,19 @@ async function quickValidation() {
       test(false, `Database error: ${dbError.message}`)
     }
     
-    // Test 3: Redis (quick check)
-    console.log('\n🔴 Redis Connectivity')
+    // Test 3: Queue Service (In-Memory)
+    console.log('\n🟢 Queue Service')
     try {
-      const redisConnected = await redisService.connect()
-      test(redisConnected, 'Redis connection established')
+      const queueInitialized = await queueService.initialize()
+      test(queueInitialized, 'Queue service initialized')
       
-      if (redisConnected) {
-        const health = await redisService.healthCheck()
-        test(health.status === 'healthy', `Redis health OK (${health.latency}ms)`)
-        
-        // Quick cleanup
-        await redisService.disconnect()
-        console.log('   🧹 Redis connection closed')
+      if (queueInitialized) {
+        const health = await queueService.healthCheck()
+        test(health.status === 'healthy', `Queue service healthy (in-memory mode)`)
+        console.log('   ✅ Queue service ready for task processing')
       }
-    } catch (redisError) {
-      test(false, `Redis error: ${redisError.message}`)
+    } catch (queueError) {
+      test(false, `Queue service error: ${queueError.message}`)
     }
 
     // Summary

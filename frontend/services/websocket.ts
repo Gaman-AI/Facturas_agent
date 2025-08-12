@@ -11,7 +11,7 @@ export interface WebSocketMessage {
 }
 
 export interface StepUpdateData {
-  step_type: 'thinking' | 'action' | 'observation' | 'error';
+  step_type: 'action' | 'observation' | 'error';
   content: Record<string, any>;
   timestamp?: string;
 }

@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS public.task_steps (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     task_id UUID REFERENCES public.cfdi_tasks(id) ON DELETE CASCADE,
     step_number INTEGER NOT NULL,
-    step_type VARCHAR(50) NOT NULL CHECK (step_type IN ('thinking', 'action', 'observation', 'error', 'user_intervention')),
+    step_type VARCHAR(50) NOT NULL CHECK (step_type IN ('action', 'observation', 'error', 'user_intervention')),
     step_description TEXT,
     step_data JSONB DEFAULT '{}',
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'completed', 'failed', 'skipped')),

@@ -3,9 +3,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { Translations } from '@/types/translations'
 import enTranslations from '@/lib/translations/en'
-import esTranslations from '@/lib/translations/es'
 
-export type Language = 'es' | 'en'
+export type Language = 'en'
 
 interface LanguageContextType {
   language: Language
@@ -27,9 +26,9 @@ interface LanguageProviderProps {
 }
 
 export function LanguageProvider({ children }: LanguageProviderProps) {
-  const [language, setLanguageState] = useState<Language>('es')
-  const [translations, setTranslations] = useState<Translations>({})
-  const [isLoading, setIsLoading] = useState(true)
+  const [language, setLanguageState] = useState<Language>('en')
+  const [translations, setTranslations] = useState<Translations>(enTranslations)
+  const [isLoading, setIsLoading] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
 
   // Load translations with static imports
@@ -46,8 +45,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
       
       // Use static imports instead of dynamic
       const translationMap = {
-        'en': enTranslations,
-        'es': esTranslations
+        'en': enTranslations
       }
       
       const loadedTranslations = translationMap[lang]
@@ -70,59 +68,29 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
   // Initialize language - HYDRATION SAFE APPROACH
   useEffect(() => {
     const initializeLanguage = () => {
-      // Always start with 'es' for consistent server-client rendering
-      let savedLanguage: Language = 'es'
-      
-      // Only check localStorage after component is mounted (client-side only)
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) as Language
-        if (saved === 'es' || saved === 'en') {
-          savedLanguage = saved
-        } else {
-          // Default to browser language, but fallback to 'es'
-          savedLanguage = navigator.language.toLowerCase().startsWith('en') ? 'en' : 'es'
-        }
-        
-        // Only switch language after hydration is complete to avoid mismatch
-        if (savedLanguage !== 'es') {
-          // Delay the language switch to ensure hydration is complete
-          setTimeout(() => {
-            setLanguageState(savedLanguage)
-            loadTranslations(savedLanguage)
-          }, 100)
-        }
-      }
-      
-      // Always load Spanish translations first (consistent with server)
-      loadTranslations('es')
-      
-      // Preload the other language
-      const otherLang = savedLanguage === 'es' ? 'en' : 'es'
-      setTimeout(() => {
-        loadTranslations(otherLang)
-      }, 1000)
+      // Always use English for consistent server-client rendering
+      setLanguageState('en')
+      setTranslations(enTranslations)
     }
 
     initializeLanguage()
     setIsMounted(true)
   }, [])
 
-  // Load initial Spanish translations immediately to avoid hydration issues
-  useEffect(() => {
-    loadTranslations('es')
-  }, [])
 
-  // Set language function
+
+  // Set language function - only supports English
   const setLanguage = (lang: Language) => {
+    // Only English is supported
+    if (lang !== 'en') {
+      console.warn('Only English language is supported')
+      return
+    }
+    
     try {
       setIsLoading(true)
       setLanguageState(lang)
-      
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(LANGUAGE_STORAGE_KEY, lang)
-      }
-      
-      loadTranslations(lang)
+      setTranslations(enTranslations)
     } catch (error) {
       console.error('Failed to set language:', error)
       setIsLoading(false)
@@ -132,40 +100,40 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
 
   // Translation function - HYDRATION SAFE
   const t = (key: string, params?: Record<string, string | number>): string => {
-    // During SSR and initial hydration, always return Spanish fallbacks
+    // During SSR and initial hydration, always return English fallbacks
     if (!isMounted || !translations || Object.keys(translations).length === 0) {
       const loadingFallbacks: Record<string, string> = {
-        'language.switch': 'Cambiar idioma',
-        'common.loading': 'Cargando...',
+        'language.switch': 'Switch language',
+        'common.loading': 'Loading...',
         'common.error': 'Error',
-        'home.loadingApp': 'Cargando aplicación...',
-        'home.redirectingToDashboard': 'Redirigiendo al dashboard...',
-        'home.title': 'Sistema de Automatización CFDI 4.0',
-        'home.subtitle': 'Automatiza el llenado de formularios CFDI con inteligencia artificial',
-        'home.getStarted': 'Comenzar',
-        'home.login': 'Iniciar Sesión',
-        'home.tryDemo': 'Probar Demo',
-        'features.secure': 'Seguro',
-        'features.intelligent': 'Inteligente',
+        'home.loadingApp': 'Loading application...',
+        'home.redirectingToDashboard': 'Redirecting to dashboard...',
+        'home.title': 'CFDI 4.0 Automation System',
+        'home.subtitle': 'Automate CFDI form filling with artificial intelligence',
+        'home.getStarted': 'Get Started',
+        'home.login': 'Login',
+        'home.tryDemo': 'Try Demo',
+        'features.secure': 'Secure',
+        'features.intelligent': 'Intelligent',
         'features.compatible': 'Compatible',
         // SimpleTaskSubmission component translations
-        'tasks.validation.taskRequired': 'La descripción de la tarea es requerida',
-        'tasks.validation.taskTooLong': 'La descripción de la tarea es demasiado larga',
-        'tasks.success.created': 'Tarea creada exitosamente',
-        'tasks.quick.searchGoogle': 'Buscar noticias recientes sobre un tema específico en Google',
-        'tasks.quick.checkWeather': 'Verificar el pronóstico del tiempo para una ciudad',
-        'tasks.quick.findProduct': 'Encontrar precios de laptops en MercadoLibre',
-        'tasks.quick.socialMedia': 'Revisar las últimas publicaciones en Twitter',
-        'tasks.simple.title': 'Envío Rápido de Tareas',
-        'tasks.simple.description': 'Describe lo que quieres que el agente de IA haga en lenguaje simple',
-        'tasks.simple.taskLabel': '¿Qué te gustaría que haga el agente?',
-        'tasks.simple.placeholder': 'Ejemplo: Busca las últimas actualizaciones de OpenAI en Google y resume los hallazgos',
-        'tasks.simple.hint': 'Sé específico sobre lo que quieres lograr',
-        'tasks.simple.quickTasks': 'Tareas Rápidas',
-        'tasks.simple.aiModel': 'Modelo de IA',
-        'tasks.simple.creating': 'Creando Tarea...',
-        'tasks.simple.submit': 'Iniciar Tarea',
-        'tasks.simple.userNote': 'La tarea se ejecutará como'
+        'tasks.validation.taskRequired': 'Task description is required',
+        'tasks.validation.taskTooLong': 'Task description is too long',
+        'tasks.success.created': 'Task created successfully',
+        'tasks.quick.searchGoogle': 'Search for recent news about a specific topic on Google',
+        'tasks.quick.checkWeather': 'Check weather forecast for a city',
+        'tasks.quick.findProduct': 'Find laptop prices on MercadoLibre',
+        'tasks.quick.socialMedia': 'Check latest posts on Twitter',
+        'tasks.simple.title': 'Quick Task Submission',
+        'tasks.simple.description': 'Describe what you want the AI agent to do in simple language',
+        'tasks.simple.taskLabel': 'What would you like the agent to do?',
+        'tasks.simple.placeholder': 'Example: Search for OpenAI latest updates on Google and summarize the findings',
+        'tasks.simple.hint': 'Be specific about what you want to accomplish',
+        'tasks.simple.quickTasks': 'Quick Tasks',
+        'tasks.simple.aiModel': 'AI Model',
+        'tasks.simple.creating': 'Creating Task...',
+        'tasks.simple.submit': 'Start Task',
+        'tasks.simple.userNote': 'Task will be executed as'
       }
       return loadingFallbacks[key] || key
     }

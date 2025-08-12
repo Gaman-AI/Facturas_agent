@@ -11,13 +11,109 @@ import { spawn } from 'child_process'
 import path from 'path'
 import fs from 'fs/promises'
 import process from 'process'
+import { fileURLToPath } from 'url'
 import config from '../config/index.js'
+
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 class PythonBridge {
   constructor() {
-    this.pythonExecutable = path.join(process.cwd(), 'browser-use', '.venv', 'bin', 'python')
-    this.scriptPath = path.join(process.cwd(), 'browser_agent.py')
+    // Use Python executable from configuration, with fallbacks
+    this.pythonExecutables = [
+      config.python.executable || 'python',
+      'python',
+      'python3',
+      'venv\\Scripts\\python.exe'
+    ]
+    this.scriptPath = path.join(__dirname, '..', '..', 'browser_agent.py')
     this.timeout = config.python.timeout || 300000 // 5 minutes default
+  }
+
+  /**
+   * Find a working Python executable
+   * 
+   * @returns {Promise<string>} Path to working Python executable
+   */
+  async findWorkingPython() {
+    for (const pythonExec of this.pythonExecutables) {
+      try {
+        const result = await this.testPythonExecutable(pythonExec)
+        if (result.working) {
+          console.log(`✅ Found working Python executable: ${pythonExec}`)
+          return pythonExec
+        }
+      } catch (error) {
+        console.log(`❌ Python executable ${pythonExec} failed: ${error.message}`)
+      }
+    }
+    throw new Error('No working Python executable found')
+  }
+
+  /**
+   * Test if a Python executable works
+   * 
+   * @param {string} pythonExec - Python executable path
+   * @returns {Promise<Object>} Test result
+   */
+  async testPythonExecutable(pythonExec) {
+    return new Promise((resolve, reject) => {
+      const process = spawn(pythonExec, ['--version'], {
+        stdio: ['pipe', 'pipe', 'pipe']
+      })
+
+      let stdout = ''
+      let stderr = ''
+      let isResolved = false
+
+      const timeoutId = setTimeout(() => {
+        if (!isResolved) {
+          isResolved = true
+          process.kill('SIGTERM')
+          reject(new Error('Timeout testing Python executable'))
+        }
+      }, 5000)
+
+      process.stdout.on('data', (data) => {
+        stdout += data.toString()
+      })
+
+      process.stderr.on('data', (data) => {
+        stderr += data.toString()
+      })
+
+      process.on('close', (code) => {
+        clearTimeout(timeoutId)
+        if (isResolved) return
+        isResolved = true
+
+        if (code === 0) {
+          resolve({
+            working: true,
+            version: stdout.trim() || stderr.trim(),
+            executable: pythonExec
+          })
+        } else {
+          resolve({
+            working: false,
+            error: stderr || stdout,
+            executable: pythonExec
+          })
+        }
+      })
+
+      process.on('error', (error) => {
+        clearTimeout(timeoutId)
+        if (isResolved) return
+        isResolved = true
+        resolve({
+          working: false,
+          error: error.message,
+          executable: pythonExec
+        })
+      })
+    })
   }
 
   /**
@@ -50,16 +146,17 @@ class PythonBridge {
       throw new Error(`Python script not found at ${this.scriptPath}`)
     }
 
+    // Find a working Python executable
+    const pythonExecutable = await this.findWorkingPython()
+
     return new Promise((resolve, reject) => {
       const taskJson = JSON.stringify(taskData)
-      const pythonProcess = spawn(this.pythonExecutable, [this.scriptPath, taskJson], {
+      const pythonProcess = spawn(pythonExecutable, [this.scriptPath, taskJson], {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
           ...process.env,
-          PYTHONPATH: path.join(process.cwd(), 'browser-use'),
-          BROWSER_USE_SETUP_LOGGING: 'true',
-          VIRTUAL_ENV: path.join(process.cwd(), 'browser-use', '.venv'),
-          PATH: `${path.join(process.cwd(), 'browser-use', '.venv', 'bin')}:${process.env.PATH}`
+          PYTHONPATH: path.join(__dirname, '..', '..', 'browser-use'),
+          BROWSER_USE_SETUP_LOGGING: 'true'
         }
       })
 
@@ -136,7 +233,7 @@ class PythonBridge {
         isResolved = true
 
         if (error.code === 'ENOENT') {
-          reject(new Error(`Python executable not found: ${this.pythonExecutable}. Please install Python or update the configuration.`))
+          reject(new Error(`Python executable not found: ${pythonExecutable}. Please install Python or update the configuration.`))
         } else {
           reject(new Error(`Failed to spawn Python process: ${error.message}`))
         }
@@ -151,6 +248,8 @@ class PythonBridge {
    */
   async healthCheck() {
     try {
+      const pythonExecutable = await this.findWorkingPython()
+      
       const testTask = {
         prompt: 'Test connection - just return success without doing anything',
         model: 'gpt-4.1-mini',
@@ -161,14 +260,14 @@ class PythonBridge {
       
       return {
         status: 'healthy',
-        python_executable: this.pythonExecutable,
+        python_executable: pythonExecutable,
         script_path: this.scriptPath,
         test_result: result
       }
     } catch (error) {
       return {
         status: 'unhealthy',
-        python_executable: this.pythonExecutable,
+        python_executable: 'none found',
         script_path: this.scriptPath,
         error: error.message
       }
@@ -181,38 +280,44 @@ class PythonBridge {
    * @returns {Promise<Object>} Environment information
    */
   async getEnvironmentInfo() {
-    return new Promise((resolve, reject) => {
-      const process = spawn(this.pythonExecutable, ['--version'], {
-        stdio: ['pipe', 'pipe', 'pipe']
-      })
+    try {
+      const pythonExecutable = await this.findWorkingPython()
+      
+      return new Promise((resolve, reject) => {
+        const process = spawn(pythonExecutable, ['--version'], {
+          stdio: ['pipe', 'pipe', 'pipe']
+        })
 
-      let stdout = ''
-      let stderr = ''
+        let stdout = ''
+        let stderr = ''
 
-      process.stdout.on('data', (data) => {
-        stdout += data.toString()
-      })
+        process.stdout.on('data', (data) => {
+          stdout += data.toString()
+        })
 
-      process.stderr.on('data', (data) => {
-        stderr += data.toString()
-      })
+        process.stderr.on('data', (data) => {
+          stderr += data.toString()
+        })
 
-      process.on('close', (code) => {
-        if (code === 0) {
-          resolve({
-            python_version: stdout.trim() || stderr.trim(),
-            executable: this.pythonExecutable,
-            script_exists: fs.access(this.scriptPath).then(() => true).catch(() => false)
-          })
-        } else {
-          reject(new Error(`Failed to get Python version: ${stderr || stdout}`))
-        }
-      })
+        process.on('close', (code) => {
+          if (code === 0) {
+            resolve({
+              python_version: stdout.trim() || stderr.trim(),
+              executable: pythonExecutable,
+              script_exists: fs.access(this.scriptPath).then(() => true).catch(() => false)
+            })
+          } else {
+            reject(new Error(`Failed to get Python version: ${stderr || stdout}`))
+          }
+        })
 
-      process.on('error', (error) => {
-        reject(new Error(`Python executable not found: ${error.message}`))
+        process.on('error', (error) => {
+          reject(new Error(`Python executable not found: ${error.message}`))
+        })
       })
-    })
+    } catch (error) {
+      throw new Error(`No working Python executable found: ${error.message}`)
+    }
   }
 }
 
