@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { LogOut, User, Building2, FileText, BarChart3, Zap, Plus, Monitor, Globe, Activity, TrendingUp, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +11,7 @@ import { useAuth, useUserProfile } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
 import { SimpleTaskSubmission } from '@/components/SimpleTaskSubmission';
+import { DashboardDualPane } from '@/components/DashboardDualPane';
 import { TaskStats } from '@/components/TaskStats';
 import { TaskList } from '@/components/TaskList';
 import { TaskProgressList } from '@/components/TaskProgressIndicator';
@@ -31,6 +33,7 @@ function DashboardContent() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [tasks, setTasks] = useState<any[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
+  const [useDualPane, setUseDualPane] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -49,7 +52,14 @@ function DashboardContent() {
   };
 
   const handleTaskSubmit = (taskId: string) => {
-    // Redirect to monitoring page when task is submitted from dashboard
+    // For dual pane mode, stay in dashboard and let DashboardDualPane handle the task
+    if (useDualPane) {
+      console.log('Task submitted in dual pane mode:', taskId);
+      // Don't redirect - let the dual pane handle the task display
+      return;
+    }
+    
+    // For simple mode, redirect to monitoring page
     router.push(`/task/monitor/${taskId}`);
   };
 
@@ -88,14 +98,14 @@ function DashboardContent() {
   }, []);
 
   // Show dashboard even without profile (profile is optional now)
-  const displayName = profile ? getDisplayName() : 'Usuario'
+  const displayName = profile ? getDisplayName() : 'User'
   const hasProfile = !!profile
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-slate-200/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full mx-auto px-2 sm:px-4 lg:px-6">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl flex items-center justify-center shadow-lg">
@@ -103,7 +113,7 @@ function DashboardContent() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-slate-900">
-                  Browser Automation Hub
+                  {t('dashboard.title')}
                 </h1>
                 <p className="text-sm text-slate-500">AI-Powered Task Management</p>
               </div>
@@ -134,7 +144,7 @@ function DashboardContent() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="w-full mx-auto px-2 sm:px-4 lg:px-6 py-8">
         {/* Welcome Section */}
         <div className="mb-6">
           <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-xl p-6 text-white shadow-lg">
@@ -156,49 +166,82 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* Quick Task Submission */}
-        <div className="mb-8">
-          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center space-x-2 text-xl">
-                <Zap className="w-6 h-6 text-yellow-500" />
-                <span>Quick Task Creation</span>
-              </CardTitle>
-              <CardDescription className="text-slate-600">
-                Describe what you want the AI agent to do in plain language
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <SimpleTaskSubmission 
+        {/* Task Submission Section */}
+        <div className="mb-12">
+          {/* Toggle Button */}
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">
+                {useDualPane ? 'Dual Pane Task Monitor' : 'Quick Task Submission'}
+              </h3>
+              <p className="text-sm text-slate-600">
+                {useDualPane 
+                  ? 'Create and monitor browser automation tasks in real-time' 
+                  : 'Simple task submission with redirect to monitoring page'
+                }
+              </p>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => setUseDualPane(!useDualPane)}
+              className="flex items-center gap-2"
+            >
+              <Monitor className="w-4 h-4" />
+              {useDualPane ? 'Use Simple View' : 'Use Dual Pane'}
+            </Button>
+          </div>
+
+          {/* Conditional Rendering */}
+          {useDualPane ? (
+            <div className="h-[900px] mb-8 relative z-10 w-full">
+              <DashboardDualPane 
                 onTaskSubmit={handleTaskSubmit}
-                showRedirect={false}
-                className="mb-0"
+                className="h-full w-full"
               />
-            </CardContent>
-          </Card>
+            </div>
+          ) : (
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm mb-6">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center space-x-2 text-xl">
+                  <Zap className="w-6 h-6 text-yellow-500" />
+                  <span>{t('tasks.simple.title')}</span>
+                </CardTitle>
+                <CardDescription className="text-slate-600">
+                  {t('tasks.simple.description')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SimpleTaskSubmission 
+                  onTaskSubmit={handleTaskSubmit}
+                  showRedirect={false}
+                  className="mb-0"
+                />
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
           {/* User Profile Card */}
           <Card className="lg:col-span-2 border-0 shadow-xl bg-white/80 backdrop-blur-sm">
             <CardHeader className="pb-4">
-              <CardTitle className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                <span>Profile Information</span>
-              </CardTitle>
-              <CardDescription>
-                {hasProfile ? 'Your account details and preferences' : 'Complete your profile to unlock advanced features'}
-              </CardDescription>
+                              <CardTitle className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                  <span>{t('profile.title')}</span>
+                </CardTitle>
+                <CardDescription>
+                  {hasProfile ? t('profile.companyInfo') : 'Complete your profile to unlock advanced features'}
+                </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {hasProfile ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">Email Address</label>
-                                             <p className="text-slate-900 font-medium">{user?.email || 'Not provided'}</p>
+                                        <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
+                      <label className="text-sm font-semibold text-slate-700 mb-1 block">{t('auth.email')}</label>
+                      <p className="text-slate-900 font-medium">{user?.email || 'Not provided'}</p>
                     </div>
                     <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
                       <label className="text-sm font-semibold text-slate-700 mb-1 block">RFC</label>
@@ -211,23 +254,23 @@ function DashboardContent() {
                     </div>
                   </div>
                   <div className="space-y-4">
-                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">Company Name</label>
-                                             <p className="text-slate-900 font-medium">{profile.company_name}</p>
+                                        <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
+                      <label className="text-sm font-semibold text-slate-700 mb-1 block">{t('register.companyName.label')}</label>
+                      <p className="text-slate-900 font-medium">{profile.company_name}</p>
                     </div>
                     <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">Tax Address</label>
+                      <label className="text-sm font-semibold text-slate-700 mb-1 block">{t('register.addressInfo')}</label>
                       <p className="text-slate-900 font-medium">{getFullAddress()}</p>
                     </div>
                   </div>
                   <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">Tax Regime</label>
-                                             <p className="text-slate-900 font-medium">{profile.tax_regime}</p>
+                                        <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
+                      <label className="text-sm font-semibold text-slate-700 mb-1 block">{t('register.taxRegime.label')}</label>
+                      <p className="text-slate-900 font-medium">{profile.tax_regime}</p>
                     </div>
                     <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">CFDI Use</label>
-                                             <p className="text-slate-900 font-medium">{profile.cfdi_use}</p>
+                      <label className="text-sm font-semibold text-slate-700 mb-1 block">{t('register.cfdiUse.label')}</label>
+                      <p className="text-slate-900 font-medium">{profile.cfdi_use}</p>
                     </div>
                   </div>
                 </div>
@@ -236,13 +279,13 @@ function DashboardContent() {
                   <div className="w-20 h-20 bg-gradient-to-r from-slate-200 to-slate-300 rounded-full flex items-center justify-center mx-auto mb-6">
                     <User className="w-10 h-10 text-slate-400" />
                   </div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2">Profile Not Complete</h3>
+                                    <h3 className="text-lg font-semibold text-slate-900 mb-2">{t('profile.noProfile')}</h3>
                   <p className="text-slate-600 mb-6 max-w-md mx-auto">
-                    Complete your profile to unlock advanced features and personalized experiences
+                    {t('profile.basicFunctions')}
                   </p>
-                                     <Button onClick={handleUpdateProfile} className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600">
+                  <Button onClick={handleUpdateProfile} className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600">
                     <User className="w-4 h-4 mr-2" />
-                    Complete Profile
+                    {t('profile.edit')}
                   </Button>
                 </div>
               )}
@@ -254,34 +297,34 @@ function DashboardContent() {
             {/* Quick Actions */}
             <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
               <CardHeader className="pb-4">
-                                 <CardTitle className="flex items-center space-x-2">
-                   <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-                     <Zap className="w-5 h-5 text-white" />
-                   </div>
-                   <span>Quick Actions</span>
+                                                 <CardTitle className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
+                    <Zap className="w-5 h-5 text-white" />
+                  </div>
+                  <span>{t('dashboard.quickActions')}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                                 <Button 
-                   className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg" 
-                   onClick={handleSimpleTask}
-                 >
+                                                 <Button 
+                  className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg" 
+                  onClick={handleSimpleTask}
+                >
                   <Zap className="w-4 h-4 mr-2" />
-                  Create Quick Task
+                  {t('tasks.create')}
                 </Button>
-                                 <Button 
-                   className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg" 
-                   onClick={handleNewTask}
-                 >
+                <Button 
+                  className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg" 
+                  onClick={handleNewTask}
+                >
                   <Monitor className="w-4 h-4 mr-2" />
                   Advanced Task
                 </Button>
-                                 <Button 
-                   className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg" 
-                   onClick={handleViewHistory}
-                 >
+                <Button 
+                  className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg" 
+                  onClick={handleViewHistory}
+                >
                   <BarChart3 className="w-4 h-4 mr-2" />
-                  View History
+                  {t('dashboard.viewHistory')}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -289,7 +332,7 @@ function DashboardContent() {
                   onClick={handleUpdateProfile}
                 >
                   <User className="w-4 h-4 mr-2" />
-                  Edit Profile
+                  {t('profile.edit')}
                 </Button>
               </CardContent>
             </Card>
@@ -297,11 +340,11 @@ function DashboardContent() {
             {/* System Status */}
             <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
               <CardHeader className="pb-4">
-                                 <CardTitle className="flex items-center space-x-2">
-                   <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-                     <CheckCircle className="w-5 h-5 text-white" />
-                   </div>
-                   <span>System Status</span>
+                                                 <CardTitle className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-white" />
+                  </div>
+                  <span>{t('dashboard.systemStatus')}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -377,7 +420,7 @@ function DashboardContent() {
             <div className="lg:hidden">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Tareas Activas</CardTitle>
+                  <CardTitle className="text-base">Active Tasks</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {!loadingTasks && tasks.length > 0 ? (
@@ -387,7 +430,7 @@ function DashboardContent() {
                       variant="compact"
                     />
                   ) : (
-                    <p className="text-sm text-gray-600">No hay tareas activas</p>
+                    <p className="text-sm text-gray-600">No active tasks</p>
                   )}
                 </CardContent>
               </Card>
@@ -395,7 +438,7 @@ function DashboardContent() {
           </div>
 
           {/* Right Column - Task Management */}
-          <div className="lg:col-span-2 space-y-4 lg:space-y-6">
+          <div className="lg:col-span-2 space-y-6">
             {/* Task Statistics */}
             <TaskStats refreshTrigger={refreshTrigger} />
 
@@ -404,9 +447,9 @@ function DashboardContent() {
               {!loadingTasks && tasks.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Tareas en Progreso</CardTitle>
+                    <CardTitle>Tasks in Progress</CardTitle>
                     <CardDescription>
-                      Monitoreo en tiempo real de tareas activas
+                      Real-time monitoring of active tasks
                     </CardDescription>
                   </CardHeader>
                   <CardContent>

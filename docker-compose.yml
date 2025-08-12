@@ -45,8 +45,6 @@ services:
     volumes:
       - backend_data:/app/data
       - ./logs:/app/logs
-    depends_on:
-      - redis
     networks:
       - cfdi_network
     healthcheck:
@@ -72,8 +70,6 @@ services:
     volumes:
       - browser_data:/app/browser_data
       - ./logs:/app/logs
-    depends_on:
-      - redis
     networks:
       - cfdi_network
     security_opt:
@@ -112,23 +108,6 @@ services:
       retries: 3
       start_period: 40s
 
-  # Redis Cache and Session Store
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    networks:
-      - cfdi_network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
 # Volumes for persistent data
 volumes:
   frontend_data:
@@ -140,8 +119,6 @@ volumes:
   nginx_logs:
     driver: local
   nginx_cache:
-    driver: local
-  redis_data:
     driver: local
 
 # Custom network for service communication

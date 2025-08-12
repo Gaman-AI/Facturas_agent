@@ -90,7 +90,12 @@ def setup_logging(stream=None, log_level=None, force_setup=False):
 			return super().format(record)
 
 	# Setup single handler for all loggers
-	console = logging.StreamHandler(stream or sys.stdout)
+	import io
+	if stream is None:
+		# Use UTF-8 encoding for stdout to support Unicode characters
+		console = logging.StreamHandler(io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', write_through=True))
+	else:
+		console = logging.StreamHandler(stream)
 
 	# adittional setLevel here to filter logs
 	if log_type == 'result':

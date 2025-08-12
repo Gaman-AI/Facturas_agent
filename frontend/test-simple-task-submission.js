@@ -51,7 +51,7 @@ function testTextareaFunctionality() {
   textarea.value = longText
   textarea.dispatchEvent(new Event('input', { bubbles: true }))
   
-  console.log('✅ Character limit enforced:', textarea.value.length <= 500)
+  console.log('✅ Character limit enforced:', textarea.value.length <= 2000)
   
   return true
 }

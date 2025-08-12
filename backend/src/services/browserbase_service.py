@@ -46,12 +46,24 @@ class BrowserbaseService:
             if mcp_result["success"]:
                 session_id = mcp_result["session_id"]
                 
+                # Get proper debug URLs if possible, fallback to MCP result
+                live_view_url = mcp_result.get("live_view_url")
+                if not live_view_url or "sessions/" in live_view_url:
+                    try:
+                        from browserbase import Browserbase
+                        import os
+                        bb = Browserbase(api_key=os.getenv('BROWSERBASE_API_KEY'))
+                        debug_info = bb.sessions.debug(session_id)
+                        live_view_url = debug_info.debugger_fullscreen_url
+                    except Exception:
+                        live_view_url = f"https://www.browserbase.com/sessions/{session_id}"
+
                 # Store session info
                 self.active_sessions[session_id] = {
                     "id": session_id,
                     "status": "RUNNING",
                     "created_at": datetime.now().isoformat(),
-                    "live_view_url": mcp_result.get("live_view_url", f"https://www.browserbase.com/sessions/{session_id}"),
+                    "live_view_url": live_view_url,
                     "connect_url": mcp_result.get("connect_url"),
                     "context_name": context_name,
                     "created_via": "MCP"
@@ -60,7 +72,7 @@ class BrowserbaseService:
                 return {
                     "success": True,
                     "session_id": session_id,
-                    "live_view_url": mcp_result.get("live_view_url", f"https://www.browserbase.com/sessions/{session_id}"),
+                    "live_view_url": live_view_url,
                     "connect_url": mcp_result.get("connect_url"),
                     "status": "RUNNING",
                     "created_via": "MCP"
@@ -93,12 +105,22 @@ class BrowserbaseService:
                         session_data = response.json()
                         session_id = session_data["id"]
                         
+                        # Get proper debug URLs for REST API created session
+                        try:
+                            from browserbase import Browserbase
+                            import os
+                            bb = Browserbase(api_key=self.api_key)
+                            debug_info = bb.sessions.debug(session_id)
+                            live_view_url = debug_info.debugger_fullscreen_url
+                        except Exception:
+                            live_view_url = f"https://www.browserbase.com/sessions/{session_id}"
+
                         # Store session info
                         self.active_sessions[session_id] = {
                             "id": session_id,
                             "status": "RUNNING",
                             "created_at": datetime.now().isoformat(),
-                            "live_view_url": f"https://www.browserbase.com/sessions/{session_id}",
+                            "live_view_url": live_view_url,
                             "connect_url": session_data.get("connectUrl"),
                             "context_name": context_name,
                             "created_via": "REST_API"
@@ -107,7 +129,7 @@ class BrowserbaseService:
                         return {
                             "success": True,
                             "session_id": session_id,
-                            "live_view_url": f"https://www.browserbase.com/sessions/{session_id}",
+                            "live_view_url": live_view_url,
                             "connect_url": session_data.get("connectUrl"),
                             "status": "RUNNING",
                             "created_via": "REST_API"

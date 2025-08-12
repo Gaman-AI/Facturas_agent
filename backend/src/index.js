@@ -8,7 +8,6 @@
 import process from 'process'
 import { app, server } from './app.js'
 import config from './config/index.js'
-import redisService from './services/redisService.js'
 import queueService from './services/queueService.js'
 
 /**
@@ -30,16 +29,7 @@ const initializeServices = async () => {
   console.log('🔧 Initializing services...')
   
   try {
-    // Initialize Redis connection
-    console.log('🔌 Connecting to Redis...')
-    const redisConnected = await redisService.connect()
-    if (!redisConnected) {
-      console.warn('⚠️  Redis connection failed - queue functionality will be disabled')
-      return false
-    }
-    console.log('✅ Redis connected successfully')
-
-    // Initialize Queue Service
+    // Initialize Queue Service (in-memory mode)
     console.log('🚀 Initializing queue service...')
     const queueInitialized = await queueService.initialize()
     if (!queueInitialized) {
@@ -111,8 +101,8 @@ const startServer = async () => {
    • Supabase URL: ${config.supabase.url}
    • Project ID: pffuarlnpdpfjrvewrqo
 
-🔴 Redis:
-   • URL: ${config.redis.url}
+🟢 Queue:
+   • Mode: In-Memory Processing
 
 ${config.isDevelopment() ? '🛠️  Development Mode - Detailed logging enabled' : '🏭 Production Mode'}
       `)

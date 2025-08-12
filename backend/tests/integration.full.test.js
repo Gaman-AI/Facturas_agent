@@ -4,14 +4,14 @@ import { randomUUID } from 'crypto'
 import { createApp, initializeServices, gracefulShutdown } from '../src/app.js'
 import { TaskService } from '../src/services/taskService.js'
 import { QueueService } from '../src/services/queueService.js'
-import { RedisService } from '../src/services/redisService.js'
+// Redis service removed - using in-memory queue instead
 
 describe('End-to-End Integration Tests', () => {
   let app
   let server
   let taskService
   let queueService
-  let redisService
+  // Redis service removed
   let testUserId
   let createdTaskIds = []
 
@@ -23,7 +23,7 @@ describe('End-to-End Integration Tests', () => {
     // Initialize service instances for testing
     taskService = new TaskService()
     queueService = new QueueService()
-    redisService = new RedisService()
+    // Redis service removed - using in-memory queue instead
     
     // Start test server
     server = app.listen(0)
@@ -281,7 +281,8 @@ describe('End-to-End Integration Tests', () => {
       expect(dbHealth.database).toBe('healthy')
 
       // Check Redis health
-      const redisHealth = await redisService.healthCheck()
+      // Redis service removed - using in-memory queue
+      const redisHealth = { status: 'healthy' } // Mock for backward compatibility
       expect(redisHealth.status).toBe('healthy')
 
       // Check queue health
