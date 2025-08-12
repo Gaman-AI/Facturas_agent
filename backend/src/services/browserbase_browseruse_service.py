@@ -33,7 +33,7 @@ class ManagedBrowserbaseSession:
             self.browser_session = BrowserSession(
                 cdp_url=self.connect_url,
                 browser_profile=self.browser_profile,
-                keep_alive=False,  # Essential for proper cleanup
+                keep_alive=True,  # Keep session alive for live viewing
                 initialized=False,
             )
             
@@ -142,10 +142,14 @@ class BrowserbaseBrowserUseService:
             bb = Browserbase(api_key=self.api_key)
             session = bb.sessions.create(project_id=self.project_id)
             
+            # Get the proper live view/debug URLs using Browserbase debug method
+            debug_info = bb.sessions.debug(session.id)
+            live_view_url = debug_info.debugger_fullscreen_url
+            
             session_data = {
                 "id": session.id,
                 "connect_url": session.connect_url,
-                "live_view_url": f"https://www.browserbase.com/sessions/{session.id}",
+                "live_view_url": live_view_url,
                 "status": "RUNNING",
                 "created_at": datetime.now().isoformat(),
                 "context_name": context_name,
@@ -155,14 +159,14 @@ class BrowserbaseBrowserUseService:
             self.active_sessions[session.id] = session_data
             
             print(f"Session ID: {session.id}")
-            print(f"Debug URL: https://www.browserbase.com/sessions/{session.id}")
+            print(f"Debug URL (devtools): {live_view_url}")
             
             return {
                 "success": True,
                 "session_id": session.id,
                 "connect_url": session.connect_url,
-                "live_view_url": f"https://www.browserbase.com/sessions/{session.id}",
-                "debug_url": f"https://www.browserbase.com/sessions/{session.id}",
+                "live_view_url": live_view_url,
+                "debug_url": live_view_url,
                 "status": "RUNNING"
             }
             

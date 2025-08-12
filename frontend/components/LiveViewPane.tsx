@@ -23,19 +23,23 @@ import {
   Globe,
   Settings,
   Fullscreen,
-  FullscreenExit
+  Minimize,
+  Zap
 } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { SimpleTaskSubmissionPane } from './SimpleTaskSubmissionPane'
 
 export interface LiveViewPaneProps {
   sessionId: string
   liveViewUrl?: string
   taskId?: string
-  status?: 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'connecting'
+  status?: 'idle' | 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'connecting'
   onTakeoverRequest?: () => void
   onRefresh?: () => void
   className?: string
-  viewType?: 'chat' | 'browser' // New prop to determine which view to show
+  viewType?: 'chat' | 'browser' | 'taskSubmission' // New prop to determine which view to show
+  onTaskSubmit?: (taskId: string) => void // Callback for task submission
+  onResetTask?: () => void // Callback to reset task state
 }
 
 interface ChatMessage {
@@ -54,7 +58,9 @@ export function LiveViewPane({
   onTakeoverRequest,
   onRefresh,
   className = '',
-  viewType = 'browser' // Default to browser view
+  viewType = 'browser', // Default to browser view
+  onTaskSubmit,
+  onResetTask
 }: LiveViewPaneProps) {
   const { t } = useLanguage()
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -71,13 +77,16 @@ export function LiveViewPane({
   ])
   const [newMessage, setNewMessage] = useState('')
   const [browserViewUrl, setBrowserViewUrl] = useState(liveViewUrl || null)
-  const [useLocalBrowser, setUseLocalBrowser] = useState(!liveViewUrl)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const chatScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setIsLoading(true)
     setHasError(false)
+    // Automatically set the browser view URL when liveViewUrl is provided
+    if (liveViewUrl) {
+      setBrowserViewUrl(liveViewUrl)
+    }
   }, [sessionId, liveViewUrl])
 
   useEffect(() => {
@@ -218,6 +227,38 @@ export function LiveViewPane({
   }
 
   // Render different content based on viewType
+  if (viewType === 'taskSubmission') {
+    return (
+      <Card className={`h-full flex flex-col ${className}`}>
+        <CardHeader className="flex-shrink-0 border-b">
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-pink-600" />
+              <span>Create Task</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${getStatusColor()}`}></div>
+              <Badge variant="outline" className="text-xs">{getStatusText()}</Badge>
+            </div>
+          </CardTitle>
+          <CardDescription>
+            Describe your automation task in plain language
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent className="flex-1 p-4">
+          <SimpleTaskSubmissionPane 
+            onTaskSubmit={onTaskSubmit}
+            onResetTask={onResetTask}
+            taskId={taskId}
+            status={status}
+            className="h-full"
+          />
+        </CardContent>
+      </Card>
+    )
+  }
+
   if (viewType === 'chat') {
     return (
       <Card className={`h-full flex flex-col ${className}`}>
@@ -299,7 +340,7 @@ export function LiveViewPane({
             <div className={`w-2 h-2 rounded-full ${getStatusColor()}`}></div>
             <Badge variant="outline">{getStatusText()}</Badge>
             <Button size="sm" variant="ghost" onClick={toggleFullscreen}>
-              {isFullscreen ? <FullscreenExit className="w-4 h-4" /> : <Fullscreen className="w-4 h-4" />}
+              {isFullscreen ? <Minimize className="w-4 h-4" /> : <Fullscreen className="w-4 h-4" />}
             </Button>
             <Button size="sm" variant="ghost" onClick={handleRefresh}>
               <RefreshCw className="w-4 h-4" />
@@ -311,29 +352,14 @@ export function LiveViewPane({
         </CardTitle>
         <CardDescription className="flex items-center justify-between">
           <span>
-            {useLocalBrowser ? 'Local Browser Automation' : `Browserbase Session: ${sessionId}`}
+            Browserbase Session: {sessionId}
           </span>
           <div className="flex items-center gap-2">
-            {!useLocalBrowser && (
-              <>
-                <Input
-                  value={browserViewUrl || ''}
-                  onChange={(e) => setBrowserViewUrl(e.target.value)}
-                  placeholder="Browserbase URL"
-                  className="w-64 text-xs"
-                />
-                <Button size="sm" variant="outline" onClick={() => setBrowserViewUrl(`https://www.browserbase.com/sessions/${sessionId}`)}>
-                  Reset
-                </Button>
-              </>
+            {browserViewUrl && (
+              <span className="text-xs text-muted-foreground">
+                Live view available
+              </span>
             )}
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={() => setUseLocalBrowser(!useLocalBrowser)}
-            >
-              {useLocalBrowser ? 'Use Browserbase' : 'Use Local Browser'}
-            </Button>
           </div>
         </CardDescription>
       </CardHeader>
@@ -350,79 +376,8 @@ export function LiveViewPane({
           </div>
         )}
         
-        {useLocalBrowser ? (
-          // Local Browser Automation Status Display
-          <div className="h-full flex flex-col items-center justify-center bg-slate-50 rounded-lg p-8">
-            <div className="text-center max-w-md">
-              {/* Status Icon */}
-              <div className="mb-6">
-                {status === 'running' && (
-                  <div className="w-16 h-16 mx-auto mb-4 bg-pink-100 rounded-full flex items-center justify-center">
-                    <Monitor className="w-8 h-8 text-pink-600" />
-                  </div>
-                )}
-                {status === 'completed' && (
-                  <div className="w-16 h-16 mx-auto mb-4 bg-pink-100 rounded-full flex items-center justify-center">
-                    <Monitor className="w-8 h-8 text-pink-600" />
-                  </div>
-                )}
-                {status === 'failed' && (
-                  <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-                    <AlertCircle className="w-8 h-8 text-red-600" />
-                  </div>
-                )}
-                {(status === 'pending' || status === 'connecting') && (
-                  <div className="w-16 h-16 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center">
-                    <Loader2 className="w-8 h-8 text-orange-600 animate-spin" />
-                  </div>
-                )}
-              </div>
-
-              {/* Status Message */}
-              <h3 className="text-lg font-semibold mb-2">
-                {status === 'running' && 'Browser Automation Active'}
-                {status === 'completed' && 'Task Completed Successfully'}
-                {status === 'failed' && 'Task Failed'}
-                {(status === 'pending' || status === 'connecting') && 'Initializing Browser Automation'}
-              </h3>
-
-              <p className="text-slate-600 mb-6">
-                {status === 'running' && 'A browser window should be visible on your screen showing the automation in progress.'}
-                {status === 'completed' && 'The browser automation task has been completed successfully.'}
-                {status === 'failed' && 'The browser automation task encountered an error and could not complete.'}
-                {(status === 'pending' || status === 'connecting') && 'Setting up the browser automation environment...'}
-              </p>
-
-              {/* Task Information */}
-              {taskId && (
-                <div className="bg-white rounded-lg p-4 mb-4 border">
-                  <h4 className="font-medium mb-2">Task Information</h4>
-                  <div className="text-sm text-slate-600 space-y-1">
-                    <div>Task ID: {taskId.slice(0, 8)}...</div>
-                    <div>Session: {sessionId}</div>
-                    <div>Status: {getStatusText()}</div>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex gap-2 justify-center">
-                <Button onClick={handleRefresh} variant="outline">
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Refresh Status
-                </Button>
-                
-                {status === 'running' && (
-                  <Button onClick={handleTakeover} variant="outline">
-                    <Hand className="w-4 h-4 mr-2" />
-                    Take Control
-                  </Button>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : (
-          // Browserbase iframe
+        {browserViewUrl ? (
+          // Browserbase iframe with live view
           <iframe
             ref={iframeRef}
             src={browserViewUrl}
@@ -436,6 +391,37 @@ export function LiveViewPane({
             onLoad={handleIframeLoad}
             onError={handleIframeError}
           />
+        ) : (
+          // Waiting for live view URL
+          <div className="h-full flex flex-col items-center justify-center bg-slate-50 rounded-lg p-8">
+            <div className="text-center max-w-md">
+              <div className="w-16 h-16 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-orange-600 animate-spin" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">
+                Initializing Browser Session
+              </h3>
+              <p className="text-slate-600 mb-6">
+                Setting up Browserbase session and live view. This will appear automatically once the session is ready.
+              </p>
+              {taskId && (
+                <div className="bg-white rounded-lg p-4 mb-4 border">
+                  <h4 className="font-medium mb-2">Task Information</h4>
+                  <div className="text-sm text-slate-600 space-y-1">
+                    <div>Task ID: {taskId.slice(0, 8)}...</div>
+                    <div>Session: {sessionId}</div>
+                    <div>Status: {getStatusText()}</div>
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-2 justify-center">
+                <Button onClick={handleRefresh} variant="outline">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
         
         {/* Takeover Controls Overlay */}

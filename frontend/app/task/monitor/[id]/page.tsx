@@ -7,7 +7,6 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from 'lucide-react'
-import { AgentThinkingDisplay } from '@/components/AgentThinkingDisplay'
 import ApiService from '@/services/api'
 
 export default function TaskMonitorPage() {
@@ -218,14 +217,14 @@ export default function TaskMonitorPage() {
           </div>
         </header>
 
-        {/* Agent Thinking Display */}
+        {/* Task Status Display */}
         <main className="flex-1 relative p-4">
           <div className="h-full max-w-4xl mx-auto">
-            <AgentThinkingDisplay
-              taskId={taskId}
-              autoRefresh={true}
-              refreshInterval={2000}
-            />
+            <div className="text-center py-8">
+              <h2 className="text-lg font-medium text-slate-700 mb-2">Task Monitoring</h2>
+              <p className="text-slate-500">Task ID: {taskId}</p>
+              <p className="text-slate-500">Status: {taskStatus}</p>
+            </div>
           </div>
         </main>
       </div>

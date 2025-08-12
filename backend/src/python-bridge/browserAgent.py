@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-CFDI Browser Automation Agent using browser-use library
-Integrates with the cloned browser-use code for CFDI 4.0 automation
+CFDI Browser Automation Agent using browser-use library with Browserbase
+Integrates with the cloned browser-use code for CFDI 4.0 automation using Browserbase cloud browser
 """
 
 import asyncio
@@ -21,6 +21,9 @@ sys.path.insert(0, str(browser_use_path))
 try:
     from browser_use import Agent
     from browser_use.llm import ChatOpenAI, ChatAnthropic, ChatGoogle
+    from browser_use.browser.session import BrowserSession
+    from browser_use.browser import BrowserProfile
+    from browserbase import Browserbase
     from dotenv import load_dotenv
     print(f"✅ Successfully imported browser-use from {browser_use_path}")
 except ImportError as e:
@@ -32,11 +35,15 @@ except ImportError as e:
 load_dotenv(current_dir.parent.parent / '.env')
 
 class BrowserAgent:
-    """Simplified browser automation using browser-use library"""
+    """Simplified browser automation using browser-use library with Browserbase"""
     
     def __init__(self):
         self.current_agent: Optional[Agent] = None
         self.session_log = []
+        self.browserbase_session = None
+        self.browser_session = None
+        self.session_id = None
+        self.live_view_url = None
         
     def log_event(self, event_type: str, message: str, data: Any = None):
         """Log events for real-time updates"""
@@ -95,9 +102,74 @@ class BrowserAgent:
             self.log_event("error", f"Failed to initialize LLM client: {str(e)}")
             raise
     
+    async def create_browserbase_session(self) -> Dict[str, Any]:
+        """Create a Browserbase cloud browser session"""
+        self.log_event("session", "Creating Browserbase session")
+        
+        try:
+            # Validate environment variables
+            api_key = os.getenv('BROWSERBASE_API_KEY')
+            project_id = os.getenv('BROWSERBASE_PROJECT_ID')
+            
+            if not api_key:
+                raise ValueError("BROWSERBASE_API_KEY not found in environment")
+            if not project_id:
+                raise ValueError("BROWSERBASE_PROJECT_ID not found in environment")
+            
+            # Create Browserbase session
+            bb = Browserbase(api_key=api_key)
+            session = bb.sessions.create(project_id=project_id)
+            
+            self.session_id = session.id
+            
+            # Get the proper live view/debug URLs using Browserbase debug method
+            debug_info = bb.sessions.debug(session.id)
+            self.live_view_url = debug_info.debugger_fullscreen_url
+            
+            self.log_event("session", f"Browserbase session created: {self.session_id}")
+            self.log_event("session", f"Live view URL (devtools): {self.live_view_url}")
+            
+            # Create browser profile optimized for automation
+            profile = BrowserProfile(
+                disable_security=True,
+                keep_alive=True,
+                headless=False,  # Keep headless=False for live viewing
+                wait_between_actions=1.0,
+                downloads_path=str(Path.home() / 'Downloads' / 'browser-use-browserbase'),
+            )
+            
+            # Create BrowserSession with Browserbase CDP URL
+            self.browser_session = BrowserSession(
+                cdp_url=session.connect_url,
+                browser_profile=profile,
+                keep_alive=True,
+                initialized=False,
+            )
+            
+            # Start the browser session
+            await self.browser_session.start()
+            
+            self.log_event("session", "Browser session initialized successfully")
+            
+            return {
+                "success": True,
+                "session_id": self.session_id,
+                "live_view_url": self.live_view_url,
+                "connect_url": session.connect_url
+            }
+            
+        except Exception as e:
+            self.log_event("error", f"Failed to create Browserbase session: {str(e)}")
+            return {
+                "success": False,
+                "error": str(e),
+                "session_id": None,
+                "live_view_url": None
+            }
+    
     async def execute_task(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute browser automation task using browser-use"""
-        self.log_event("task_start", "Starting browser automation task", task_data)
+        """Execute browser automation task using browser-use with Browserbase"""
+        self.log_event("task_start", "Starting browser automation task with Browserbase", task_data)
         
         try:
             # Get the task description directly
@@ -107,26 +179,40 @@ class BrowserAgent:
                 
             self.log_event("prompt", "Using task description", {"task_length": len(task_description)})
             
+            # Create Browserbase session first
+            session_result = await self.create_browserbase_session()
+            if not session_result["success"]:
+                return {
+                    "success": False,
+                    "result": None,
+                    "error": f"Failed to create Browserbase session: {session_result['error']}",
+                    "session_log": self.session_log,
+                    "execution_time": self.calculate_execution_time(),
+                    "task_description": task_description
+                }
+            
             # Get LLM client
             llm = self.get_llm_client(
                 task_data.get('llm_provider', 'openai'),
                 task_data.get('model')
             )
             
-            # Create agent
-            self.log_event("agent", "Creating browser-use agent")
+            # Create agent with Browserbase session
+            self.log_event("agent", "Creating browser-use agent with Browserbase session")
             self.current_agent = Agent(
                 task=task_description,
                 llm=llm,
+                browser_session=self.browser_session,
                 max_failures=3,
-                retry_delay=2
+                retry_delay=2,
+                use_vision=True
             )
             
             # Execute task
-            self.log_event("execution", "Starting agent execution")
+            self.log_event("execution", "Starting agent execution on Browserbase")
             result = await self.current_agent.run()
             
-            self.log_event("success", "Task completed successfully")
+            self.log_event("success", "Task completed successfully on Browserbase")
             
             return {
                 "success": True,
@@ -134,7 +220,12 @@ class BrowserAgent:
                 "error": None,
                 "session_log": self.session_log,
                 "execution_time": self.calculate_execution_time(),
-                "task_description": task_description
+                "task_description": task_description,
+                # Include session information for frontend
+                "session_id": self.session_id,
+                "live_view_url": self.live_view_url,
+                "browser_session_id": self.session_id,
+                "browserbase_session": True
             }
             
         except Exception as e:
@@ -148,13 +239,29 @@ class BrowserAgent:
                 "error_type": type(e).__name__,
                 "session_log": self.session_log,
                 "execution_time": self.calculate_execution_time(),
-                "traceback": traceback.format_exc() if os.getenv("NODE_ENV") == "development" else None
+                "traceback": traceback.format_exc() if os.getenv("NODE_ENV") == "development" else None,
+                # Include session information even on error (if session was created)
+                "session_id": self.session_id,
+                "live_view_url": self.live_view_url,
+                "browser_session_id": self.session_id,
+                "browserbase_session": True if self.session_id else False
             }
         finally:
-            # Cleanup
+            # Cleanup but keep session info for frontend
             if self.current_agent:
                 del self.current_agent
                 self.current_agent = None
+            # Note: We don't cleanup browser_session here as frontend needs access to it
+    
+    async def cleanup_session(self):
+        """Clean up browser session properly"""
+        try:
+            if self.browser_session:
+                await self.browser_session.close()
+                self.browser_session = None
+                self.log_event("cleanup", "Browser session closed")
+        except Exception as e:
+            self.log_event("warning", f"Error during session cleanup: {str(e)}")
     
     def build_cfdi_prompt(self, task_data: Dict[str, Any]) -> str:
         """Build CFDI-specific prompt - reuse existing logic from Python backend"""

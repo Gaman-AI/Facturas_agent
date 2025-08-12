@@ -109,7 +109,7 @@ USING (auth.uid() = user_id);
 -- Step type constraint
 ALTER TABLE task_steps
 ADD CONSTRAINT check_step_type
-CHECK (step_type IN ('navigate', 'input', 'click', 'thinking', 'error', 'user_intervention', 'completed'));
+CHECK (step_type IN ('navigate', 'input', 'click', 'error', 'user_intervention', 'completed'));
 
 -- RLS Policy for task_steps (via task ownership)
 CREATE POLICY "Users can see logs for their own tasks"
@@ -217,7 +217,7 @@ erDiagram
     task_steps {
         UUID id PK "Step identifier"
         UUID task_id FK "References automation_tasks.id"
-        varchar step_type "navigate|input|click|thinking|error|user_intervention|completed"
+        varchar step_type "navigate|input|click|error|user_intervention|completed"
         jsonb content "Step details and metadata"
         text screenshot_url "Visual debugging"
         timestamptz timestamp "Step execution time"

@@ -11,6 +11,7 @@ import { useAuth, useUserProfile } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
 import { SimpleTaskSubmission } from '@/components/SimpleTaskSubmission';
+import { DashboardDualPane } from '@/components/DashboardDualPane';
 import { TaskStats } from '@/components/TaskStats';
 import { TaskList } from '@/components/TaskList';
 import { TaskProgressList } from '@/components/TaskProgressIndicator';
@@ -32,6 +33,7 @@ function DashboardContent() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [tasks, setTasks] = useState<any[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
+  const [useDualPane, setUseDualPane] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -50,7 +52,14 @@ function DashboardContent() {
   };
 
   const handleTaskSubmit = (taskId: string) => {
-    // Redirect to monitoring page when task is submitted from dashboard
+    // For dual pane mode, stay in dashboard and let DashboardDualPane handle the task
+    if (useDualPane) {
+      console.log('Task submitted in dual pane mode:', taskId);
+      // Don't redirect - let the dual pane handle the task display
+      return;
+    }
+    
+    // For simple mode, redirect to monitoring page
     router.push(`/task/monitor/${taskId}`);
   };
 
@@ -96,7 +105,7 @@ function DashboardContent() {
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-slate-200/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full mx-auto px-2 sm:px-4 lg:px-6">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl flex items-center justify-center shadow-lg">
@@ -135,7 +144,7 @@ function DashboardContent() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="w-full mx-auto px-2 sm:px-4 lg:px-6 py-8">
         {/* Welcome Section */}
         <div className="mb-6">
           <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-xl p-6 text-white shadow-lg">
@@ -157,29 +166,62 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* Quick Task Submission */}
-        <div className="mb-8">
-          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center space-x-2 text-xl">
-                <Zap className="w-6 h-6 text-yellow-500" />
-                <span>{t('tasks.simple.title')}</span>
-              </CardTitle>
-              <CardDescription className="text-slate-600">
-                {t('tasks.simple.description')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <SimpleTaskSubmission 
+        {/* Task Submission Section */}
+        <div className="mb-12">
+          {/* Toggle Button */}
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-900">
+                {useDualPane ? 'Dual Pane Task Monitor' : 'Quick Task Submission'}
+              </h3>
+              <p className="text-sm text-slate-600">
+                {useDualPane 
+                  ? 'Create and monitor browser automation tasks in real-time' 
+                  : 'Simple task submission with redirect to monitoring page'
+                }
+              </p>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => setUseDualPane(!useDualPane)}
+              className="flex items-center gap-2"
+            >
+              <Monitor className="w-4 h-4" />
+              {useDualPane ? 'Use Simple View' : 'Use Dual Pane'}
+            </Button>
+          </div>
+
+          {/* Conditional Rendering */}
+          {useDualPane ? (
+            <div className="h-[900px] mb-8 relative z-10 w-full">
+              <DashboardDualPane 
                 onTaskSubmit={handleTaskSubmit}
-                showRedirect={false}
-                className="mb-0"
+                className="h-full w-full"
               />
-            </CardContent>
-          </Card>
+            </div>
+          ) : (
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm mb-6">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center space-x-2 text-xl">
+                  <Zap className="w-6 h-6 text-yellow-500" />
+                  <span>{t('tasks.simple.title')}</span>
+                </CardTitle>
+                <CardDescription className="text-slate-600">
+                  {t('tasks.simple.description')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SimpleTaskSubmission 
+                  onTaskSubmit={handleTaskSubmit}
+                  showRedirect={false}
+                  className="mb-0"
+                />
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
           {/* User Profile Card */}
           <Card className="lg:col-span-2 border-0 shadow-xl bg-white/80 backdrop-blur-sm">
             <CardHeader className="pb-4">
@@ -396,7 +438,7 @@ function DashboardContent() {
           </div>
 
           {/* Right Column - Task Management */}
-          <div className="lg:col-span-2 space-y-4 lg:space-y-6">
+          <div className="lg:col-span-2 space-y-6">
             {/* Task Statistics */}
             <TaskStats refreshTrigger={refreshTrigger} />
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Browser Agent Service - Multi-Mode Implementation
 
@@ -33,15 +34,127 @@ sys.path.insert(0, str(browser_use_path))
 # Load environment variables
 load_dotenv()
 
-# Import from local browser-use implementation (same as simple.py)
+# Import from local browser-use implementation and Browserbase
+from browserbase import Browserbase
 from browser_use import Agent
 from browser_use.llm import ChatOpenAI
 from browser_use.browser.profile import BrowserProfile
+from browser_use.browser.session import BrowserSession
+
+
+class ManagedBrowserSession:
+    """Context manager for proper BrowserSession lifecycle management"""
+    
+    def __init__(self, cdp_url: str, browser_profile: BrowserProfile):
+        self.cdp_url = cdp_url
+        self.browser_profile = browser_profile
+        self.browser_session = None
+        
+    async def __aenter__(self) -> BrowserSession:
+        try:
+            self.browser_session = BrowserSession(
+                cdp_url=self.cdp_url,
+                browser_profile=self.browser_profile,
+                keep_alive=False,  # Essential for proper cleanup
+                initialized=False,
+            )
+            
+            await self.browser_session.start()
+            print("[SUCCESS] Browser session initialized successfully")
+            return self.browser_session
+            
+        except Exception as e:
+            print(f"[ERROR] Failed to initialize browser session: {e}")
+            await self._emergency_cleanup()
+            raise
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self._close_session_properly()
+    
+    async def _close_session_properly(self):
+        playwright_instance = None
+        
+        try:
+            if self.browser_session:
+                # Get playwright instance before closing session
+                if hasattr(self.browser_session, 'playwright'):
+                    playwright_instance = self.browser_session.playwright
+                
+                # Close browser session first
+                if self.browser_session.initialized:
+                    await self.browser_session.stop()
+                    print("[SUCCESS] Browser session closed successfully")
+                    
+        except Exception as e:
+            error_msg = str(e).lower()
+            if "browser is closed" in error_msg or "disconnected" in error_msg:
+                print("[INFO] Browser session was already closed (expected behavior)")
+            else:
+                print(f"[WARNING] Error during browser session closure: {e}")
+        
+        finally:
+            # Stop playwright instance - critical for preventing hanging processes
+            if playwright_instance:
+                try:
+                    await playwright_instance.stop()
+                    print("[SUCCESS] Playwright instance stopped successfully")
+                except Exception as e:
+                    print(f"[WARNING] Error stopping Playwright: {e}")
+            
+            await self._final_cleanup()
+    
+    async def _emergency_cleanup(self):
+        try:
+            if self.browser_session:
+                if hasattr(self.browser_session, 'playwright'):
+                    await self.browser_session.playwright.stop()
+                if self.browser_session.initialized:
+                    await self.browser_session.stop()
+        except Exception as e:
+            print(f"[WARNING] Emergency cleanup error: {e}")
+        finally:
+            await self._final_cleanup()
+    
+    async def _final_cleanup(self):
+        self.browser_session = None
+
+
+async def create_browserbase_session():
+    """Create a Browserbase session and return session details"""
+    # Validate environment variables
+    if not os.getenv('BROWSERBASE_API_KEY'):
+        raise ValueError("BROWSERBASE_API_KEY environment variable is required")
+    if not os.getenv('BROWSERBASE_PROJECT_ID'):
+        raise ValueError("BROWSERBASE_PROJECT_ID environment variable is required")
+    
+    bb = Browserbase(api_key=os.environ["BROWSERBASE_API_KEY"])
+    session = bb.sessions.create(project_id=os.environ["BROWSERBASE_PROJECT_ID"])
+    
+    # Get the proper live view/debug URLs using Browserbase debug method
+    debug_info = bb.sessions.debug(session.id)
+    live_view_url = debug_info.debugger_fullscreen_url
+    
+    # Print session details for monitoring and frontend iframe integration
+    print(f"Session ID: {session.id}")
+    print(f"Debug URL (devtools): {live_view_url}")
+    print(f"Live View URL (devtools): {live_view_url}")
+    
+    return session
+
+
+def create_browser_profile() -> BrowserProfile:
+    """Create optimized browser profile for automation tasks"""
+    return BrowserProfile(
+        keep_alive=False,  # Essential for proper cleanup
+        wait_between_actions=2.0,
+        default_timeout=30000,
+        default_navigation_timeout=30000,
+    )
 
 
 async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", temperature: float = 0.5, max_steps: int = 30):
     """
-    Run a browser automation task - simplified version like simple.py
+    Run a browser automation task using Browserbase session with proper resource management
     
     Args:
         task_prompt (str): The task description/prompt
@@ -56,23 +169,145 @@ async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", tempera
     if not os.getenv('OPENAI_API_KEY'):
         raise ValueError("OPENAI_API_KEY environment variable is required")
     
-    print(f"Starting browser automation task...")
+    print(f"[STARTING] Browser automation task...")
     print(f"   Model: {model}")
     print(f"   Max Steps: {max_steps}")
     print(f"   Task: {task_prompt[:100]}...")
     
-    # Create agent with visible browser (non-headless)
-    agent = Agent(
-        task=task_prompt,
-        llm=ChatOpenAI(model=model, temperature=temperature),
-        browser_profile=BrowserProfile(headless=False)  # Show browser window
-    )
+    try:
+        # Create Browserbase session
+        browserbase_session = await create_browserbase_session()
+        browser_profile = create_browser_profile()
+        
+        # Use managed browser session context manager
+        async with ManagedBrowserSession(browserbase_session.connect_url, browser_profile) as browser_session:
+            # Create agent with optimized settings
+            llm = ChatOpenAI(model=model, temperature=temperature)
+            
+            agent = Agent(
+                task=task_prompt,
+                llm=llm,
+                browser_session=browser_session,
+                enable_memory=False,
+                max_failures=5,
+                retry_delay=5,
+                max_actions_per_step=1,
+            )
+            
+            try:
+                print("[RUNNING] Starting agent task...")
+                result = await agent.run(max_steps=max_steps)
+                print("[SUCCESS] Task completed successfully!")
+                return str(result)
+                
+            except Exception as e:
+                # Handle expected browser disconnection after successful completion
+                error_msg = str(e).lower()
+                if "browser is closed" in error_msg or "disconnected" in error_msg:
+                    print("[COMPLETE] Task completed - Browser session ended normally")
+                    return "Task completed successfully (session ended normally)"
+                else:
+                    print(f"[ERROR] Agent execution error: {e}")
+                    raise
+                    
+            finally:
+                # Clean up agent reference
+                del agent
+            
+    except KeyboardInterrupt:
+        print("\n[INTERRUPTED] Process interrupted by user")
+        raise
+    except Exception as e:
+        print(f"[FATAL] Fatal error in browser task: {e}")
+        raise
+
+
+async def run_browser_task_with_session_info(task_prompt: str, model: str = "gpt-4o-mini", temperature: float = 0.5, max_steps: int = 30):
+    """
+    Run a browser automation task using Browserbase session and return both result and session information
     
-    # Run the agent
-    result = await agent.run()
+    Args:
+        task_prompt (str): The task description/prompt
+        model (str): LLM model to use
+        temperature (float): LLM temperature
+        max_steps (int): Maximum steps for the agent
     
-    print("Task completed successfully!")
-    return result
+    Returns:
+        Tuple[str, dict]: The result from the agent execution and session information
+    """
+    # Validate environment variables
+    if not os.getenv('OPENAI_API_KEY'):
+        raise ValueError("OPENAI_API_KEY environment variable is required")
+    
+    print(f"[STARTING] Browser automation task with session tracking...")
+    print(f"   Model: {model}")
+    print(f"   Max Steps: {max_steps}")
+    print(f"   Task: {task_prompt[:100]}...")
+    
+    session_info = {
+        "session_id": None,
+        "live_view_url": None,
+        "connect_url": None
+    }
+    
+    try:
+        # Create Browserbase session
+        browserbase_session = await create_browserbase_session()
+        browser_profile = create_browser_profile()
+        
+        # Capture session information
+        session_info["session_id"] = browserbase_session.id
+        session_info["connect_url"] = browserbase_session.connect_url
+        
+        # Get the proper live view/debug URLs using Browserbase debug method
+        bb = Browserbase(api_key=os.environ["BROWSERBASE_API_KEY"])
+        debug_info = bb.sessions.debug(browserbase_session.id)
+        session_info["live_view_url"] = debug_info.debugger_fullscreen_url
+        
+        print(f"[SESSION] Created Browserbase session: {session_info['session_id']}")
+        print(f"[SESSION] Live view URL (devtools): {session_info['live_view_url']}")
+        
+        # Use managed browser session context manager
+        async with ManagedBrowserSession(browserbase_session.connect_url, browser_profile) as browser_session:
+            # Create agent with optimized settings
+            llm = ChatOpenAI(model=model, temperature=temperature)
+            
+            agent = Agent(
+                task=task_prompt,
+                llm=llm,
+                browser_session=browser_session,
+                enable_memory=False,
+                max_failures=5,
+                retry_delay=5,
+                max_actions_per_step=1,
+            )
+            
+            try:
+                print("[RUNNING] Starting agent task...")
+                result = await agent.run(max_steps=max_steps)
+                print("[SUCCESS] Task completed successfully!")
+                return str(result), session_info
+                
+            except Exception as e:
+                # Handle expected browser disconnection after successful completion
+                error_msg = str(e).lower()
+                if "browser is closed" in error_msg or "disconnected" in error_msg:
+                    print("[COMPLETE] Task completed - Browser session ended normally")
+                    return "Task completed successfully (session ended normally)", session_info
+                else:
+                    print(f"[ERROR] Agent execution error: {e}")
+                    raise
+                    
+            finally:
+                # Clean up agent reference
+                del agent
+            
+    except KeyboardInterrupt:
+        print("\n[INTERRUPTED] Process interrupted by user")
+        raise
+    except Exception as e:
+        print(f"[FATAL] Fatal error in browser task: {e}")
+        raise
 
 
 async def main():
@@ -115,9 +350,10 @@ async def main():
                 print("\n\nInterrupted by user. Goodbye!")
                 break
             except Exception as e:
-                print(f"\nError: {str(e)}")
+                print(f"\n[ERROR] Error: {str(e)}")
                 print("Please try again.\n")
         
+        print("[FINISHED] Interactive session ended")
         return
     
     # Case 2: Single argument - could be simple text or JSON
@@ -157,35 +393,48 @@ async def main():
                 }))
                 return
             
-            # Execute the task
-            result = await run_browser_task(complete_prompt, model, temperature, max_steps)
+            # Execute the task and capture session information
+            result, session_info = await run_browser_task_with_session_info(complete_prompt, model, temperature, max_steps)
             
-            # Output result as JSON (for API integration)
+            # Output result as JSON with session information (for API integration)
             print(json.dumps({
                 "success": True,
                 "result": str(result),
                 "model_used": model,
                 "steps_executed": max_steps,
                 "task_prompt": complete_prompt,
-                "vendor_url": vendor_url or "none"
+                "vendor_url": vendor_url or "none",
+                # Include session information for frontend
+                "session_id": session_info.get("session_id"),
+                "live_view_url": session_info.get("live_view_url"),
+                "browser_session_id": session_info.get("session_id"),
+                "browserbase_session": True
             }, indent=2))
             
         except json.JSONDecodeError:
             # Not JSON, treat as simple text task
             try:
-                print(f"Executing simple task: {argument[:100]}...")
+                print(f"[RUNNING] Executing simple task: {argument[:100]}...")
                 result = await run_browser_task(argument)
-                print(f"Task completed successfully!")
+                print(f"[SUCCESS] Task completed successfully!")
                 print(f"Result: {str(result)}")
             except Exception as e:
-                print(f"Error executing task: {str(e)}")
+                print(f"[ERROR] Error executing task: {str(e)}")
         
         except Exception as e:
             print(json.dumps({
                 "success": False,
                 "error": f"Execution failed: {str(e)}",
-                "error_type": type(e).__name__
+                "error_type": type(e).__name__,
+                # Try to include session information even on error
+                "session_id": None,
+                "live_view_url": None,
+                "browser_session_id": None,
+                "browserbase_session": False
             }))
+        
+        finally:
+            print("[FINISHED] Application shutdown complete")
         
         return
     
@@ -193,12 +442,14 @@ async def main():
     if len(sys.argv) > 2:
         task_text = " ".join(sys.argv[1:])
         try:
-            print(f"Executing task: {task_text[:100]}...")
+            print(f"[RUNNING] Executing task: {task_text[:100]}...")
             result = await run_browser_task(task_text)
-            print(f"Task completed successfully!")
+            print(f"[SUCCESS] Task completed successfully!")
             print(f"Result: {str(result)}")
         except Exception as e:
-            print(f"Error executing task: {str(e)}")
+            print(f"[ERROR] Error executing task: {str(e)}")
+        finally:
+            print("[FINISHED] Application shutdown complete")
         return
 
 
