@@ -15,8 +15,10 @@ import config from '../config/index.js'
 
 class PythonBridge {
   constructor() {
-    // Use the correct virtual environment path for Windows
-    this.pythonExecutable = path.join(process.cwd(), 'browser-use', '.venv', 'Scripts', 'python.exe')
+    // Use the correct virtual environment path based on platform
+    const isWindows = process.platform === 'win32'
+    const pythonPath = isWindows ? 'Scripts\\python.exe' : 'bin/python'
+    this.pythonExecutable = path.join(process.cwd(), 'browser-use', '.venv', pythonPath)
     this.scriptPath = path.join(process.cwd(), 'browser_agent.py')
     this.timeout = config.python.timeout || 300000 // 5 minutes default
   }
@@ -53,6 +55,7 @@ class PythonBridge {
 
     return new Promise((resolve, reject) => {
       const taskJson = JSON.stringify(taskData)
+      const isWindows = process.platform === 'win32'
       const pythonProcess = spawn(this.pythonExecutable, [this.scriptPath, taskJson], {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
@@ -60,7 +63,7 @@ class PythonBridge {
           PYTHONPATH: path.join(process.cwd(), 'browser-use'),
           BROWSER_USE_SETUP_LOGGING: 'true',
           VIRTUAL_ENV: path.join(process.cwd(), 'browser-use', '.venv'),
-          PATH: `${path.join(process.cwd(), 'browser-use', '.venv', 'Scripts')};${process.env.PATH}`
+          PATH: `${path.join(process.cwd(), 'browser-use', '.venv', isWindows ? 'Scripts' : 'bin')}${isWindows ? ';' : ':'}${process.env.PATH}`
         }
       })
 
