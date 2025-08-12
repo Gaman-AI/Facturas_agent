@@ -686,3 +686,64 @@ uv sync
 **Files Modified**:
 - `backend/src/services/pythonBridge.js` - Fixed variable naming conflict and added process import
 - `
+
+---
+
+### 2025-08-06 20:12 - Python Path Fix & Spanish Language Removal
+
+**Issues Identified:**
+1. **Python Path Issue**: The Python bridge was using Windows-style paths (`Scripts/python.exe`) on macOS, causing "Python executable not found" errors
+2. **Spanish Language Context**: The app had Spanish language support that needed to be removed for the current phase
+
+**Root Causes:**
+1. **Python Path**: The `pythonBridge.js` constructor was hardcoded to use Windows paths regardless of platform
+2. **Language Context**: The app was configured with bilingual support (English/Spanish) but only English was needed for current phase
+
+**Fixes Applied:**
+
+**1. Python Path Fix (`backend/src/services/pythonBridge.js`):**
+- ✅ Added platform detection using `process.platform === 'win32'`
+- ✅ Updated Python executable path to use `bin/python` on Unix systems and `Scripts\python.exe` on Windows
+- ✅ Fixed PATH environment variable to use correct separators (`:` for Unix, `;` for Windows)
+- ✅ Added `isWindows` variable to the spawn scope for proper environment setup
+
+**2. Spanish Language Removal:**
+- ✅ Updated `LanguageContext.tsx` to only support English language
+- ✅ Removed Spanish translation imports and references
+- ✅ Simplified language initialization to always use English
+- ✅ Removed language switcher components from all pages
+- ✅ Deleted Spanish translation file (`es.ts`)
+- ✅ Deleted language switcher components (`LanguageSwitcher.tsx`, `LanguageSwitcherDemo.tsx`)
+- ✅ Updated layout to use English-only configuration
+
+**Files Modified:**
+- `backend/src/services/pythonBridge.js` - Fixed platform-specific Python paths
+- `frontend/contexts/LanguageContext.tsx` - Simplified to English-only
+- `frontend/app/page.tsx` - Removed language switcher
+- `frontend/app/(dashboard)/dashboard/page.tsx` - Removed language switcher
+- `frontend/app/layout.tsx` - Already configured for English
+
+**Files Deleted:**
+- `frontend/lib/translations/es.ts` - Spanish translations
+- `frontend/components/ui/LanguageSwitcher.tsx` - Language switcher component
+- `frontend/components/demo/LanguageSwitcherDemo.tsx` - Language switcher demo
+
+**Key Changes:**
+- Python executable path: Windows-style → Platform-aware
+- Language support: Bilingual → English-only
+- UI: Language switchers removed
+- Default language: Spanish → English
+- HTML lang: "es-MX" → "en-US"
+
+**Testing Results:**
+- ✅ Backend starts successfully without Python path errors
+- ✅ Python bridge connects correctly using proper Unix paths
+- ✅ Tasks can be created and executed via Python bridge
+- ✅ Frontend loads in English by default
+- ✅ No language switchers visible in UI
+- ✅ All components render in English
+- ✅ No hydration mismatches with simplified language context
+
+**Status**: COMPLETE - Both Python path and language issues resolved
+
+---

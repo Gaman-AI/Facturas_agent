@@ -3,9 +3,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { Translations } from '@/types/translations'
 import enTranslations from '@/lib/translations/en'
-import esTranslations from '@/lib/translations/es'
 
-export type Language = 'es' | 'en'
+export type Language = 'en'
 
 interface LanguageContextType {
   language: Language
@@ -28,8 +27,8 @@ interface LanguageProviderProps {
 
 export function LanguageProvider({ children }: LanguageProviderProps) {
   const [language, setLanguageState] = useState<Language>('en')
-  const [translations, setTranslations] = useState<Translations>({})
-  const [isLoading, setIsLoading] = useState(true)
+  const [translations, setTranslations] = useState<Translations>(enTranslations)
+  const [isLoading, setIsLoading] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
 
   // Load translations with static imports
@@ -46,8 +45,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
       
       // Use static imports instead of dynamic
       const translationMap = {
-        'en': enTranslations,
-        'es': esTranslations
+        'en': enTranslations
       }
       
       const loadedTranslations = translationMap[lang]
@@ -70,59 +68,29 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
   // Initialize language - HYDRATION SAFE APPROACH
   useEffect(() => {
     const initializeLanguage = () => {
-      // Always start with 'en' for consistent server-client rendering
-      let savedLanguage: Language = 'en'
-      
-      // Only check localStorage after component is mounted (client-side only)
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY) as Language
-        if (saved === 'es' || saved === 'en') {
-          savedLanguage = saved
-        } else {
-          // Default to browser language, but fallback to 'en'
-          savedLanguage = navigator.language.toLowerCase().startsWith('es') ? 'es' : 'en'
-        }
-        
-        // Only switch language after hydration is complete to avoid mismatch
-        if (savedLanguage !== 'en') {
-          // Delay the language switch to ensure hydration is complete
-          setTimeout(() => {
-            setLanguageState(savedLanguage)
-            loadTranslations(savedLanguage)
-          }, 100)
-        }
-      }
-      
-      // Always load English translations first (consistent with server)
-      loadTranslations('en')
-      
-      // Preload the other language
-      const otherLang = savedLanguage === 'en' ? 'es' : 'en'
-      setTimeout(() => {
-        loadTranslations(otherLang)
-      }, 1000)
+      // Always use English for consistent server-client rendering
+      setLanguageState('en')
+      setTranslations(enTranslations)
     }
 
     initializeLanguage()
     setIsMounted(true)
   }, [])
 
-  // Load initial English translations immediately to avoid hydration issues
-  useEffect(() => {
-    loadTranslations('en')
-  }, [])
 
-  // Set language function
+
+  // Set language function - only supports English
   const setLanguage = (lang: Language) => {
+    // Only English is supported
+    if (lang !== 'en') {
+      console.warn('Only English language is supported')
+      return
+    }
+    
     try {
       setIsLoading(true)
       setLanguageState(lang)
-      
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(LANGUAGE_STORAGE_KEY, lang)
-      }
-      
-      loadTranslations(lang)
+      setTranslations(enTranslations)
     } catch (error) {
       console.error('Failed to set language:', error)
       setIsLoading(false)

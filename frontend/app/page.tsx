@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LogIn, UserPlus, FileText, Zap, Shield, Globe } from 'lucide-react';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -58,14 +58,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header with Language Switcher */}
-      <header className="absolute top-0 left-0 right-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-end">
-            <LanguageSwitcher variant="minimal" />
-          </div>
-        </div>
-      </header>
+
       
       {/* Hero Section */}
       <section className="relative overflow-hidden">
