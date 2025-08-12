@@ -33,7 +33,7 @@ class BrowserUseService:
         
         if provider.lower() == "openai":
             return ChatOpenAI(
-                model=model_name or "gpt-4o",
+                model=model_name or "gpt-4o-mini-2024-07-18",
                 api_key=settings.OPENAI_API_KEY,
                 temperature=0.1
             )
@@ -52,7 +52,7 @@ class BrowserUseService:
         else:
             # Default to OpenAI
             return ChatOpenAI(
-                model=model_name or "gpt-4o",
+                model=model_name or "gpt-4o-mini-2024-07-18",
                 api_key=settings.OPENAI_API_KEY,
                 temperature=0.1
             )

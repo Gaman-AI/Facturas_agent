@@ -313,9 +313,9 @@ export function DualPaneMonitor({
   return (
     <div className={`h-full ${className}`}>
       <ResizablePanelGroup direction="horizontal" className="h-full">
-        {/* Left Pane - Chat View (40% default) */}
+        {/* Left Pane - Task Submission (40% default) */}
         <ResizablePanel defaultSize={40} minSize={30} maxSize={60}>
-          <div className="h-full p-4">
+          <div className="h-full p-4 border border-blue-200">
             <LiveViewPane
               sessionId={currentSessionId || 'unknown'}
               liveViewUrl={liveViewUrl}
@@ -324,7 +324,17 @@ export function DualPaneMonitor({
               onTakeoverRequest={handleTakeoverRequest}
               onRefresh={handleRefreshView}
               className="h-full"
-              viewType="chat"
+              viewType="taskSubmission"
+              onTaskSubmit={(newTaskId) => {
+                // Handle new task submission
+                console.log('New task submitted:', newTaskId)
+                // You can add logic here to handle the new task
+              }}
+              onResetTask={() => {
+                // Handle task reset
+                console.log('Task reset requested')
+                // You can add logic here to reset the task state
+              }}
             />
           </div>
         </ResizablePanel>

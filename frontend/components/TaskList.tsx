@@ -93,8 +93,20 @@ export function TaskList({
 
       const fetchedTasks = await ApiService.getTasks(pagination.skip, pagination.limit);
       
+      // Filter out invalid tasks (missing required properties)
+      const validTasks = fetchedTasks.filter(task => 
+        task && 
+        task.id && 
+        typeof task.id === 'string' && 
+        task.status
+      );
+      
+      if (validTasks.length !== fetchedTasks.length) {
+        console.warn(`Filtered out ${fetchedTasks.length - validTasks.length} invalid tasks`);
+      }
+      
       // Apply client-side filtering if needed
-      let filteredTasks = fetchedTasks;
+      let filteredTasks = validTasks;
       
       if (filters.status !== 'all') {
         filteredTasks = filteredTasks.filter(task => task.status === filters.status);
@@ -102,8 +114,8 @@ export function TaskList({
       
       if (filters.search) {
         filteredTasks = filteredTasks.filter(task => 
-          task.prompt?.toLowerCase().includes(filters.search.toLowerCase()) ||
-          task.id.toLowerCase().includes(filters.search.toLowerCase())
+          (task.prompt?.toLowerCase().includes(filters.search.toLowerCase()) || false) ||
+          (task.id?.toLowerCase().includes(filters.search.toLowerCase()) || false)
         );
       }
 
@@ -130,8 +142,8 @@ export function TaskList({
 
       setPagination(prev => ({
         ...prev,
-        total: fetchedTasks.length,
-        hasMore: fetchedTasks.length === pagination.limit
+        total: filteredTasks.length,
+        hasMore: filteredTasks.length === pagination.limit
       }));
     } catch (err) {
       console.error('Error fetching tasks:', err);
@@ -156,8 +168,8 @@ export function TaskList({
     const latestUpdate = updates[0];
     setTasks(prevTasks => {
       const updatedTasks = prevTasks.map(task => 
-        task.id === latestUpdate.taskId ? latestUpdate.task : task
-      );
+        task && task.id === latestUpdate.taskId ? latestUpdate.task : task
+      ).filter(task => task && task.id); // Filter out any invalid tasks
       
       // Stop monitoring completed/failed/cancelled tasks
       if (['completed', 'failed', 'cancelled'].includes(latestUpdate.task.status)) {
@@ -182,6 +194,11 @@ export function TaskList({
 
   // Task control actions
   const handleTaskAction = async (taskId: string, action: 'pause' | 'resume' | 'stop' | 'delete') => {
+    if (!taskId) {
+      console.error('Cannot perform action: task ID is missing');
+      return;
+    }
+
     try {
       setActionLoading(prev => ({ ...prev, [taskId]: action }));
       
@@ -217,6 +234,15 @@ export function TaskList({
 
   // Status badge configuration
   const getStatusBadge = (status: string) => {
+    if (!status) {
+      return (
+        <Badge variant="outline" className="flex items-center gap-1">
+          <AlertCircle className="w-3 h-3 text-gray-500" />
+          unknown
+        </Badge>
+      );
+    }
+
     const statusConfig = {
       pending: { variant: 'secondary' as const, icon: Clock, color: 'text-yellow-600' },
       running: { variant: 'default' as const, icon: Play, color: 'text-blue-600' },
@@ -239,6 +265,10 @@ export function TaskList({
 
   // Task actions based on status
   const getTaskActions = (task: Task) => {
+    if (!task || !task.id) {
+      return [];
+    }
+
     const actions = [];
     const isLoading = actionLoading[task.id];
 
@@ -437,71 +467,79 @@ export function TaskList({
             }}
           />
         ) : (
-          tasks.map((task) => (
-            <Card key={task.id} className="hover:shadow-sm transition-shadow">
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  {/* Task Header */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        {getStatusBadge(task.status)}
-                        <span className="text-xs text-gray-500">
-                          {task.id.slice(0, 8)}...
-                        </span>
-                        {['pending', 'running', 'paused'].includes(task.status) && isMonitoring && (
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Live monitoring" />
-                        )}
-                      </div>
-                      
-                      <h3 className="font-medium text-gray-900 truncate mb-1">
-                        {task.prompt || 'No description'}
-                      </h3>
-                      
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>
-                            {formatDistanceToNow(new Date(task.created_at), { 
-                              addSuffix: true, 
-                              locale: dateLocale 
-                            })}
+          tasks.filter(task => task && task.id && task.status && task.created_at).map((task) => {
+            // Additional safety check - if any required property is missing, skip rendering
+            if (!task || !task.id || !task.status || !task.created_at) {
+              console.warn('Skipping invalid task in render:', task);
+              return null;
+            }
+
+            return (
+              <Card key={task.id} className="hover:shadow-sm transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    {/* Task Header */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          {getStatusBadge(task.status)}
+                          <span className="text-xs text-gray-500">
+                            {task.id ? `${task.id.slice(0, 8)}...` : 'Unknown ID'}
                           </span>
+                          {['pending', 'running', 'paused'].includes(task.status) && isMonitoring && (
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Live monitoring" />
+                          )}
                         </div>
                         
-                        {task.completed_at && (
+                        <h3 className="font-medium text-gray-900 truncate mb-1">
+                          {task.prompt || 'No description'}
+                        </h3>
+                        
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
                           <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
+                            <Calendar className="w-3 h-3" />
                             <span>
-                              Completed {formatDistanceToNow(new Date(task.completed_at), { 
+                              {formatDistanceToNow(new Date(task.created_at), { 
                                 addSuffix: true, 
                                 locale: dateLocale 
                               })}
                             </span>
                           </div>
+                          
+                          {task.completed_at && (
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              <span>
+                                Completed {formatDistanceToNow(new Date(task.completed_at), { 
+                                  addSuffix: true, 
+                                  locale: dateLocale 
+                                })}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {task.error_message && (
+                          <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
+                            {task.error_message}
+                          </div>
                         )}
                       </div>
+                      
+                      <div className="flex items-center gap-1 ml-4">
+                        {getTaskActions(task)}
+                      </div>
+                    </div>
 
-                      {task.error_message && (
-                        <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
-                          {task.error_message}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-1 ml-4">
-                      {getTaskActions(task)}
-                    </div>
+                    {/* Progress Indicator for Active Tasks */}
+                    {showProgress && ['pending', 'running', 'paused'].includes(task.status) && (
+                      <TaskProgressIndicator task={task} variant="mini" />
+                    )}
                   </div>
-
-                  {/* Progress Indicator for Active Tasks */}
-                  {showProgress && ['pending', 'running', 'paused'].includes(task.status) && (
-                    <TaskProgressIndicator task={task} variant="mini" />
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                </CardContent>
+              </Card>
+            );
+          }).filter(Boolean) // Remove any null entries
         )}
       </div>
 

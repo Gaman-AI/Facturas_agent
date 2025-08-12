@@ -184,6 +184,13 @@ export class TaskMonitorService {
       }
 
       const { taskId, task } = result;
+      
+      // Validate that the task has required properties
+      if (!task || !task.id || typeof task.id !== 'string' || !task.status) {
+        console.warn(`Skipping invalid task update for ${taskId}:`, task);
+        continue;
+      }
+      
       const lastState = this.lastTaskStates.get(taskId);
       
       // Check if task state has changed
@@ -271,15 +278,25 @@ export function useTaskMonitor(
     setIsMonitoring(true);
 
     const unsubscribe = monitor.subscribeToTask(taskId, (update) => {
-      setTask(update.task);
-      setLastUpdate(update.timestamp);
+      // Validate the task before setting it
+      if (update.task && update.task.id && update.task.status) {
+        setTask(update.task);
+        setLastUpdate(update.timestamp);
+      } else {
+        console.warn('Received invalid task update:', update);
+      }
     });
 
     // Initial fetch
     ApiService.getTask(taskId)
       .then(initialTask => {
-        setTask(initialTask);
-        setLastUpdate(new Date());
+        // Validate the initial task before setting it
+        if (initialTask && initialTask.id && initialTask.status) {
+          setTask(initialTask);
+          setLastUpdate(new Date());
+        } else {
+          console.warn('Received invalid initial task:', initialTask);
+        }
       })
       .catch(error => {
         console.error('Failed to fetch initial task:', error);
@@ -335,7 +352,12 @@ export function useTaskListMonitor(
     setIsMonitoring(true);
 
     const unsubscribe = monitor.subscribeToAll((update) => {
-      setUpdates(prev => [update, ...prev.slice(0, 49)]); // Keep last 50 updates
+      // Validate the task update before adding it
+      if (update && update.task && update.task.id && update.task.status && update.taskId) {
+        setUpdates(prev => [update, ...prev.slice(0, 49)]); // Keep last 50 updates
+      } else {
+        console.warn('Received invalid task update:', update);
+      }
     });
 
     return () => {
