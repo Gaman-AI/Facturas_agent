@@ -217,7 +217,7 @@ export interface Task {
 export interface TaskStep {
   id: number;
   task_id: string;
-  step_type: 'thinking' | 'action' | 'observation' | 'error';
+  step_type: 'action' | 'observation' | 'error';
   content: Record<string, any>;
   timestamp: string;
 }
@@ -272,6 +272,10 @@ export interface BrowserUseTask {
     error?: string;
     error_type?: string;
     prompt?: string;
+    // Session information for live viewing
+    session_id?: string;
+    live_view_url?: string;
+    browser_session_id?: string;
   };
   meta: {
     timestamp: string;
@@ -376,7 +380,7 @@ export interface TaskLogEntry {
   id: string;
   task_id: string;
   timestamp: string;
-  level: 'info' | 'warning' | 'error' | 'success' | 'thinking' | 'action';
+  level: 'info' | 'warning' | 'error' | 'success' | 'action';
   message: string;
   details?: any;
   source?: 'agent' | 'system' | 'user';

@@ -101,7 +101,6 @@ export function TaskAnalytics({
       success: 0,
       error: 0,
       warning: 0,
-      thinking: 0,
       action: 0
     }
 

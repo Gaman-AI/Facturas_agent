@@ -6,7 +6,6 @@ import browserService from '../services/browserService.js'
 import browserAgentService from '../services/browserAgentService.js'
 import taskService from '../services/taskService.js'
 import queueService from '../services/queueService.js'
-import agentThinkingService from '../services/agentThinkingService.js'
 
 const router = express.Router()
 
@@ -316,23 +315,13 @@ router.post('/execute', validateCreateTask, asyncHandler(async (req, res) => {
       error_type: null,
       prompt: task
     })
-
-    // Create thinking logger for this task
-    const thinkingLogger = agentThinkingService.createSimpleLogger(taskId)
-    
-    // Add initial thinking step
-    thinkingLogger.log('Starting task execution...', 'initialization', 'started')
     
     // Prepare simplified task data
     const taskData = {
       task,
       model: model || 'gpt-4o-mini',
       llm_provider: llm_provider || 'openai',
-      timeout_minutes: timeout_minutes || 30,
-      // Add callback for agent thinking capture
-      thinking_callback: (stepData) => {
-        agentThinkingService.storeThinking(taskId, stepData)
-      }
+      timeout_minutes: timeout_minutes || 30
     }
     
     // Execute the task using browser service
@@ -670,106 +659,6 @@ router.get('/browser/health', asyncHandler(async (req, res) => {
 
 /**
  * ==========================================================================
- * AGENT THINKING & TASK MONITORING ENDPOINTS
- * ==========================================================================
- */
-
-// In-memory storage for task execution data (thinking data is handled by agentThinkingService)
-const taskExecutionStorage = new Map()
-
-/**
- * @route   GET /api/v1/tasks/browser-use/:taskId/thinking
- * @desc    Get agent thinking steps for a task
- * @access  Private
- */
-router.get('/browser-use/:taskId/thinking', validateTaskParams, asyncHandler(async (req, res) => {
-  const { taskId } = req.params
-  const { limit, offset, since } = req.query
-  
-  const thinkingData = agentThinkingService.getTaskThinking(taskId)
-  
-  // Apply query filters if specified
-  let filteredSteps = thinkingData.thinking_steps
-  if (limit || offset || since) {
-    filteredSteps = agentThinkingService.getThinkingSteps(taskId, {
-      limit: limit ? parseInt(limit) : undefined,
-      offset: offset ? parseInt(offset) : undefined,
-      since: since
-    })
-  }
-  
-  res.json({
-    success: true,
-    data: {
-      task_id: taskId,
-      thinking_steps: filteredSteps,
-      total_steps: thinkingData.total_steps,
-      last_updated: thinkingData.last_updated,
-      first_step: thinkingData.first_step
-    },
-    meta: {
-      timestamp: new Date().toISOString(),
-      requestId: req.id
-    }
-  })
-}))
-
-/**
- * @route   GET /api/v1/tasks/browser-use/:taskId/thinking/stream
- * @desc    Stream real-time agent thinking steps (Server-Sent Events)
- * @access  Private
- */
-router.get('/browser-use/:taskId/thinking/stream', validateTaskParams, asyncHandler(async (req, res) => {
-  const { taskId } = req.params
-  
-  // Set up Server-Sent Events
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Cache-Control'
-  })
-  
-  // Send initial connection event
-  res.write(`data: ${JSON.stringify({
-    type: 'connected',
-    task_id: taskId,
-    timestamp: new Date().toISOString()
-  })}\n\n`)
-  
-  // Register callback for new thinking steps
-  const thinkingCallback = (stepData) => {
-    res.write(`data: ${JSON.stringify({
-      type: 'thinking_step',
-      task_id: taskId,
-      step: stepData
-    })}\n\n`)
-  }
-  
-  agentThinkingService.registerThinkingCallback(taskId, thinkingCallback)
-  
-  // Clean up on client disconnect
-  req.on('close', () => {
-    agentThinkingService.unregisterThinkingCallback(taskId)
-    res.end()
-  })
-  
-  // Keep connection alive with periodic heartbeat
-  const heartbeat = setInterval(() => {
-    res.write(`data: ${JSON.stringify({
-      type: 'heartbeat',
-      timestamp: new Date().toISOString()
-    })}\n\n`)
-  }, 30000) // 30 seconds
-  
-  req.on('close', () => {
-    clearInterval(heartbeat)
-  })
-}))
-
-/**
- * ==========================================================================
  * BROWSER-USE INTEGRATION ENDPOINTS
  * ==========================================================================
  */
@@ -926,8 +815,10 @@ router.get('/browser-use/:taskId', validateTaskParams, asyncHandler(async (req, 
       error: task.error,
       error_type: task.error_type || task.errorType,
       prompt: task.prompt,
-      // Add thinking steps if available
-      thinking_steps: agentThinkingService.getThinkingSteps(taskId, { limit: 50 })
+      // Add session information for live viewing
+      session_id: task.session_id || task.sessionId,
+      live_view_url: task.live_view_url || task.liveViewUrl || (task.session_id ? `https://www.browserbase.com/sessions/${task.session_id}` : null),
+      browser_session_id: task.browser_session_id || task.browserSessionId
     }
 
     res.json({

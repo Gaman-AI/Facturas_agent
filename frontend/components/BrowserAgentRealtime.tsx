@@ -93,7 +93,7 @@ const BrowserAgentRealtime: React.FC<BrowserAgentRealtimeProps> = ({
     };
 
     const handleLogUpdate = (data: any) => {
-      addLog(`📝 Browser agent is thinking and acting...`, 'info');
+      addLog(`📝 Browser agent is working...`, 'info');
     };
 
     const handlePong = (data: any) => {

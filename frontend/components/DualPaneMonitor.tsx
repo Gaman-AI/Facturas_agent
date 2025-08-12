@@ -173,9 +173,7 @@ export function DualPaneMonitor({
     const handleLogUpdate = (data: any) => {
       // Handle different types of log updates
       if (data.data) {
-        if (data.data.step_type === 'thinking') {
-          addLog('Agent is thinking...', 'thinking', data.data.content)
-        } else if (data.data.step_type === 'action') {
+        if (data.data.step_type === 'action') {
           addLog(`Performing action: ${data.data.content?.action || 'Unknown action'}`, 'action', data.data.content)
         } else if (data.data.step_type === 'observation') {
           addLog('Observing page state...', 'info', data.data.content)
