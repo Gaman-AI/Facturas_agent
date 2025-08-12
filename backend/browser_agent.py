@@ -152,7 +152,7 @@ def create_browser_profile() -> BrowserProfile:
     )
 
 
-async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", temperature: float = 0.5, max_steps: int = 30):
+async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini-2024-07-18", temperature: float = 0.5, max_steps: int = 30):
     """
     Run a browser automation task using Browserbase session with proper resource management
     
@@ -222,7 +222,7 @@ async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", tempera
         raise
 
 
-async def run_browser_task_with_session_info(task_prompt: str, model: str = "gpt-4o-mini", temperature: float = 0.5, max_steps: int = 30):
+async def run_browser_task_with_session_info(task_prompt: str, model: str = "gpt-4o-mini-2024-07-18", temperature: float = 0.5, max_steps: int = 30):
     """
     Run a browser automation task using Browserbase session and return both result and session information
     
@@ -367,7 +367,7 @@ async def main():
             # Extract task parameters from JSON
             # Support both 'task' (from API) and 'prompt' (legacy) field names
             prompt = task_data.get('task', '') or task_data.get('prompt', '')
-            model = task_data.get('model', 'gpt-4o-mini')
+            model = task_data.get('model', 'gpt-4o-mini-2024-07-18')
             temperature = task_data.get('temperature', 0.7)
             max_steps = task_data.get('max_steps', 30)
             vendor_url = task_data.get('vendor_url', '')
@@ -443,7 +443,7 @@ async def main():
         task_text = " ".join(sys.argv[1:])
         try:
             print(f"[RUNNING] Executing task: {task_text[:100]}...")
-            result = await run_browser_task(task_text)
+            result = await run_browser_task(task_text, model="gpt-4o-mini-2024-07-18")
             print(f"[SUCCESS] Task completed successfully!")
             print(f"Result: {str(result)}")
         except Exception as e:

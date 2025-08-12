@@ -2,6 +2,69 @@
 
 ## Latest Updates
 
+### 2025-01-12 18:30 - Python Bridge Service Fixes
+
+**Date & Time**: 2025-01-12 18:30
+
+**Objective**: Fix Python bridge service failures related to Python executable path detection and ES module compatibility issues.
+
+**Issue Identified**:
+The Python bridge service was failing with the error:
+```
+❌ Task execution error: Error: Python execution failed: No Python at '"/Users/satyamsingh/.pyenv/versions/3.11.7/bin\python.exe'
+```
+
+**Root Cause Analysis**:
+1. **Path Configuration Issue**: The PythonBridge service was hardcoded to use `'python'` instead of reading from the configuration
+2. **ES Module Compatibility**: The service was using `__dirname` which is not available in ES modules
+3. **Virtual Environment Issues**: The configured virtual environment Python had path conflicts with Unix-style paths
+4. **Script Path Errors**: The service was looking for `browser_agent.py` in the wrong directory
+
+**Changes Made**:
+
+#### 1. Fixed PythonBridge Service (`backend/src/services/pythonBridge.js`)
+- **ES Module Compatibility**: Added `fileURLToPath` import and created `__dirname` equivalent for ES modules
+- **Dynamic Python Detection**: Implemented `findWorkingPython()` method that tries multiple Python executables:
+  - Configured Python executable from .env
+  - System Python (`python`)
+  - Alternative Python (`python3`) 
+  - Virtual environment Python (`venv\Scripts\python.exe`)
+- **Path Corrections**: Fixed script path to point to correct `browser_agent.py` location
+- **PYTHONPATH Fix**: Corrected PYTHONPATH to point to proper `browser-use` directory
+
+#### 2. Enhanced Error Handling
+- Added timeout handling for Python executable testing
+- Improved error messages with specific failure details
+- Added fallback mechanisms for Python executable selection
+
+#### 3. Configuration Improvements
+- Service now automatically detects working Python executable
+- Fallback to system Python when virtual environment fails
+- Better logging of Python executable selection process
+
+**Technical Details**:
+- **File Modified**: `backend/src/services/pythonBridge.js`
+- **Key Methods Added**: 
+  - `findWorkingPython()` - Tests multiple Python executables
+  - `testPythonExecutable()` - Individual executable testing
+- **Path Resolution**: Uses `path.join(__dirname, '..', '..')` for correct relative paths
+- **Timeout Handling**: 5-second timeout for Python executable testing
+
+**Testing Results**:
+- ✅ Python executable detection working
+- ✅ System Python (3.11.9) successfully detected
+- ✅ Path resolution corrected
+- ✅ ES module compatibility restored
+
+**Next Steps**:
+1. Test full browser automation task execution
+2. Verify browser-use package integration
+3. Monitor for any remaining path-related issues
+
+**Files Affected**:
+- `backend/src/services/pythonBridge.js` - Main service file with all fixes
+- `dev_documentation.txt` - This documentation update
+
 ### 2025-01-27 - Browserbase-Only Integration with Automatic Live View URL Passing
 
 **Date & Time**: 2025-01-27 
