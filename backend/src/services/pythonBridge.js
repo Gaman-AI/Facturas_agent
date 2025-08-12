@@ -20,7 +20,6 @@ const __dirname = path.dirname(__filename)
 
 class PythonBridge {
   constructor() {
-<<<<<<< HEAD
     // Use Python executable from configuration, with fallbacks
     this.pythonExecutables = [
       config.python.executable || 'python',
@@ -29,13 +28,6 @@ class PythonBridge {
       'venv\\Scripts\\python.exe'
     ]
     this.scriptPath = path.join(__dirname, '..', '..', 'browser_agent.py')
-=======
-    // Use the correct virtual environment path based on platform
-    const isWindows = process.platform === 'win32'
-    const pythonPath = isWindows ? 'Scripts\\python.exe' : 'bin/python'
-    this.pythonExecutable = path.join(process.cwd(), 'browser-use', '.venv', pythonPath)
-    this.scriptPath = path.join(process.cwd(), 'browser_agent.py')
->>>>>>> 76601abe18e708373d5647a5366a3b2a14bc19ae
     this.timeout = config.python.timeout || 300000 // 5 minutes default
   }
 
@@ -159,24 +151,12 @@ class PythonBridge {
 
     return new Promise((resolve, reject) => {
       const taskJson = JSON.stringify(taskData)
-<<<<<<< HEAD
       const pythonProcess = spawn(pythonExecutable, [this.scriptPath, taskJson], {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
           ...process.env,
           PYTHONPATH: path.join(__dirname, '..', '..', 'browser-use'),
           BROWSER_USE_SETUP_LOGGING: 'true'
-=======
-      const isWindows = process.platform === 'win32'
-      const pythonProcess = spawn(this.pythonExecutable, [this.scriptPath, taskJson], {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: {
-          ...process.env,
-          PYTHONPATH: path.join(process.cwd(), 'browser-use'),
-          BROWSER_USE_SETUP_LOGGING: 'true',
-          VIRTUAL_ENV: path.join(process.cwd(), 'browser-use', '.venv'),
-          PATH: `${path.join(process.cwd(), 'browser-use', '.venv', isWindows ? 'Scripts' : 'bin')}${isWindows ? ';' : ':'}${process.env.PATH}`
->>>>>>> 76601abe18e708373d5647a5366a3b2a14bc19ae
         }
       })
 
