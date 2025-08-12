@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { LogOut, User, Building2, FileText, BarChart3, Zap, Plus, Monitor, Globe, Activity, TrendingUp, CheckCircle, Clock, AlertCircle } from 'lucide-react';
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -120,7 +120,6 @@ function DashboardContent() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <LanguageSwitcher variant="compact" />
               <div className="flex items-center space-x-2 bg-white/60 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-200/50">
                 <div className="w-8 h-8 bg-gradient-to-r from-pink-400 to-rose-400 rounded-full flex items-center justify-center">
                   <User className="w-4 h-4 text-white" />
