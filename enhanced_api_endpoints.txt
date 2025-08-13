@@ -1,0 +1,558 @@
+# Enhanced CFDI Automation API - Ticket Upload & Processing
+
+## New Endpoints for Ticket Upload System
+
+### 1. Upload and Process Ticket
+- **Endpoint:** `POST /api/v1/tickets/upload`
+- **Purpose:** Upload ticket file (image/PDF) and optionally provide vendor URL for processing
+- **Access:** Private (requires JWT token)
+- **Content-Type:** `multipart/form-data`
+
+**Input:**
+```javascript
+// FormData fields:
+{
+  "file": File, // Image or PDF file (any format accepted)
+  "vendor_url": "https://facturacion.walmartmexico.com.mx/", // Optional
+  "vendor_name": "Walmart Mexico", // Optional - for vendor detection
+  "priority": "normal" // Optional: "low", "normal", "high"
+}
+```
+
+**Response (Success - 201):**
+```json
+{
+  "success": true,
+  "data": {
+    "ticket_id": "ticket_67890abcdef",
+    "status": "PROCESSING",
+    "file_info": {
+      "filename": "walmart_receipt_001.jpg",
+      "size": 2048576,
+      "type": "image/jpeg"
+    },
+    "vendor_url": "https://facturacion.walmartmexico.com.mx/",
+    "vendor_detected": "Walmart Mexico",
+    "estimated_processing_time": "30-45 seconds",
+    "created_at": "2024-01-01T00:00:00.000Z"
+  }
+}
+```
+
+### 2. Get Ticket Processing Status
+- **Endpoint:** `GET /api/v1/tickets/:ticketId/status`
+- **Purpose:** Get real-time processing status and extracted data
+- **Access:** Private (requires JWT token)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "ticket_id": "ticket_67890abcdef",
+    "status": "COMPLETED", // PROCESSING, COMPLETED, FAILED, EXTRACTION_COMPLETE
+    "processing_stage": "OCR_EXTRACTION", // OCR_EXTRACTION, DATA_PARSING, AGENT_READY
+    "progress_percentage": 85,
+    "vendor_info": {
+      "detected_vendor": "Walmart Mexico",
+      "confidence": 0.95,
+      "vendor_url": "https://facturacion.walmartmexico.com.mx/",
+      "logo_detected": true
+    },
+    "extracted_data": {
+      // Core CFDI fields
+      "mesa_folio": "957679964574563719968",
+      "fecha": "2024-01-01",
+      "id_ticket": "957679964574563719968",
+      "total": "1,234.56",
+      "subtotal": "1,071.86",
+      "iva": "162.70",
+      
+      // Additional extracted fields
+      "caja_number": "03621",
+      "sucursal": "LOMAS 4A SECCION",
+      "cajero": "MARIA GONZALEZ",
+      "turno": "MATUTINO",
+      "metodo_pago": "TARJETA DE CREDITO",
+      "ultimos_4_digitos": "4532",
+      "autorizacion": "AUTH123456",
+      "referencia": "REF789012",
+      "moneda": "MXN",
+      "tipo_cambio": "1.00",
+      
+      // Items/Products (if applicable)
+      "items": [
+        {
+          "descripcion": "PRODUCTO EJEMPLO 1",
+          "cantidad": "2",
+          "precio_unitario": "125.50",
+          "importe": "251.00",
+          "codigo_barras": "7501234567890"
+        },
+        {
+          "descripcion": "PRODUCTO EJEMPLO 2",
+          "cantidad": "1",
+          "precio_unitario": "820.86",
+          "importe": "820.86",
+          "codigo_barras": "7501234567891"
+        }
+      ],
+      
+      // Raw text extraction
+      "raw_text": "WALMART MEXICO S.A. DE C.V.\nRFC: WMM9709244W4\nSUCURSAL: LOMAS 4A SECCION\nDIRECCION: AV. PRINCIPAL #123\nSAN LUIS POTOSI, SLP\nFECHA: 01/01/2024 15:30:45\nCAJA: 03621\nCAJERO: MARIA GONZALEZ\nTICKET: 957679964574563719968\n\nPRODUCTO EJEMPLO 1        $125.50 x 2    $251.00\nPRODUCTO EJEMPLO 2        $820.86 x 1    $820.86\n\nSUBTOTAL:                              $1,071.86\nIVA (16%):                              $162.70\nTOTAL:                               $1,234.56\n\nTARJETA ****4532\nAUTORIZACION: AUTH123456\nREFERENCIA: REF789012\n\nGRACIAS POR SU COMPRA",
+      
+      // Confidence scores for key fields
+      "confidence_scores": {
+        "total": 0.98,
+        "fecha": 0.95,
+        "id_ticket": 0.99,
+        "mesa_folio": 0.99,
+        "vendor_detection": 0.95,
+        "overall_confidence": 0.97
+      }
+    },
+    "ocr_metadata": {
+      "processing_time_ms": 3500,
+      "image_quality": "HIGH",
+      "text_regions_detected": 45,
+      "language_detected": "es-MX",
+      "orientation_corrected": false
+    },
+    "updated_at": "2024-01-01T00:00:35.000Z"
+  }
+}
+```
+
+### 3. Create Agent Task from Extracted Data
+- **Endpoint:** `POST /api/v1/tickets/:ticketId/create-agent-task`
+- **Purpose:** Create browser automation task using extracted ticket data + user profile
+- **Access:** Private (requires JWT token)
+
+**Input:**
+```json
+{
+  "vendor_url_override": "https://custom-vendor-url.com", // Optional override
+  "task_priority": "high", // Optional: low, normal, high
+  "auto_start": true, // Start agent immediately
+  "manual_review_required": false // Force manual review before agent starts
+}
+```
+
+**Response (Success - 201):**
+```json
+{
+  "success": true,
+  "data": {
+    "agent_task_id": "agent_task_12345",
+    "ticket_id": "ticket_67890abcdef",
+    "status": "PENDING",
+    "task_data": {
+      "vendor_url": "https://facturacion.walmartmexico.com.mx/",
+      "vendor_name": "Walmart Mexico",
+      "user_profile": {
+        "email": "jorge@gaman.ai",
+        "rfc": "DOGJ8603192W3",
+        "company_name": "JORGE DOMENZAIN GALINDO",
+        "address": {
+          "street": "PRIV DEL MARQUEZ",
+          "exterior_number": "404",
+          "interior_number": "4",
+          "colony": "LOMAS 4A SECCION",
+          "municipality": "San Luis Potosí",
+          "zip_code": "78216",
+          "state": "San Luis Potosí",
+          "country": "Mexico"
+        },
+        "tax_regimen": "Personas Físicas con Actividades Empresariales y Profesionales",
+        "cfdi_usage": "Gastos en general"
+      },
+      "ticket_data": {
+        "id_ticket": "957679964574563719968",
+        "total": "1,234.56",
+        "fecha": "2024-01-01",
+        "mesa_folio": "957679964574563719968",
+        "caja_number": "03621",
+        "sucursal": "LOMAS 4A SECCION"
+      },
+      "combined_prompt": "Go to https://facturacion.walmartmexico.com.mx/ and process CFDI invoice for:\nEmail: jorge@gaman.ai\nRFC: DOGJ8603192W3\nCompany: JORGE DOMENZAIN GALINDO\nTicket ID: 957679964574563719968\nTotal: $1,234.56\nDate: 2024-01-01\nCaja: 03621\nSucursal: LOMAS 4A SECCION"
+    },
+    "browserbase_session": {
+      "session_id": "browserbase_session_789",
+      "live_view_url": "https://www.browserbase.com/sessions/browserbase_session_789",
+      "status": "INITIALIZING"
+    },
+    "created_at": "2024-01-01T00:00:40.000Z",
+    "estimated_completion": "2024-01-01T00:02:40.000Z"
+  }
+}
+```
+
+### 4. Agent Task Control
+- **Endpoint:** `POST /api/v1/agent-tasks/:taskId/control`
+- **Purpose:** Control browser agent (pause, resume, take control)
+- **Access:** Private (requires JWT token)
+
+**Input:**
+```json
+{
+  "action": "pause", // "pause", "resume", "take_control", "stop"
+  "reason": "User intervention required" // Optional
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "task_id": "agent_task_12345",
+    "action": "pause",
+    "status": "PAUSED",
+    "browserbase_session": {
+      "session_id": "browserbase_session_789",
+      "live_view_url": "https://www.browserbase.com/sessions/browserbase_session_789",
+      "user_control_enabled": true,
+      "takeover_url": "https://www.browserbase.com/sessions/browserbase_session_789/takeover"
+    },
+    "message": "Agent paused successfully. You can now take control via the live view.",
+    "timestamp": "2024-01-01T00:01:15.000Z"
+  }
+}
+```
+
+### 5. Get Agent Task Status
+- **Endpoint:** `GET /api/v1/agent-tasks/:taskId/status`
+- **Purpose:** Get real-time agent task status and browser session info
+- **Access:** Private (requires JWT token)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "task_id": "agent_task_12345",
+    "ticket_id": "ticket_67890abcdef",
+    "status": "RUNNING", // PENDING, RUNNING, PAUSED, COMPLETED, FAILED, USER_CONTROL
+    "progress": {
+      "current_step": "Filling invoice form",
+      "steps_completed": 8,
+      "total_steps": 12,
+      "percentage": 67
+    },
+    "browserbase_session": {
+      "session_id": "browserbase_session_789",
+      "live_view_url": "https://www.browserbase.com/sessions/browserbase_session_789",
+      "status": "ACTIVE",
+      "user_control_enabled": false,
+      "current_url": "https://facturacion.walmartmexico.com.mx/invoice-form",
+      "screenshot_url": "https://screenshots.browserbase.com/browserbase_session_789/latest.png"
+    },
+    "execution_log": [
+      {
+        "step": 1,
+        "action": "navigate",
+        "description": "Navigated to vendor portal",
+        "timestamp": "2024-01-01T00:00:45.000Z",
+        "success": true
+      },
+      {
+        "step": 2,
+        "action": "login",
+        "description": "Logged in with user credentials",
+        "timestamp": "2024-01-01T00:00:52.000Z",
+        "success": true
+      },
+      {
+        "step": 3,
+        "action": "form_fill",
+        "description": "Filling RFC field: DOGJ8603192W3",
+        "timestamp": "2024-01-01T00:01:05.000Z",
+        "success": true
+      }
+    ],
+    "performance_metrics": {
+      "execution_time_seconds": 75,
+      "estimated_completion_seconds": 45,
+      "success_probability": 0.92
+    },
+    "updated_at": "2024-01-01T00:01:20.000Z"
+  }
+}
+```
+
+### 6. List User Tickets
+- **Endpoint:** `GET /api/v1/tickets?page=1&limit=10&status=all&sort=created_at&order=desc`
+- **Purpose:** Get paginated list of user's uploaded tickets
+- **Access:** Private (requires JWT token)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "tickets": [
+      {
+        "ticket_id": "ticket_67890abcdef",
+        "filename": "walmart_receipt_001.jpg",
+        "vendor_detected": "Walmart Mexico",
+        "status": "COMPLETED",
+        "total_amount": "1,234.56",
+        "ticket_date": "2024-01-01",
+        "processing_time_ms": 3500,
+        "agent_task_id": "agent_task_12345",
+        "agent_status": "COMPLETED",
+        "created_at": "2024-01-01T00:00:00.000Z",
+        "completed_at": "2024-01-01T00:02:40.000Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 25,
+      "total_pages": 3,
+      "has_next": true,
+      "has_prev": false
+    }
+  }
+}
+```
+
+### 7. Delete Ticket
+- **Endpoint:** `DELETE /api/v1/tickets/:ticketId`
+- **Purpose:** Delete ticket and associated data
+- **Access:** Private (requires JWT token)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "ticket_id": "ticket_67890abcdef",
+    "message": "Ticket and associated data deleted successfully",
+    "deleted_items": {
+      "ticket_file": true,
+      "extracted_data": true,
+      "agent_task": true,
+      "browserbase_session": "terminated"
+    }
+  }
+}
+```
+
+## WebSocket Events for Real-time Updates
+
+### WebSocket Connection
+- **Endpoint:** `ws://localhost:8000/api/v1/tickets/ws?ticketId={ticketId}&token={jwt_token}`
+- **Purpose:** Real-time updates for ticket processing and agent execution
+
+### Event Types:
+```json
+// OCR Processing Update
+{
+  "type": "ocr_progress",
+  "data": {
+    "ticket_id": "ticket_67890abcdef",
+    "stage": "text_extraction",
+    "progress": 45,
+    "estimated_completion": "15 seconds"
+  }
+}
+
+// Data Extraction Complete
+{
+  "type": "extraction_complete",
+  "data": {
+    "ticket_id": "ticket_67890abcdef",
+    "extracted_data": { /* full extracted data */ },
+    "confidence_score": 0.97,
+    "ready_for_agent": true
+  }
+}
+
+// Agent Task Started
+{
+  "type": "agent_started",
+  "data": {
+    "task_id": "agent_task_12345",
+    "browserbase_session_id": "browserbase_session_789",
+    "live_view_url": "https://www.browserbase.com/sessions/browserbase_session_789"
+  }
+}
+
+// Agent Progress Update
+{
+  "type": "agent_progress",
+  "data": {
+    "task_id": "agent_task_12345",
+    "current_step": "Filling invoice form",
+    "progress": 67,
+    "action": "form_fill",
+    "field": "RFC",
+    "value": "DOGJ8603192W3"
+  }
+}
+
+// Agent Control Change
+{
+  "type": "control_change",
+  "data": {
+    "task_id": "agent_task_12345",
+    "status": "PAUSED",
+    "user_control_enabled": true,
+    "takeover_url": "https://www.browserbase.com/sessions/browserbase_session_789/takeover"
+  }
+}
+
+// Task Completion
+{
+  "type": "task_complete",
+  "data": {
+    "task_id": "agent_task_12345",
+    "status": "COMPLETED",
+    "execution_time": "2 minutes 15 seconds",
+    "cfdi_generated": true,
+    "invoice_url": "https://facturacion.walmartmexico.com.mx/invoice/12345"
+  }
+}
+```
+
+## Mock Data for Development
+
+### Mock OCR Response (for Satyam's OCR function)
+```python
+# Expected function signature for OCR processing
+def extract_ticket_data(file_path: str, file_type: str) -> dict:
+    """
+    Mock OCR extraction function
+    """
+    return {
+        "success": True,
+        "extracted_data": {
+            # Core fields
+            "mesa_folio": "957679964574563719968",
+            "fecha": "2024-01-01",
+            "id_ticket": "957679964574563719968", 
+            "total": "1,234.56",
+            "subtotal": "1,071.86",
+            "iva": "162.70",
+            
+            # Extended fields
+            "caja_number": "03621",
+            "sucursal": "LOMAS 4A SECCION",
+            "cajero": "MARIA GONZALEZ",
+            "turno": "MATUTINO",
+            "metodo_pago": "TARJETA DE CREDITO",
+            "ultimos_4_digitos": "4532",
+            "autorizacion": "AUTH123456",
+            "referencia": "REF789012",
+            "moneda": "MXN",
+            
+            # Raw text
+            "raw_text": "WALMART MEXICO S.A. DE C.V.\nRFC: WMM9709244W4...",
+            
+            # Confidence scores
+            "confidence_scores": {
+                "total": 0.98,
+                "fecha": 0.95,
+                "id_ticket": 0.99,
+                "overall_confidence": 0.97
+            }
+        },
+        "processing_time_ms": 3500,
+        "vendor_detected": "Walmart Mexico",
+        "vendor_confidence": 0.95
+    }
+```
+
+### Mock Frontend Component Props (for Aanwi)
+```typescript
+// DualPaneView Component Props
+interface DualPaneViewProps {
+  ticketId: string;
+  extractedData: ExtractedTicketData | null;
+  agentTaskId: string | null;
+  browserbaseSession: {
+    sessionId: string;
+    liveViewUrl: string;
+    status: 'INITIALIZING' | 'ACTIVE' | 'PAUSED' | 'USER_CONTROL';
+    userControlEnabled: boolean;
+  } | null;
+  onAgentControl: (action: 'pause' | 'resume' | 'take_control' | 'stop') => void;
+  isLoading: boolean;
+}
+
+// Extracted Ticket Data Interface
+interface ExtractedTicketData {
+  // Core fields
+  mesa_folio: string;
+  fecha: string;
+  id_ticket: string;
+  total: string;
+  
+  // Extended fields
+  caja_number?: string;
+  sucursal?: string;
+  cajero?: string;
+  metodo_pago?: string;
+  
+  // Raw text
+  raw_text: string;
+  
+  // Confidence scores
+  confidence_scores: {
+    overall_confidence: number;
+    total: number;
+    fecha: number;
+    id_ticket: number;
+  };
+  
+  // Vendor info
+  vendor_detected?: string;
+  vendor_confidence?: number;
+}
+```
+
+## Database Schema Updates
+
+### New Tables Required:
+```sql
+-- Ticket uploads table
+CREATE TABLE ticket_uploads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id),
+    filename VARCHAR(255) NOT NULL,
+    file_size BIGINT NOT NULL,
+    file_type VARCHAR(50) NOT NULL,
+    file_url TEXT NOT NULL, -- Supabase storage URL
+    vendor_url TEXT,
+    vendor_name VARCHAR(255),
+    vendor_detected VARCHAR(255),
+    vendor_confidence DECIMAL(3,2),
+    status VARCHAR(20) DEFAULT 'PROCESSING',
+    processing_stage VARCHAR(50),
+    progress_percentage INTEGER DEFAULT 0,
+    extracted_data JSONB,
+    ocr_metadata JSONB,
+    agent_task_id UUID,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+);
+
+-- Indexes for performance
+CREATE INDEX idx_ticket_uploads_user_id ON ticket_uploads(user_id);
+CREATE INDEX idx_ticket_uploads_status ON ticket_uploads(status);
+CREATE INDEX idx_ticket_uploads_created_at ON ticket_uploads(created_at DESC);
+```
+
+This implementation provides:
+
+1. **Complete separation of concerns** - each team can work independently
+2. **Comprehensive mock data** for development and testing
+3. **Real-time updates** via WebSocket for live progress tracking
+4. **Flexible agent control** with pause/resume/takeover capabilities
+5. **Rich data extraction** beyond the 4 core fields as requested
+6. **Vendor URL handling** with optional override functionality
+7. **Dashboard integration** without page redirects
+
+The mock data provided allows each team member to develop their components independently while maintaining consistency across the entire system.

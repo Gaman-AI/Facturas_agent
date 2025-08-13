@@ -18,6 +18,119 @@ This comprehensive document includes:
 
 ## Latest Updates
 
+### 2025-08-13 16:30 - Added CLI to run OCR on local image and print results
+
+**Date & Time**: 2025-08-13 16:30
+
+**Change**:
+- Updated `ocr_test.py` to include a command-line entrypoint.
+- Default input image is `oxxo_trial.jpg`; can be overridden with `--image <path>`.
+- Script now prints both structured extraction (JSON) and the raw OCR text.
+
+**Usage (PowerShell)**:
+```
+python ocr_test.py --image oxxo_trial.jpg
+```
+
+**Notes**:
+- Loads API keys from root `.env` as before.
+- No changes to extraction logic; only a runnable wrapper added.
+
+
+### 2025-08-13 16:05 - Fix dashboard "Choose File" not opening file picker
+
+**Date & Time**: 2025-08-13 16:05
+
+**Issue**: Clicking the "Choose File" button on the dashboard did not open the OS file picker.
+
+**Root Cause**: The hidden file input relied on a label with `htmlFor` wrapping a custom Button component. In some cases, event handling or component internals can prevent the label click from delegating to the hidden input on certain browsers.
+
+**Change Made**:
+- Updated `frontend/app/(dashboard)/dashboard/page.tsx`:
+  - Imported `useRef` and created `fileInputRef` for the hidden file input
+  - Replaced the label-wrapped Button with a direct Button `onClick` that calls `fileInputRef.current?.click()`
+  - Kept the hidden input and existing `onChange` handler intact
+
+**Impact**:
+- "Choose File" reliably opens the native file picker across browsers
+- No visual or behavioral regressions; upload flow remains unchanged
+
+**Verification**:
+- Lint passes on the modified file
+- Manual test: Click "Choose File" opens selector; selecting a file populates the filename and enables upload
+
+
+### 2025-01-27 20:30 - Generated Comprehensive API Contract Documentation
+
+**Date & Time**: 2025-01-27 20:30
+
+**Objective**: Analyze the entire codebase and generate a comprehensive API contract document that details all current API endpoints, their purposes, inputs, responses, and other relevant information.
+
+**Work Completed**:
+- **Analyzed Backend Architecture**: Examined all backend routes, services, middleware, and configuration files
+- **Reviewed Frontend Integration**: Analyzed frontend services and API client implementations
+- **Documented API Endpoints**: Created detailed documentation for all 40+ API endpoints
+- **Generated API Contract**: Created `API_CONTRACT.md` with comprehensive API documentation
+
+**API Contract Contents**:
+- **Authentication Endpoints**: 9 endpoints for user registration, login, profile management, and JWT verification
+- **Task Management Endpoints**: 9 endpoints for task CRUD operations, execution, and statistics
+- **Browser Automation Endpoints**: 7 endpoints for browser-use integration and task monitoring
+- **Health & Monitoring Endpoints**: 8 endpoints for system health, queue status, and service monitoring
+- **WebSocket Endpoints**: Real-time communication for browser automation monitoring
+- **Error Handling**: Standardized error response format and common error codes
+- **Data Models**: Complete JSON schemas for users, tasks, and task steps
+- **Security & Rate Limiting**: CORS, JWT, Helmet, and rate limiting configurations
+- **Integration Examples**: Frontend and Python integration code samples
+
+**Key Features Documented**:
+- **JWT Authentication**: Complete authentication flow with token management
+- **Browser Automation**: Local browser-use integration for CFDI invoice processing
+- **Real-time Monitoring**: WebSocket endpoints for live task progress updates
+- **Task Management**: Comprehensive task lifecycle management (create, execute, pause, resume, cancel)
+- **Health Monitoring**: Multiple health check endpoints for Kubernetes and monitoring systems
+- **Error Handling**: Structured error responses with codes and detailed messages
+- **Security**: CORS, input validation, error sanitization, and request correlation
+
+**Technical Specifications**:
+- **Base URL**: `http://localhost:8000` (configurable)
+- **API Version**: `v1`
+- **Content-Type**: `application/json`
+- **Authentication**: JWT Bearer Token
+- **Real-time**: WebSocket support for live updates
+- **Status Codes**: Standard HTTP status codes with detailed error responses
+
+**Integration Capabilities**:
+- **Frontend**: TypeScript/React integration with axios client
+- **Python**: Direct HTTP API integration with requests library
+- **WebSocket**: Real-time task monitoring and progress updates
+- **Monitoring**: Health checks, metrics, and logging endpoints
+
+**Documentation Quality**:
+- **Comprehensive Coverage**: All implemented endpoints documented with examples
+- **Input/Output Examples**: JSON request/response examples for all endpoints
+- **Error Scenarios**: Common error codes and handling strategies
+- **Security Guidelines**: Authentication, authorization, and security best practices
+- **Integration Examples**: Code samples for different programming languages
+
+**Files Created**:
+- `API_CONTRACT.md`: Complete API documentation (comprehensive markdown file)
+
+**Impact**:
+- Provides developers with complete API reference for integration
+- Documents current system capabilities and limitations
+- Establishes API standards and conventions
+- Enables third-party integrations and frontend development
+- Serves as foundation for API versioning and evolution
+
+**Next Steps**:
+- Use this contract for frontend development and testing
+- Share with stakeholders for API review and approval
+- Consider generating OpenAPI/Swagger documentation from this contract
+- Implement API versioning strategy based on documented endpoints
+
+---
+
 ### 2025-08-13 15:10 - Increased and Externalized Session Creation Timeout
 
 **Date & Time**: 2025-08-13 15:10
@@ -1407,3 +1520,5 @@ Frontend → Task Creation → Backend → Python Session Creation → Live View
 - `frontend/components/DashboardDualPane.tsx`
 
 **Testing Status**: Ready for testing - the live view URL should now be delivered immediately after session creation without any blocking or timing issues.[2025-08-13 11:23:25 -04:00] Pushed branch 'liveView' to remote 'origin' (https://github.com/Gaman-AI/Facturas_agent.git).
+
+[2025-08-13 13:04:34 -04:00] Pulled only 'frontend' from branch 'users/aanwi/frontend-facturas' into 'aanwi_frontend' via git sparse-checkout for component extraction.
