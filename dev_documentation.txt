@@ -2,6 +2,101 @@
 
 ## Latest Updates
 
+### 2025-01-27 - Enhanced Dashboard with File Upload and Dual Pane Integration
+
+**Date & Time**: 2025-01-27
+
+**Objective**: Restructure the dashboard to move file upload functionality from Page 3 to Page 2, add vendor URL input, and integrate with dual pane view showing extracted ticket details and live browser view.
+
+**Implementation Details**:
+
+1. **New EnhancedTaskSubmission Component** (`frontend/components/EnhancedTaskSubmission.tsx`):
+   - **File Upload Interface**: Comprehensive drag-and-drop file upload for receipts and PDFs
+   - **Vendor URL Input**: Optional field for specifying target website for automation
+   - **Task Description**: Text area for describing what the AI should do with uploaded files
+   - **AI Provider Selection**: Dropdown for choosing OpenAI, Anthropic, or Google models
+   - **Smart Task Generation**: Automatically generates task descriptions from uploaded files
+   - **Redirect to Dual Pane**: Automatically switches to dual pane view after task creation
+
+2. **New TicketDetailsPane Component** (`frontend/components/TicketDetailsPane.tsx`):
+   - **Extracted Ticket Information**: Displays structured data from uploaded receipts
+   - **Real-time Status**: Shows extraction progress and completion status
+   - **Financial Summary**: Displays subtotal, tax, and total amounts
+   - **Item Details**: Lists individual items with quantities and prices
+   - **Extraction Metadata**: Shows confidence scores and extraction methods
+   - **Action Buttons**: Export functionality and reset options
+
+3. **Updated DashboardDualPane Component** (`frontend/components/DashboardDualPane.tsx`):
+   - **Left Pane**: Now shows TicketDetailsPane instead of task submission form
+   - **Right Pane**: Maintains live browser view for real-time automation monitoring
+   - **Integrated Workflow**: Seamless transition from task creation to monitoring
+
+4. **Dashboard Page Updates** (`frontend/app/(dashboard)/dashboard/page.tsx`):
+   - **Page 2 Integration**: EnhancedTaskSubmission component now appears on main dashboard
+   - **Dual Pane Toggle**: Automatic switching to dual pane view after task submission
+   - **Improved UX**: Clear workflow from file upload to task monitoring
+
+5. **API Service Updates** (`frontend/services/api.ts`):
+   - **Vendor URL Support**: Added vendor_url parameter to createBrowserbaseTask method
+   - **Enhanced Task Creation**: Better integration with Browserbase cloud service
+
+**Key Features Implemented**:
+
+1. **File Upload on Page 2**:
+   - Drag-and-drop interface for receipts and PDFs
+   - Support for multiple file formats (JPG, PNG, GIF, PDF)
+   - File validation and size limits (10MB max)
+   - Visual file previews and management
+
+2. **Vendor URL Input**:
+   - Optional field for specifying target website
+   - URL validation and formatting
+   - Integration with task execution
+
+3. **Dual Pane Integration**:
+   - Left pane: Extracted ticket details with real-time updates
+   - Right pane: Live browser view for automation monitoring
+   - Seamless workflow from task creation to execution
+
+4. **Enhanced Task Flow**:
+   - Upload files and describe task on Page 2
+   - Click "Start Task" to process receipt
+   - Automatic redirect to dual pane view
+   - Real-time monitoring of extraction and automation
+
+**Files Created/Modified**:
+- `frontend/components/EnhancedTaskSubmission.tsx` - New component for Page 2
+- `frontend/components/TicketDetailsPane.tsx` - New component for left pane
+- `frontend/components/DashboardDualPane.tsx` - Updated to use TicketDetailsPane
+- `frontend/app/(dashboard)/dashboard/page.tsx` - Integrated EnhancedTaskSubmission
+- `frontend/services/api.ts` - Added vendor_url support
+
+**User Experience Flow**:
+1. **Page 2 (Dashboard)**: User uploads receipt, enters vendor URL, describes task
+2. **Task Submission**: Clicks "Start Task" button to process receipt
+3. **Automatic Redirect**: Dashboard switches to dual pane view
+4. **Left Pane**: Shows extracted ticket details in real-time
+5. **Right Pane**: Displays live browser automation view
+
+**Benefits Achieved**:
+- **Streamlined Workflow**: File upload moved to main dashboard for better accessibility
+- **Enhanced Context**: Vendor URL provides better automation targeting
+- **Real-time Monitoring**: Users can see both extracted data and automation progress
+- **Better Integration**: Seamless transition between task creation and monitoring
+- **Improved UX**: Clear visual separation between task setup and execution
+
+**Technical Improvements**:
+- **Component Architecture**: Better separation of concerns between task creation and monitoring
+- **State Management**: Improved state handling for file uploads and task execution
+- **API Integration**: Enhanced task creation with vendor URL support
+- **Responsive Design**: Maintained mobile-friendly layout across all components
+
+**Next Steps**:
+- **Testing**: Verify file upload and dual pane integration
+- **User Feedback**: Gather feedback on new workflow
+- **Performance**: Optimize file processing and extraction
+- **Additional Features**: Consider adding more extraction fields or automation options
+
 ### 2025-01-27 - Fixed Syntax Errors in SimpleTaskSubmissionPane Component
 
 **Date & Time**: 2025-01-27
@@ -858,3 +953,190 @@ The emoji characters (🚀🎉✅❌💥⚠️ℹ️⏹️🏁) added for better
 - All form elements should be accessible through scrolling
 
 **Status**: ✅ **COMPLETED** - Left pane scrolling issue resolved with proper ScrollArea implementation
+
+---
+
+2025-01-27 - Backend API Fixes and Demo Mode Implementation
+
+**Date & Time**: 2025-01-27
+
+**Objective**: Fix 404 Not Found errors for browserbase API endpoints, implement missing backend routes for browserbase integration, add demo mode to frontend for immediate UI testing, and ensure proper error handling and user feedback.
+
+**Root Cause Analysis**:
+The frontend was calling non-existent endpoints:
+- POST /api/v1/browserbase/sessions (404 Not Found)
+- POST /api/v1/browserbase/execute (404 Not Found)
+
+These endpoints were missing from the backend, causing the API integration to fail.
+
+**Implementation**:
+1. Backend API Fixes:
+   - Created new browserbase.js routes file
+   - Added missing endpoints:
+     * POST /api/v1/browserbase/sessions - Create browser session
+     * POST /api/v1/browserbase/execute - Execute task in session
+     * GET /api/v1/browserbase/sessions/:sessionId - Get session details
+     * DELETE /api/v1/browserbase/sessions/:sessionId - Close session
+     * GET /api/v1/browserbase/health - Service health check
+
+2. Enhanced BrowserAgentService:
+   - Added createSession() method for session management
+   - Added getSession() method for session retrieval
+   - Added closeSession() method for session cleanup
+   - Implemented in-memory session storage
+
+3. Frontend Demo Mode:
+   - Added demo mode toggle in EnhancedTaskSubmission
+   - Implemented bypass logic for API calls in demo mode
+   - Enhanced TicketDetailsPane with realistic demo data
+   - Added progress indicators and extraction simulation
+
+4. Error Handling Improvements:
+   - Better error messages for different failure scenarios
+   - Specific handling for 404 API errors
+   - User-friendly error display with actionable information
+
+**Files Modified**:
+- backend/src/app.js (added browserbase routes)
+- backend/src/routes/browserbase.js (NEW - complete API implementation)
+- backend/src/services/browserAgentService.js (added session methods)
+- frontend/components/EnhancedTaskSubmission.tsx (added demo mode)
+- frontend/components/TicketDetailsPane.tsx (enhanced demo data)
+
+API ENDPOINTS IMPLEMENTED:
+- POST /api/v1/browserbase/sessions
+  * Creates new browser session for live viewing
+  * Returns session_id, live_view_url, connect_url
+  * Supports context_name and keep_alive parameters
+
+- POST /api/v1/browserbase/execute
+  * Executes task in existing browser session
+  * Requires session_id and task parameters
+  * Supports llm_provider, model, max_steps, vendor_url
+
+- GET /api/v1/browserbase/sessions/:sessionId
+  * Retrieves session status and details
+  * Returns session information and metadata
+
+- DELETE /api/v1/browserbase/sessions/:sessionId
+  * Closes and cleans up browser session
+  * Returns success confirmation
+
+- GET /api/v1/browserbase/health
+  * Service health check endpoint
+  * Returns service status and diagnostics
+
+DEMO MODE FEATURES:
+- Toggle checkbox for enabling demo mode
+- Bypasses all API calls when enabled
+- Simulates 1-second loading delay
+- Immediately redirects to dual-pane view
+- Shows realistic ticket extraction progress
+- Displays sample Walmart México receipt data
+- Includes export and reset functionality
+
+ERROR HANDLING:
+- 404 errors: "API endpoint not found. Please check backend configuration."
+- Network errors: "Failed to create task. Please try again."
+- API errors: Displays specific error message from backend
+- Validation errors: Clear feedback for missing required fields
+
+TESTING INSTRUCTIONS:
+1. Enable demo mode checkbox
+2. Fill in any task description and vendor URL
+3. Upload any file (or leave empty)
+4. Click "Start Task"
+5. Observe immediate redirect to dual-pane view
+6. Watch extraction progress simulation
+7. View completed demo ticket details
+
+BENEFITS:
+- Immediate UI testing without backend dependencies
+- Clear error messages for troubleshooting
+- Proper API endpoint implementation
+- Enhanced user experience with demo data
+- Better development and testing workflow
+
+NEXT STEPS:
+- Test backend API endpoints with real requests
+- Verify browserbase integration functionality
+- Implement proper session management
+- Add real-time browser view integration
+- Deploy and test in production environment
+
+2025-01-27 - Demo Mode Context Implementation and API Error Resolution
+
+**Date & Time**: 2025-01-27
+
+**Objective**: Implement a centralized demo mode context system to prevent API errors during UI testing, and resolve the 404 errors from CFDITaskForm component.
+
+**Root Cause Analysis**:
+The CFDITaskForm component was automatically testing API connections on mount, causing 404 errors even when demo mode was enabled. This was interfering with the demo mode testing experience.
+
+**Implementation**:
+1. Created DemoModeContext (frontend/contexts/DemoModeContext.tsx):
+   - Centralized demo mode state management
+   - localStorage persistence for demo mode preference
+   - Global window flag for components that don't use context
+   - Provider component for app-wide demo mode access
+
+2. Enhanced Demo Mode Detection:
+   - Context-based demo mode checking in components
+   - Fallback utility functions for legacy components
+   - Automatic localStorage synchronization
+   - Global window flag for cross-component communication
+
+3. Updated Components to Use Demo Mode Context:
+   - EnhancedTaskSubmission: Uses context instead of local state
+   - TicketDetailsPane: Integrates with demo mode context
+   - CFDITaskForm: Skips API connection test when in demo mode
+   - Dashboard: Shows demo mode alert banner
+
+4. Added Demo Mode Indicators:
+   - Blue alert banner at top of dashboard when demo mode is active
+   - Clear messaging about API calls being bypassed
+   - Visual feedback for demo mode status
+
+**Files Modified**:
+- frontend/contexts/DemoModeContext.tsx (NEW)
+- frontend/utils/demoMode.ts (NEW)
+- frontend/app/layout.tsx (added DemoModeProvider)
+- frontend/components/EnhancedTaskSubmission.tsx (uses context)
+- frontend/components/TicketDetailsPane.tsx (uses context)
+- frontend/components/CFDITaskForm.tsx (skips API test in demo mode)
+- frontend/app/(dashboard)/dashboard/page.tsx (demo mode alert)
+
+**Demo Mode Features**:
+- ✅ Centralized state management across all components
+- ✅ Automatic localStorage persistence
+- ✅ Global demo mode detection
+- ✅ API call bypassing for all components
+- ✅ Visual indicators and alerts
+- ✅ Fallback detection for legacy components
+
+**API Error Resolution**:
+- ✅ CFDITaskForm no longer makes API calls in demo mode
+- ✅ All components respect demo mode setting
+- ✅ No more 404 errors during UI testing
+- ✅ Seamless demo mode experience
+
+**Testing Instructions**:
+1. Navigate to dashboard
+2. Check "Demo Mode" checkbox in task submission form
+3. Observe blue demo mode alert banner at top
+4. Submit task - no API calls will be made
+5. Experience complete UI flow without errors
+6. Demo mode persists across page refreshes
+
+**Benefits**:
+- Immediate UI testing without backend dependencies
+- No API errors or connection failures
+- Consistent demo mode across all components
+- Better user experience for development and testing
+- Centralized control over demo mode behavior
+
+**Next Steps**:
+- Test demo mode functionality across all components
+- Verify no API calls are made when demo mode is active
+- Test demo mode persistence across browser sessions
+- Deploy demo mode for user acceptance testing

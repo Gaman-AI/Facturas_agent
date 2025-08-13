@@ -12,10 +12,14 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
 import { SimpleTaskSubmission } from '@/components/SimpleTaskSubmission';
 import { DashboardDualPane } from '@/components/DashboardDualPane';
+import { EnhancedTaskSubmission } from '@/components/EnhancedTaskSubmission';
 import { TaskStats } from '@/components/TaskStats';
 import { TaskList } from '@/components/TaskList';
 import { TaskProgressList } from '@/components/TaskProgressIndicator';
 import { ApiService } from '@/services/api';
+import { useDemoMode } from '@/contexts/DemoModeContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Info } from 'lucide-react';
 
 export default function DashboardPage() {
   return (
@@ -34,6 +38,7 @@ function DashboardContent() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [useDualPane, setUseDualPane] = useState(false);
+  const { isDemoMode } = useDemoMode();
 
   const handleLogout = async () => {
     try {
@@ -102,9 +107,24 @@ function DashboardContent() {
   const hasProfile = !!profile
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      {/* Demo Mode Alert */}
+      {isDemoMode && (
+        <div className="w-full bg-blue-50 border-b border-blue-200 p-4">
+          <div className="max-w-7xl mx-auto">
+            <Alert className="border-blue-200 bg-blue-50">
+              <Info className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                <strong>Demo Mode Active</strong> - All API calls are bypassed for UI testing. 
+                You can test the complete user flow without backend dependencies.
+              </AlertDescription>
+            </Alert>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-slate-200/50">
+      <header className="bg-white shadow-sm border-b border-slate-200">
         <div className="w-full mx-auto px-2 sm:px-4 lg:px-6">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
@@ -205,16 +225,16 @@ function DashboardContent() {
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center space-x-2 text-xl">
                   <Zap className="w-6 h-6 text-yellow-500" />
-                  <span>{t('tasks.simple.title')}</span>
+                  <span>Submit New Task</span>
                 </CardTitle>
                 <CardDescription className="text-slate-600">
-                  {t('tasks.simple.description')}
+                  Upload receipts and describe what to automate
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <SimpleTaskSubmission 
+                <EnhancedTaskSubmission 
                   onTaskSubmit={handleTaskSubmit}
-                  showRedirect={false}
+                  onRedirectToDualPane={() => setUseDualPane(true)}
                   className="mb-0"
                 />
               </CardContent>

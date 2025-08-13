@@ -10,6 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { websocketService } from '@/services/websocket'
 import ApiService from '@/services/api'
 import { LiveViewPane } from './LiveViewPane'
+import { TicketDetailsPane } from './TicketDetailsPane'
 
 export interface DashboardDualPaneProps {
   onTaskSubmit?: (taskId: string) => void
@@ -249,20 +250,15 @@ export function DashboardDualPane({
         
         <CardContent className="p-0 flex-1 h-full overflow-hidden min-h-0">
           <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-            {/* Left Pane - Task Submission (35% default) */}
+            {/* Left Pane - Ticket Details (35% default) */}
             <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
               <div className="h-full p-4 border-r-2 border-slate-200/40 bg-gradient-to-b from-white to-slate-50/30 min-h-0">
                 <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden">
-                  <LiveViewPane
-                    sessionId="dashboard"
+                  <TicketDetailsPane
                     taskId={taskState.taskId || undefined}
                     status={taskState.status}
-                    onTakeoverRequest={handleTakeoverRequest}
-                    onRefresh={handleRefreshView}
+                    onReset={resetTaskState}
                     className="h-full"
-                    viewType="taskSubmission"
-                    onTaskSubmit={handleTaskCreated}
-                    onResetTask={resetTaskState}
                   />
                 </div>
               </div>

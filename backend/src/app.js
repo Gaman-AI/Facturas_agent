@@ -8,6 +8,7 @@ import config from './config/index.js'
 import healthRoutes from './routes/health.js'
 import authRoutes from './routes/auth.js'
 import taskRoutes from './routes/tasks.js'
+import browserbaseRoutes from './routes/browserbase.js'
 import websocketService from './services/websocketService.js'
 
 import { createServer } from 'http'
@@ -55,6 +56,7 @@ app.use(cors({
   app.use('/health', healthRoutes)
   app.use('/api/v1/auth', authRoutes)
   app.use('/api/v1/tasks', taskRoutes)
+  app.use('/api/v1/browserbase', browserbaseRoutes)
 
   // API root endpoint
   app.get('/api/v1', (req, res) => {

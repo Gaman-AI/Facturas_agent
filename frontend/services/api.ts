@@ -658,7 +658,8 @@ export class ApiService {
         task: request.task,
         llm_provider: request.llm_provider || 'openai',
         model: request.model || 'gpt-4o-mini-2024-07-18',
-        max_steps: request.max_steps || 30
+        max_steps: request.max_steps || 30,
+        vendor_url: request.vendor_url
       });
 
       if (!taskResponse.data.success) {

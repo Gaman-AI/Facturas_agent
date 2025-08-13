@@ -15,6 +15,8 @@ import { Loader2, FileText, AlertCircle, CheckCircle, Play } from 'lucide-react'
 import { useAuth, useUserProfile } from '@/hooks/useAuth'
 import { useSessionManager } from '@/hooks/useSessionManager'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { useDemoMode } from '@/contexts/DemoModeContext'
+import { isDemoModeEnabled } from '@/utils/demoMode'
 import ApiService, { type CFDITaskRequest, type CFDITaskResponse } from '@/services/api'
 
 // Form validation schema
@@ -60,6 +62,7 @@ export function CFDITaskForm() {
   const { profile } = useUserProfile()
   const { ensureValidSession, isRefreshing: sessionRefreshing } = useSessionManager()
   const { t } = useLanguage()
+  const { isDemoMode } = useDemoMode()
 
   const {
     register,
@@ -79,8 +82,16 @@ export function CFDITaskForm() {
 
   const llmProvider = watch('llm_provider')
 
-  // Test backend connection on mount
+  // Test backend connection on mount (only if not in demo mode)
   React.useEffect(() => {
+    // Check if we're in demo mode using context or fallback utility
+    const shouldSkipApiTest = isDemoMode || isDemoModeEnabled()
+    
+    if (shouldSkipApiTest) {
+      console.log('🎭 Demo mode detected - skipping API connection test')
+      return
+    }
+
     const testConnection = async () => {
       try {
         const isConnected = await ApiService.testConnection()
@@ -93,7 +104,7 @@ export function CFDITaskForm() {
     }
     
     testConnection()
-  }, [])
+  }, [isDemoMode])
 
   // Poll task status function
   const pollTaskStatus = (taskId: string) => {
