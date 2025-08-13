@@ -14,6 +14,7 @@ class WebSocketService {
     this.wss = null
     this.clients = new Map() // Map of sessionId -> WebSocket
     this.taskSubscriptions = new Map() // Map of taskId -> Set of WebSocket clients
+    this.wssTickets = null
   }
 
   /**
@@ -34,6 +35,22 @@ class WebSocketService {
 
     this.wss.on('error', (error) => {
       console.error('❌ WebSocket server error:', error)
+    })
+
+    // Tickets WS endpoint
+    this.wssTickets = new WebSocketServer({
+      server,
+      path: '/api/v1/tickets/ws'
+    })
+
+    console.log('🔌 WebSocket server initialized on /api/v1/tickets/ws')
+
+    this.wssTickets.on('connection', (ws, req) => {
+      this.handleTicketsConnection(ws, req)
+    })
+
+    this.wssTickets.on('error', (error) => {
+      console.error('❌ Tickets WebSocket server error:', error)
     })
   }
 
@@ -97,6 +114,42 @@ class WebSocketService {
       console.error(`❌ WebSocket error for session ${sessionId}:`, error)
       this.clients.delete(sessionId)
     })
+  }
+
+  /**
+   * Handle new Ticket WebSocket connection
+   * @param {WebSocket} ws - WebSocket instance
+   * @param {import('http').IncomingMessage} req - HTTP request
+   */
+  handleTicketsConnection(ws, req) {
+    const url = new URL(req.url, `http://${req.headers.host}`)
+    const ticketId = url.searchParams.get('ticketId') || 'unknown'
+
+    console.log(`🔗 Tickets WebSocket connection established for ticket: ${ticketId}`)
+
+    // Subscribe client directly to ticket channel (reusing taskSubscriptions)
+    this.subscribeToTask(ws, ticketId)
+
+    // Acknowledge
+    this.sendToClient(ws, {
+      type: 'connection_status',
+      data: {
+        connected: true,
+        ticketId,
+        timestamp: new Date().toISOString()
+      }
+    })
+
+    // Cleanup on close
+    ws.on('close', () => {
+      const clients = this.taskSubscriptions.get(ticketId)
+      if (clients) {
+        clients.delete(ws)
+        if (clients.size === 0) this.taskSubscriptions.delete(ticketId)
+      }
+    })
+
+    ws.on('error', () => {})
   }
 
   /**
@@ -199,6 +252,10 @@ class WebSocketService {
       })
       console.log(`📡 Broadcasted to ${clients.size} clients for task: ${taskId}`)
     }
+  }
+
+  broadcastToTicket(ticketId, message) {
+    this.broadcastToTask(ticketId, message)
   }
 
   /**
@@ -318,6 +375,10 @@ class WebSocketService {
       this.clients.clear()
       this.taskSubscriptions.clear()
       console.log('🔌 WebSocket server closed')
+    }
+    if (this.wssTickets) {
+      this.wssTickets.close()
+      console.log('🔌 Tickets WebSocket server closed')
     }
   }
 }

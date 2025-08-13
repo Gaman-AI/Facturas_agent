@@ -10,6 +10,9 @@ import authRoutes from './routes/auth.js'
 import taskRoutes from './routes/tasks.js'
 import browserbaseRoutes from './routes/browserbase.js'
 import websocketService from './services/websocketService.js'
+import ocrRoutes from './routes/ocr.js'
+import ticketsRoutes from './routes/tickets.js'
+import agentTasksRoutes from './routes/agentTasks.js'
 
 import { createServer } from 'http'
 
@@ -57,6 +60,9 @@ app.use(cors({
   app.use('/api/v1/auth', authRoutes)
   app.use('/api/v1/tasks', taskRoutes)
   app.use('/api/v1/browserbase', browserbaseRoutes)
+  app.use('/api/v1/ocr', ocrRoutes)
+  app.use('/api/v1/tickets', ticketsRoutes)
+  app.use('/api/v1/agent-tasks', agentTasksRoutes)
 
   // API root endpoint
   app.get('/api/v1', (req, res) => {
@@ -70,7 +76,8 @@ app.use(cors({
         endpoints: {
           health: '/health',
           auth: '/api/v1/auth',
-          tasks: '/api/v1/tasks'
+          tasks: '/api/v1/tasks',
+          ocr: '/api/v1/ocr'
         },
         documentation: {
           swagger: '/api/v1/docs',

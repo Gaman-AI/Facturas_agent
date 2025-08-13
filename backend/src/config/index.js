@@ -40,6 +40,16 @@ const config = {
     browserbaseProjectId: process.env.BROWSERBASE_PROJECT_ID,
   },
 
+  // Azure Document Intelligence (OCR)
+  azure: {
+    documentIntelligence: {
+      endpoint: process.env.AZURE_DOC_INTELLIGENCE_ENDPOINT,
+      apiKey: process.env.AZURE_DOC_INTELLIGENCE_KEY,
+      modelId: process.env.AZURE_DOC_INTELLIGENCE_MODEL_ID || 'prebuilt-invoice',
+      apiVersion: process.env.AZURE_DOC_INTELLIGENCE_API_VERSION || '2023-10-31'
+    }
+  },
+
   // Task Configuration
   tasks: {
     maxConcurrent: parseInt(process.env.MAX_CONCURRENT_TASKS) || 5,
@@ -77,7 +87,10 @@ const config = {
     const recommended = [
       'SUPABASE_SERVICE_KEY',
       'JWT_SECRET',
-      'OPENAI_API_KEY'
+      'OPENAI_API_KEY',
+      // Azure OCR (recommended for OCR features)
+      'AZURE_DOC_INTELLIGENCE_ENDPOINT',
+      'AZURE_DOC_INTELLIGENCE_KEY'
     ]
 
     const missingRecommended = recommended.filter(key => !process.env[key])
