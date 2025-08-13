@@ -403,6 +403,96 @@ class BrowserAgentService {
       }
     }
   }
+
+  /**
+   * Create a new browser session for live viewing
+   * 
+   * @param {Object} sessionData - Session configuration
+   * @param {string} sessionData.contextName - Name/context for the session
+   * @param {boolean} sessionData.keepAlive - Whether to keep session alive
+   * @param {string} sessionData.userId - User ID who owns the session
+   * @returns {Promise<Object>} Created session object
+   */
+  async createSession(sessionData) {
+    const sessionId = uuidv4()
+    const now = new Date().toISOString()
+    
+    const session = {
+      id: sessionId,
+      userId: sessionData.userId,
+      contextName: sessionData.contextName,
+      keepAlive: sessionData.keepAlive,
+      status: 'created',
+      createdAt: now,
+      lastActivity: now,
+      connectUrl: `wss://connect.browserbase.com/session-${sessionId}`,
+      tasks: []
+    }
+    
+    // Store the session (in production, this would be in a database)
+    this.sessions = this.sessions || new Map()
+    this.sessions.set(sessionId, session)
+    
+    console.log(`✅ Created browser session: ${sessionId} for context: ${sessionData.contextName}`)
+    
+    return session
+  }
+
+  /**
+   * Get a session by ID
+   * 
+   * @param {string} sessionId - Session ID
+   * @param {string} [userId] - User ID (for authorization)
+   * @returns {Object|null} Session object or null if not found/unauthorized
+   */
+  getSession(sessionId, userId = null) {
+    if (!this.sessions) {
+      return null
+    }
+    
+    const session = this.sessions.get(sessionId)
+    
+    if (!session) {
+      return null
+    }
+    
+    // Check authorization if userId is provided
+    if (userId && session.userId !== userId) {
+      return null
+    }
+    
+    return session
+  }
+
+  /**
+   * Close a browser session
+   * 
+   * @param {string} sessionId - Session ID
+   * @param {string} [userId] - User ID (for authorization)
+   * @returns {boolean} True if session was closed, false otherwise
+   */
+  async closeSession(sessionId, userId = null) {
+    if (!this.sessions) {
+      return false
+    }
+    
+    const session = this.getSession(sessionId, userId)
+    
+    if (!session) {
+      return false
+    }
+    
+    // Update session status
+    session.status = 'closed'
+    session.lastActivity = new Date().toISOString()
+    
+    // Remove from active sessions
+    this.sessions.delete(sessionId)
+    
+    console.log(`✅ Closed browser session: ${sessionId}`)
+    
+    return true
+  }
 }
 
 export default new BrowserAgentService()

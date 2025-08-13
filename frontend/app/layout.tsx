@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { LanguageProvider } from '@/contexts/LanguageContext'
+import { DemoModeProvider } from '@/contexts/DemoModeContext'
 
 export const metadata: Metadata = {
   title: 'CFDI 4.0 Automation System',
@@ -26,7 +27,9 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <LanguageProvider>
           <AuthProvider>
-            {children}
+            <DemoModeProvider>
+              {children}
+            </DemoModeProvider>
           </AuthProvider>
         </LanguageProvider>
       </body>
