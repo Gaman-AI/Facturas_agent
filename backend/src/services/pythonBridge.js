@@ -29,6 +29,7 @@ class PythonBridge {
     ]
     this.scriptPath = path.join(__dirname, '..', '..', 'browser_agent.py')
     this.timeout = config.python.timeout || 300000 // 5 minutes default
+    this.sessionTimeout = config.python.sessionTimeout || 120000 // 2 minutes default
   }
 
   /**
@@ -117,6 +118,125 @@ class PythonBridge {
   }
 
   /**
+   * Create a Browserbase session only and return live view URL immediately
+   * 
+   * @param {Object} taskData - Task configuration object
+   * @returns {Promise<Object>} Session creation result with live view URL
+   */
+  async createBrowserSession(taskData) {
+    // Validate task data
+    if (!taskData || typeof taskData !== 'object') {
+      throw new Error('Task data must be a valid object')
+    }
+
+    if (!taskData.prompt && !taskData.vendor_url) {
+      throw new Error('Either prompt or vendor_url must be provided')
+    }
+
+    // Check if Python script exists
+    try {
+      await fs.access(this.scriptPath)
+    } catch (error) {
+      throw new Error(`Python script not found at ${this.scriptPath}`)
+    }
+
+    // Find a working Python executable
+    const pythonExecutable = await this.findWorkingPython()
+
+    return new Promise((resolve, reject) => {
+      const taskJson = JSON.stringify(taskData)
+      // Use session_only mode to create session only
+      const pythonProcess = spawn(pythonExecutable, [this.scriptPath, taskJson, 'session_only'], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: {
+          ...process.env,
+          PYTHONPATH: path.join(__dirname, '..', '..', 'browser-use'),
+          BROWSER_USE_SETUP_LOGGING: 'true'
+        }
+      })
+
+      let stdout = ''
+      let stderr = ''
+      let isResolved = false
+
+      // Set up timeout for session creation (shorter than full execution)
+      const timeoutId = setTimeout(() => {
+        if (!isResolved) {
+          isResolved = true
+          pythonProcess.kill('SIGTERM')
+          reject(new Error(`Session creation timed out after ${this.sessionTimeout}ms`))
+        }
+      }, this.sessionTimeout) // configurable session creation timeout
+
+      // Collect stdout data
+      pythonProcess.stdout.on('data', (data) => {
+        stdout += data.toString()
+      })
+
+      // Collect stderr data
+      pythonProcess.stderr.on('data', (data) => {
+        stderr += data.toString()
+      })
+
+      // Handle process completion
+      pythonProcess.on('close', (code) => {
+        clearTimeout(timeoutId)
+        
+        if (isResolved) {
+          return // Already handled by timeout
+        }
+        isResolved = true
+
+        if (code === 0) {
+          try {
+            // Try to parse the last JSON object from stdout
+            const jsonLines = stdout.trim().split('\n')
+            let result = null
+            
+            // Find the last valid JSON line (in case there are log messages)
+            for (let i = jsonLines.length - 1; i >= 0; i--) {
+              try {
+                result = JSON.parse(jsonLines[i])
+                break
+              } catch (e) {
+                // Continue looking for valid JSON
+                continue
+              }
+            }
+
+            if (!result) {
+              throw new Error('No valid JSON found in Python output')
+            }
+
+            resolve(result)
+          } catch (parseError) {
+            reject(new Error(`Failed to parse Python output: ${parseError.message}\nOutput: ${stdout}\nError: ${stderr}`))
+          }
+        } else {
+          const errorMsg = stderr || stdout || `Python process exited with code ${code}`
+          reject(new Error(`Session creation failed: ${errorMsg}`))
+        }
+      })
+
+      // Handle process errors
+      pythonProcess.on('error', (error) => {
+        clearTimeout(timeoutId)
+        
+        if (isResolved) {
+          return
+        }
+        isResolved = true
+
+        if (error.code === 'ENOENT') {
+          reject(new Error(`Python executable not found: ${pythonExecutable}. Please install Python or update the configuration.`))
+        } else {
+          reject(new Error(`Failed to spawn Python process: ${error.message}`))
+        }
+      })
+    })
+  }
+
+  /**
    * Execute a browser automation task using the Python browser-use agent
    * 
    * @param {Object} taskData - Task configuration object
@@ -151,7 +271,8 @@ class PythonBridge {
 
     return new Promise((resolve, reject) => {
       const taskJson = JSON.stringify(taskData)
-      const pythonProcess = spawn(pythonExecutable, [this.scriptPath, taskJson], {
+      // Use execute_task mode (default) for full task execution
+      const pythonProcess = spawn(pythonExecutable, [this.scriptPath, taskJson, 'execute_task'], {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
           ...process.env,
