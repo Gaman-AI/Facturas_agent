@@ -18,6 +18,424 @@ This comprehensive document includes:
 
 ## Latest Updates
 
+### 2025-08-13 15:10 - Increased and Externalized Session Creation Timeout
+
+**Date & Time**: 2025-08-13 15:10
+
+**Objective**: Fix premature session creation failures caused by a hardcoded 30s timeout while provisioning Browserbase sessions.
+
+**Issue Identified**:
+- Backend session creation was failing with: `Session creation timed out after 30000ms`.
+- Root cause: `backend/src/services/pythonBridge.js` had a hardcoded 30s timeout for session creation, which is often insufficient for Browserbase provisioning and browser initialization.
+
+**Changes Made**:
+- Updated `backend/src/config/index.js`:
+  - Added `python.sessionTimeout` config sourced from `PYTHON_SESSION_TIMEOUT` env var with a default of 120000ms (2 minutes).
+- Updated `backend/src/services/pythonBridge.js`:
+  - Replaced hardcoded 30s session creation timeout with configurable `this.sessionTimeout`.
+  - Error message now reflects the configured timeout value.
+
+**Environment Configuration**:
+- Add to `backend/.env` (uncomment/tune as needed):
+  - `# PYTHON_SESSION_TIMEOUT=120000`
+
+**Impact**:
+- Reduces false timeouts while creating Browserbase sessions.
+- Makes timeout tunable per environment without code changes.
+
+**Verification**:
+- Restart backend and submit a task; session creation should no longer fail at 30s and should allow up to configured timeout.
+
+
+### 2025-01-27 19:00 - Integrated Live View Iframe in DualPaneMonitor
+
+**Date & Time**: 2025-01-27 19:00
+
+**Objective**: Modify DualPaneMonitor to accept a liveViewUrl prop and display it in an iframe when provided, allowing frontend to pass live view URLs when sessions start.
+
+**Issue Identified**:
+The DualPaneMonitor was using complex LiveViewPane components instead of a simple iframe display for live browser views. This made it difficult to integrate with frontend-provided live view URLs.
+
+**Changes Made**:
+
+**Frontend Changes**:
+- **Updated `frontend/components/DualPaneMonitor.tsx`**: 
+  - Added `currentLiveViewUrl` state to track live view URL changes
+  - Added `useEffect` to update live view URL when prop changes
+  - Added live view URL update from task response data
+  - Replaced LiveViewPane components with custom iframe implementation
+  - Added `renderLiveView()` function to conditionally render iframe or placeholder
+  - Restructured left pane to show task status, session controls, and activity logs
+  - Added proper iframe sandbox attributes and styling
+  - **NEW**: Added live view URL input field for manual URL entry
+  - **NEW**: Added Update, Refresh, and Clear buttons for URL management
+  - **NEW**: Added URL validation and iframe refresh functionality
+
+**Technical Implementation Details**:
+- **Iframe Integration**: Uses standard HTML iframe with proper sandbox attributes
+- **Live View URL Management**: Automatically updates from both props and task response data
+- **Manual URL Input**: Users can manually enter live view URLs in the dashboard
+- **URL Controls**: Update, refresh, and clear functionality for live view management
+- **Responsive Design**: Maintains resizable dual-pane layout with status on left, live view on right
+- **Placeholder State**: Shows informative placeholder when no live view URL is available
+- **Session Controls**: Integrated pause, resume, stop, and restart functionality
+- **Real-time Updates**: Maintains WebSocket/polling integration for live status updates
+
+**Live View URL Input Features**:
+- **Input Field**: URL input with placeholder and validation
+- **Update Button**: Applies the entered URL and refreshes iframe
+- **Refresh Button**: Forces iframe refresh without changing URL
+- **Clear Button**: Removes current live view URL
+- **Current URL Display**: Shows the currently active live view URL
+- **Help Text**: Instructions for users on how to use the feature
+
+**Iframe Configuration**:
+```tsx
+<iframe
+  src={currentLiveViewUrl}
+  sandbox="allow-same-origin allow-scripts"
+  allow="clipboard-read; clipboard-write"
+  style={{ pointerEvents: 'none' }}
+  className="w-full h-full border-0"
+  title="Live Browser View"
+/>
+```
+
+**Benefits**:
+- **Simplified Integration**: Direct iframe display without complex component dependencies
+- **Frontend Control**: Frontend can now pass live view URLs when sessions start
+- **Manual Control**: Users can manually enter and manage live view URLs
+- **Real-time Updates**: Live view URL updates automatically from task responses
+- **Better UX**: Clear placeholder state when no live view is available
+- **Session Management**: Integrated controls for managing browser automation tasks
+- **Flexible URL Management**: Support for both automatic and manual URL updates
+
+**Usage**:
+```tsx
+// When you have a live view URL from your session
+<DualPaneMonitor
+  taskId="your-task-id"
+  sessionId="your-session-id"
+  liveViewUrl="https://browserbase.com/sessions/abc123"
+  initialStatus="running"
+/>
+
+// Users can also manually enter URLs in the dashboard
+```
+
+**Files Modified**:
+- `frontend/components/DualPaneMonitor.tsx`
+
+**Migration Notes**:
+- LiveViewPane component dependency removed
+- Iframe automatically displays when liveViewUrl prop is provided
+- New live view URL input field added for manual URL entry
+- Task status and controls moved to left pane for better organization
+- Activity logs integrated for real-time monitoring
+- URL management controls (Update, Refresh, Clear) added
+
+### 2025-01-27 18:30 - Converted WebSocket Service to Polling Service
+
+**Date & Time**: 2025-01-27 18:30
+
+**Objective**: Eliminate WebSocket connection failures and complexity by converting to a simple polling-based service that provides the same real-time updates without connection issues.
+
+**Issue Identified**:
+The frontend was experiencing persistent WebSocket connection failures:
+1. **Endpoint Mismatch**: Frontend expected `ws://localhost:8000/ws/{taskId}` but backend only implemented `/api/v1/browser-agent/ws?sessionId={sessionId}`
+2. **Connection Failures**: WebSocket connections were failing with error code 1006 and connection timeouts
+3. **Unnecessary Complexity**: WebSockets were only providing real-time updates, not core functionality
+4. **Reconnection Loops**: Failed connections triggered exponential backoff reconnection attempts
+
+**Root Cause Analysis**:
+- **WebSockets aren't essential**: Core app functionality (task submission, execution, status checking) works via REST API calls
+- **WebSockets only provide real-time updates**: They're just for live progress monitoring, not core functionality
+- **Polling alternative**: Same real-time updates can be achieved with periodic API calls to check task status
+
+**Changes Made**:
+
+**Frontend Changes**:
+- **Completely replaced `frontend/services/websocket.ts`**: 
+  - Converted from `WebSocketService` to `PollingService`
+  - Replaced WebSocket connections with API polling intervals
+  - Maintained same event-driven interface for backward compatibility
+  - Added `startPolling()` and `startBrowserAgentPolling()` methods
+  - Added `stopPolling()` and `stopAllPolling()` methods
+  - Set default polling interval to 2 seconds (configurable via env var)
+
+**Component Updates**:
+- **Updated `frontend/components/BrowserAgentRealtime.tsx`**: 
+  - Changed `websocketService.connectBrowserAgent()` to `websocketService.startBrowserAgentPolling()`
+  - Changed `websocketService.disconnect()` to `websocketService.stopPolling()`
+  - Updated error messages to reflect polling approach
+- **Updated `frontend/components/DualPaneMonitor.tsx`**: 
+  - Changed WebSocket connection methods to polling methods
+  - Updated disconnect calls to stop polling
+- **Updated `frontend/components/DashboardDualPane.tsx`**: 
+  - Changed WebSocket connection to polling for task monitoring
+
+**Technical Implementation Details**:
+- **Polling Mechanism**: Uses `setInterval` to poll API endpoints every 2 seconds
+- **Event Emission**: Same event-driven interface maintained for seamless component integration
+- **Authentication**: Automatically includes auth tokens from localStorage/sessionStorage
+- **Resource Management**: Proper cleanup of polling intervals to prevent memory leaks
+- **Backward Compatibility**: Exports `websocketService` as alias to `pollingService` for existing code
+
+**Benefits**:
+- **Eliminates Connection Failures**: No more WebSocket connection errors or timeouts
+- **Simplified Architecture**: Removes complex reconnection logic and connection state management
+- **Better Reliability**: HTTP API calls are more reliable than WebSocket connections
+- **Easier Debugging**: Standard HTTP requests are easier to debug than WebSocket issues
+- **Reduced Complexity**: No need to handle WebSocket connection states, reconnections, or ping/pong
+
+**Configuration**:
+- **Environment Variables**: 
+  - `NEXT_PUBLIC_POLLING_INTERVAL`: Polling frequency in milliseconds (default: 2000)
+  - `NEXT_PUBLIC_API_BASE_URL`: API base URL for polling requests
+- **Polling Endpoints**:
+  - Task status: `/api/v1/tasks/browser-use/{taskId}`
+  - Browser agent: `/api/v1/browser-agent-realtime?sessionId={sessionId}`
+
+**Testing**:
+- Verified polling service starts and stops correctly
+- Confirmed event emission works for all task update types
+- Tested authentication token inclusion in polling requests
+- Validated proper cleanup of polling intervals
+
+**Files Modified**:
+- `frontend/services/websocket.ts` (completely rewritten)
+- `frontend/components/BrowserAgentRealtime.tsx`
+- `frontend/components/DualPaneMonitor.tsx`
+- `frontend/components/DashboardDualPane.tsx`
+
+**Migration Notes**:
+- All existing WebSocket event listeners continue to work unchanged
+- Components automatically use polling instead of WebSocket connections
+- No changes needed to component logic or event handling
+- WebSocket-related environment variables are no longer used
+
+### 2025-01-27 16:45 - Implemented Live View URL WebSocket Updates for Iframe
+
+**Date & Time**: 2025-01-27 16:45
+
+**Objective**: Enable real-time passing of generated `live_view_url` to the iframe in the frontend dual pane page via WebSocket updates.
+
+**Issue Identified**:
+The frontend iframe was not receiving the generated `live_view_url` in real-time because:
+1. WebSocket service lacked a method to send comprehensive task updates with session information
+2. Frontend WebSocket service didn't support the `taskUpdate` event type
+3. DashboardDualPane component wasn't establishing WebSocket connections for real-time updates
+
+**Changes Made**:
+
+**Backend Changes**:
+- **Updated `backend/src/services/websocketService.js`**: Added `sendTaskUpdate()` method to send comprehensive task updates including session information
+- **Updated `backend/src/services/browserAgentService.js`**: 
+  - Imported WebSocket service
+  - Modified `updateTaskStatus()` method to send WebSocket updates when session information is available
+  - Added immediate WebSocket update when session is created during task execution
+
+**Frontend Changes**:
+- **Updated `frontend/services/websocket.ts`**: 
+  - Added `taskUpdate` event type to WebSocketMessage interface
+  - Added `taskUpdate` to default event listeners setup
+- **Updated `frontend/components/DashboardDualPane.tsx`**: 
+  - Added WebSocket connection establishment when tasks are created
+  - Enhanced task update handling to properly process `liveViewUrl` from WebSocket updates
+  - Added proper WebSocket cleanup on component unmount
+- **Updated `frontend/components/LiveViewPane.tsx`**: 
+  - Added debugging console logs for `liveViewUrl` prop changes
+  - Added debugging for `browserViewUrl` state changes
+  - Enhanced waiting state display to show current `liveViewUrl` value
+
+**Technical Implementation Details**:
+- **WebSocket Event Flow**: `taskUpdate` → Frontend receives → Updates `taskState.liveViewUrl` → `LiveViewPane` receives prop → Iframe `src` updated
+- **Real-time Updates**: Session information is sent immediately when available, not just on task completion
+- **Fallback Handling**: Maintains existing API-based fallback for initial task details
+- **Debug Logging**: Added comprehensive logging to track URL flow through the system
+
+**Benefits**:
+- Real-time iframe updates with live view URLs as soon as they're generated
+- Improved user experience with immediate browser session visibility
+- Better debugging capabilities for troubleshooting live view issues
+- Maintains backward compatibility with existing API endpoints
+
+**Testing**:
+- Created and ran test script to verify live view URL format and flow
+- Verified WebSocket event handling and iframe src updates
+- Confirmed proper cleanup and error handling
+
+**Files Modified**:
+- `backend/src/services/websocketService.js`
+- `backend/src/services/browserAgentService.js`
+- `frontend/services/websocket.ts`
+- `frontend/components/DashboardDualPane.tsx`
+- `frontend/components/LiveViewPane.tsx`
+
+### 2025-01-27 17:15 - Removed Mock URL Fallbacks for Live View
+
+**Date & Time**: 2025-01-27 17:15
+
+**Objective**: Eliminate mock URL fallbacks that were preventing real live view URLs from being displayed in the iframe.
+
+**Issue Identified**:
+The iframe was receiving mock URLs instead of real live view URLs because:
+1. **Frontend fallback**: DashboardDualPane was constructing fallback URLs like `https://www.browserbase.com/sessions/${sessionId}` when no real URL was available
+2. **Backend fallback**: API routes were also constructing similar fallback URLs in the response
+3. **Mock URLs**: These fallback URLs pointed to generic Browserbase sessions pages instead of the actual devtools inspector with live automation
+
+**Changes Made**:
+
+**Frontend Changes**:
+- **Updated `frontend/components/DashboardDualPane.tsx`**: 
+  - Removed mock URL fallback: `https://www.browserbase.com/sessions/${sessionId}`
+  - Changed to: `taskDetails.data.live_view_url || null`
+  - Now only uses real URLs from backend, shows `null` when no URL available
+
+**Backend Changes**:
+- **Updated `backend/src/routes/tasks.js`**: 
+  - Removed mock URL fallback in API response
+  - Changed from: `(task.session_id ? \`https://www.browserbase.com/sessions/${task.session_id}\` : null)`
+  - Changed to: `null`
+  - Now only returns real `live_view_url` from task data
+
+**Technical Details**:
+- **Before**: If no `live_view_url` was available, the system would construct a generic Browserbase sessions URL
+- **After**: If no `live_view_url` is available, the system returns `null` and shows proper "waiting for session" state
+- **Impact**: Iframe now only displays when a real, valid devtools inspector URL is available
+
+**Benefits**:
+- **No more mock URLs**: Iframe only receives real live view URLs from the backend
+- **Proper waiting state**: Users see appropriate "initializing session" message instead of generic pages
+- **Real-time updates**: When the real URL becomes available via WebSocket, iframe updates immediately
+- **Better UX**: Clear distinction between "no session yet" and "session ready with live view"
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx`
+- `backend/src/routes/tasks.js`
+
+**Testing Status**: Changes applied, ready for testing with real Browserbase sessions
+
+### 2025-01-27 17:30 - Fixed TaskList Component Slice Error
+
+**Date & Time**: 2025-01-27 17:30
+
+**Objective**: Fix the "Cannot read properties of undefined (reading 'slice')" error in the TaskList component.
+
+**Issue Identified**:
+The TaskList component was crashing with a TypeError when trying to call `.slice(0, 8)` on `task.id` because:
+1. **Invalid task objects**: Some tasks in the array were `null`, `undefined`, or missing the `id` property
+2. **API response issues**: The API transformation might be creating invalid task objects
+3. **Missing null checks**: The component wasn't validating task objects before accessing their properties
+
+**Changes Made**:
+
+**Frontend Changes**:
+- **Updated `frontend/components/TaskList.tsx`**: 
+  - Added comprehensive null checks for all task properties using optional chaining (`?.`)
+  - Added validation to filter out invalid tasks before processing
+  - Updated `getTaskActions` function to handle null/undefined tasks
+  - Added validation in real-time updates processing
+  - Added validation when adding tasks to monitoring
+  - Added debugging to log invalid tasks
+
+- **Updated `frontend/services/api.ts`**: 
+  - Added validation in the `getTasks` method to ensure proper API response structure
+  - Added filtering to remove tasks missing required fields like `task_id`
+  - Added debugging to log raw API responses and transformation process
+  - Enhanced error handling for malformed API responses
+
+**Technical Details**:
+- **Before**: Component would crash when encountering tasks with missing `id` property
+- **After**: Component gracefully handles invalid tasks by filtering them out and showing fallback values
+- **Validation**: Multiple layers of validation ensure only valid tasks are processed
+- **Debugging**: Added comprehensive logging to identify the source of invalid tasks
+
+**Benefits**:
+- **No more crashes**: Component handles invalid data gracefully
+- **Better error handling**: Invalid tasks are filtered out instead of causing errors
+- **Improved debugging**: Console logs help identify data quality issues
+- **Robust rendering**: Component continues to work even with malformed data
+
+**Files Modified**:
+- `frontend/components/TaskList.tsx`
+- `frontend/services/api.ts`
+
+**Testing Status**: Error fixed, component now handles invalid data gracefully
+
+### 2025-01-27 16:15 - Fixed Live View URL Format
+
+**Date & Time**: 2025-01-27 16:15
+
+**Objective**: Change the live view URL from fullscreen devtools format to standard devtools inspector format for better development experience.
+
+**Issue Identified**:
+The browser agent was generating fullscreen devtools URLs like:
+```
+https://www.browserbase.com/devtools-fullscreen/inspector.html?wss=...
+```
+
+But the desired format was standard devtools inspector URLs like:
+```
+https://www.browserbase.com/devtools/inspector.html?wss=...
+```
+
+**Changes Made**:
+- **Updated `backend/browser_agent.py`**: Modified both `create_browserbase_session()` and `run_browser_task_with_session_info()` functions
+- **URL Construction Logic**: Added intelligent URL parsing to extract session ID and page ID from the fullscreen URL
+- **Standard Format**: Constructs URLs using the standard devtools path instead of fullscreen
+- **Fallback Handling**: Maintains backward compatibility with fallback to fullscreen URL if parsing fails
+
+**Technical Details**:
+- **File Modified**: `backend/browser_agent.py`
+- **URL Pattern Change**: `devtools-fullscreen/inspector.html` → `devtools/inspector.html`
+- **Regex Parsing**: Added regex pattern to extract session and page IDs from existing URLs
+- **Fallback Strategy**: Multiple fallback levels for robust URL generation
+
+**Benefits**:
+- Standard devtools interface instead of fullscreen mode
+- Better development experience with familiar devtools layout
+- Maintains all existing functionality while improving UX
+- Robust error handling with fallback mechanisms
+
+**Testing Required**:
+- Verify live view URLs now generate in standard devtools format
+- Confirm session tracking still works correctly
+- Test both single and batch task execution modes
+- Validate fallback mechanisms work when parsing fails
+
+---
+
+### 2025-01-27 15:45 - Updated Default LLM Model
+
+**Date & Time**: 2025-01-27 15:45
+
+**Objective**: Update the default LLM model from the deprecated `gpt-4o-mini-2024-07-18` to the current standard `gpt-4o-mini` model.
+
+**Changes Made**:
+- **Updated `backend/browser_agent.py`**: Changed default model parameter in all function definitions and calls from `gpt-4o-mini-2024-07-18` to `gpt-4o-mini`
+- **Functions Updated**:
+  - `run_browser_task()` - Default model parameter
+  - `run_browser_task_with_session_info()` - Default model parameter  
+  - JSON API mode - Default model fallback
+  - Multiple arguments mode - Hardcoded model reference
+
+**Technical Details**:
+- **File Modified**: `backend/browser_agent.py`
+- **Model Change**: `gpt-4o-mini-2024-07-18` → `gpt-4o-mini`
+- **Impact**: All browser automation tasks will now use the current standard GPT-4o-mini model by default
+- **Backward Compatibility**: Users can still specify custom models via JSON API parameters
+
+**Reason for Change**:
+The `gpt-4o-mini-2024-07-18` model was a specific dated version that has been deprecated. The current `gpt-4o-mini` model provides the same capabilities with ongoing updates and improvements.
+
+**Testing Required**:
+- Verify browser automation tasks execute successfully with new default model
+- Confirm custom model specification still works via API parameters
+- Test both interactive and JSON API modes
+
+---
+
 ### 2025-01-12 18:30 - Python Bridge Service Fixes
 
 **Date & Time**: 2025-01-12 18:30
@@ -763,3 +1181,229 @@ uv sync
 **Status**: COMPLETE - Both Python path and language issues resolved
 
 ---
+
+### 2025-01-27 15:30
+
+**Date & Time**: 2025-01-27 15:30
+
+**Objective**: Implement comprehensive live view URL fetching and debugging for the DashboardDualPane component to ensure proper display of Browserbase devtools URLs in iframes.
+
+**Implementation Details**:
+
+1. **Enhanced Live View URL Fetching**:
+   - **Modified `frontend/components/DashboardDualPane.tsx`**:
+     - Implemented intelligent polling system with exponential backoff to wait for backend to generate live_view_url
+     - Added URL format validation to ensure only proper Browserbase devtools URLs are used
+     - Replaced simple retry logic with comprehensive polling that continues until URL is available
+     - Added proper error handling and status tracking for URL generation process
+
+2. **Comprehensive Debug Information**:
+   - **Added Debug Panel**: Shows real-time information about task ID, status, session ID, and live view URL
+   - **URL Analysis**: Displays validation checks for protocol, domain, path, WebSocket presence, and debug flags
+   - **Status Indicators**: Visual feedback showing when connecting to Browserbase and waiting for URL generation
+   - **Console Logging**: Enhanced logging throughout the URL fetching process for easier debugging
+
+3. **Improved URL Validation**:
+   - **Format Checking**: Validates that URLs follow the expected Browserbase devtools format:
+     `https://www.browserbase.com/devtools/inspector.html?wss=connect.browserbase.com/debug/{session_id}/devtools/page/{page_id}?debug=true`
+   - **Input Validation**: Enhanced manual URL input with real-time format validation and helpful error messages
+   - **Fallback Prevention**: Removed mock URL fallbacks to ensure only real backend-generated URLs are used
+
+4. **Enhanced User Experience**:
+   - **Loading States**: Clear visual indicators for different stages of URL generation
+   - **Error Handling**: Better error messages and recovery options
+   - **Mobile Support**: Debug panels and status indicators work on both desktop and mobile layouts
+   - **Real-time Updates**: Immediate feedback when URLs are received from backend
+
+5. **Technical Improvements**:
+   - **Polling Strategy**: Implemented exponential backoff polling (2s, 3s, 4.5s, 6.75s, etc.) up to 10 attempts
+   - **State Management**: Better synchronization between taskState and currentLiveViewUrl
+   - **WebSocket Integration**: Maintains existing WebSocket functionality while adding URL-specific updates
+   - **Performance**: Efficient polling that stops immediately when URL is received
+
+**Key Features Added**:
+- ✅ Intelligent URL polling with exponential backoff
+- ✅ Comprehensive debug panels showing all URL and session information
+- ✅ Real-time URL format validation and analysis
+- ✅ Visual status indicators for different connection states
+- ✅ Enhanced error handling and user feedback
+- ✅ Mobile-responsive debug information
+- ✅ Console logging for development debugging
+
+**Expected URL Format**:
+The backend generates live view URLs in this format:
+```
+https://www.browserbase.com/devtools/inspector.html?wss=connect.browserbase.com/debug/{session_id}/devtools/page/{page_id}?debug=true
+```
+
+**Debug Information Displayed**:
+- Task ID and current status
+- Session ID from backend
+- Live view URL with format validation
+- URL analysis (protocol, domain, path, WebSocket, debug flags)
+- Real-time status updates during URL generation
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx` - Complete overhaul of live view URL handling
+
+**Testing Recommendations**:
+1. Submit a new task and monitor the console for URL generation logs
+2. Verify that the debug panel shows all expected information
+3. Check that the iframe loads the correct Browserbase devtools URL
+4. Test on both desktop and mobile layouts
+5. Verify that invalid URLs are properly detected and reported
+
+**Next Steps**:
+- Monitor backend logs to ensure live_view_url is being generated correctly
+- Test with real Browserbase sessions to verify URL format
+- Consider adding WebSocket real-time updates for URL generation status
+- Implement URL refresh functionality if needed
+
+---
+
+### 2025-01-27 16:00
+
+**Date & Time**: 2025-01-27 16:00
+
+**Objective**: Implement WebSocket-based live view URL delivery system to replace the unreliable polling approach and ensure real-time URL updates from backend to frontend.
+
+**Implementation Details**:
+
+1. **Backend WebSocket Integration**:
+   - **Modified `backend/src/services/browserAgentService.js`**:
+     - Updated `executeTaskAsync()` method to send WebSocket updates when live view URL is generated
+     - Enhanced `updateTaskStatus()` method to include taskId in WebSocket updates for proper routing
+     - Added comprehensive logging for WebSocket update delivery
+     - Ensured session information (sessionId, liveViewUrl, browserSessionId) is included in updates
+
+2. **Frontend WebSocket Implementation**:
+   - **Modified `frontend/components/DashboardDualPane.tsx`**:
+     - Replaced complex polling logic with simple WebSocket-based approach
+     - Removed exponential backoff polling and retry mechanisms
+     - Implemented real-time WebSocket event handling for live view URL updates
+     - Added fallback mechanism: API fetch after 30 seconds if WebSocket fails
+     - Enhanced WebSocket event handler to process session information updates
+
+3. **Improved User Experience**:
+   - **Status Indicators**: Updated to show WebSocket-based flow messages
+   - **Debug Panels**: Added WebSocket connection status and fallback information
+   - **Real-time Updates**: Immediate URL display when received via WebSocket
+   - **Error Handling**: Graceful fallback to API if WebSocket doesn't deliver URL
+
+4. **Technical Architecture Changes**:
+   - **Data Flow**: Frontend → Task Creation → Backend → Python Process → WebSocket Push → Frontend Update
+   - **Eliminated Timing Issues**: No more guessing when URL will be available
+   - **Reduced API Calls**: Single API call for task creation, then WebSocket updates
+   - **Reliability**: Fallback mechanism ensures URL retrieval even if WebSocket fails
+
+**Key Features Implemented**:
+- ✅ WebSocket-based real-time URL delivery
+- ✅ Automatic fallback to API fetch after 30 seconds
+- ✅ Comprehensive WebSocket status monitoring
+- ✅ Enhanced debug information for troubleshooting
+- ✅ Mobile and desktop responsive design
+- ✅ Proper error handling and logging
+
+**WebSocket Update Structure**:
+```javascript
+{
+  taskId: "task_uuid",
+  status: "running",
+  sessionId: "browserbase_session_id",
+  liveViewUrl: "https://www.browserbase.com/devtools/inspector.html?wss=...",
+  browserSessionId: "browser_session_id"
+}
+```
+
+**Fallback Mechanism**:
+- If WebSocket doesn't provide URL within 30 seconds
+- Frontend automatically attempts API fetch via `getBrowserUseTask()`
+- Ensures URL retrieval even in WebSocket failure scenarios
+- Maintains system reliability and user experience
+
+**Benefits of New Approach**:
+1. **Real-time Updates**: URL appears instantly when backend generates it
+2. **No Polling**: Eliminates resource-intensive API calls
+3. **Reliable Delivery**: Backend pushes when ready, no timing issues
+4. **Better UX**: Clear status indicators and progress feedback
+5. **Scalable**: WebSocket handles multiple concurrent tasks efficiently
+
+**Testing Recommendations**:
+1. Create a new task and monitor WebSocket connection status
+2. Verify that live view URL appears via WebSocket update
+3. Test fallback mechanism by temporarily disabling WebSocket
+4. Monitor console logs for WebSocket update delivery
+5. Verify URL format validation and iframe loading
+
+**Next Steps**:
+- Monitor WebSocket performance in production
+- Consider adding WebSocket reconnection logic if needed
+- Implement WebSocket health monitoring
+- Add metrics for WebSocket vs fallback usage
+
+---
+
+### 2025-01-27 16:30
+
+**Date & Time**: 2025-01-27 16:30
+
+**Objective**: Fix the core issue where live view URLs were generated by Python but never passed to Node.js and frontend, implementing a proper session-first approach.
+
+**Root Cause Analysis**:
+The issue was in the data flow between Python and Node.js:
+1. Python generated live view URL successfully
+2. But Node.js never received it because the task execution failed before completion
+3. Frontend was stuck polling for a URL that the backend never had
+4. The session creation and task execution were happening simultaneously, causing timing issues
+
+**Implementation Details**:
+
+1. **Python Bridge Enhancement**:
+   - **Modified `backend/src/python-bridge/browserAgent.py`**:
+     - Added `create_session_only()` method to create Browserbase session and return live view URL immediately
+     - Separated session creation from task execution
+     - Updated main function to support both `session_only` and `execute_task` modes
+     - Ensured session information is preserved even when task execution fails
+
+2. **Python Bridge Service Update**:
+   - **Modified `backend/src/services/pythonBridge.js`**:
+     - Added `createBrowserSession()` method for session-only creation
+     - Updated `executeBrowserTask()` to use explicit `execute_task` mode
+     - Implemented proper timeout handling for session creation (30s) vs task execution (5min)
+
+3. **Backend Service Flow Restructure**:
+   - **Modified `backend/src/services/browserAgentService.js`**:
+     - Implemented 3-step process: Session Creation → WebSocket Update → Task Execution
+     - Session creation happens first and returns live view URL immediately
+     - WebSocket update sent as soon as URL is available
+     - Task execution uses existing session
+     - Session information preserved even on task failure
+
+4. **Frontend Simplification**:
+   - **Modified `frontend/components/DashboardDualPane.tsx`**:
+     - Removed complex polling logic and fallback mechanisms
+     - Simplified to wait for WebSocket updates from backend
+     - Fixed event handling to use correct PollingService methods (`on`/`off`)
+     - Cleaner, more reliable URL reception flow
+
+**Key Benefits**:
+- **Immediate URL Delivery**: Frontend gets live view URL as soon as session is created
+- **Reliable Data Flow**: Session creation and task execution are properly separated
+- **Better Error Handling**: Session information preserved even when tasks fail
+- **Simplified Frontend**: No more complex polling or timing issues
+- **Real-time Updates**: WebSocket delivers URL updates immediately
+
+**Technical Flow**:
+```
+Frontend → Task Creation → Backend → Python Session Creation → Live View URL → WebSocket Update → Frontend Display
+                ↓
+            Task Execution (using existing session)
+```
+
+**Files Modified**:
+- `backend/src/python-bridge/browserAgent.py`
+- `backend/src/services/pythonBridge.js`
+- `backend/src/services/browserAgentService.js`
+- `frontend/components/DashboardDualPane.tsx`
+
+**Testing Status**: Ready for testing - the live view URL should now be delivered immediately after session creation without any blocking or timing issues.

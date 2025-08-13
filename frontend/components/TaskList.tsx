@@ -94,7 +94,13 @@ export function TaskList({
       const fetchedTasks = await ApiService.getTasks(pagination.skip, pagination.limit);
       
       // Apply client-side filtering if needed
-      let filteredTasks = fetchedTasks;
+      let filteredTasks = fetchedTasks.filter(task => {
+        if (!task || !task.id) {
+          console.warn('Invalid task found:', task);
+          return false;
+        }
+        return true;
+      });
       
       if (filters.status !== 'all') {
         filteredTasks = filteredTasks.filter(task => task.status === filters.status);
@@ -123,7 +129,7 @@ export function TaskList({
       
       // Add tasks to monitoring
       filteredTasks.forEach(task => {
-        if (['pending', 'running', 'paused'].includes(task.status)) {
+        if (task && task.id && ['pending', 'running', 'paused'].includes(task.status)) {
           addTask(task.id);
         }
       });
@@ -154,10 +160,12 @@ export function TaskList({
     if (updates.length === 0) return;
 
     const latestUpdate = updates[0];
+    if (!latestUpdate?.task || !latestUpdate.taskId) return; // Validate update data
+
     setTasks(prevTasks => {
       const updatedTasks = prevTasks.map(task => 
-        task.id === latestUpdate.taskId ? latestUpdate.task : task
-      );
+        task && task.id === latestUpdate.taskId ? latestUpdate.task : task
+      ).filter(task => task && task.id); // Filter out any invalid tasks
       
       // Stop monitoring completed/failed/cancelled tasks
       if (['completed', 'failed', 'cancelled'].includes(latestUpdate.task.status)) {
@@ -238,7 +246,11 @@ export function TaskList({
   };
 
   // Task actions based on status
-  const getTaskActions = (task: Task) => {
+  const getTaskActions = (task: Task | null | undefined) => {
+    if (!task || !task.id) {
+      return []; // Return empty actions for invalid tasks
+    }
+
     const actions = [];
     const isLoading = actionLoading[task.id];
 
@@ -438,38 +450,38 @@ export function TaskList({
           />
         ) : (
           tasks.map((task) => (
-            <Card key={task.id} className="hover:shadow-sm transition-shadow">
+            <Card key={task?.id || 'unknown'} className="hover:shadow-sm transition-shadow">
               <CardContent className="pt-6">
                 <div className="space-y-4">
                   {/* Task Header */}
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        {getStatusBadge(task.status)}
+                        {getStatusBadge(task?.status || 'unknown')}
                         <span className="text-xs text-gray-500">
-                          {task.id.slice(0, 8)}...
+                          {task?.id ? `${task.id.slice(0, 8)}...` : 'Unknown ID'}
                         </span>
-                        {['pending', 'running', 'paused'].includes(task.status) && isMonitoring && (
+                        {['pending', 'running', 'paused'].includes(task?.status || '') && isMonitoring && (
                           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Live monitoring" />
                         )}
                       </div>
                       
                       <h3 className="font-medium text-gray-900 truncate mb-1">
-                        {task.prompt || 'No description'}
+                        {task?.prompt || 'No description'}
                       </h3>
                       
                       <div className="flex items-center gap-4 text-xs text-gray-500">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
                           <span>
-                            {formatDistanceToNow(new Date(task.created_at), { 
+                            {task?.created_at ? formatDistanceToNow(new Date(task.created_at), { 
                               addSuffix: true, 
                               locale: dateLocale 
-                            })}
+                            }) : 'Unknown date'}
                           </span>
                         </div>
                         
-                        {task.completed_at && (
+                        {task?.completed_at && (
                           <div className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             <span>
@@ -482,7 +494,7 @@ export function TaskList({
                         )}
                       </div>
 
-                      {task.error_message && (
+                      {task?.error_message && (
                         <div className="mt-2 text-xs text-red-600 bg-red-50 p-2 rounded">
                           {task.error_message}
                         </div>
@@ -495,7 +507,7 @@ export function TaskList({
                   </div>
 
                   {/* Progress Indicator for Active Tasks */}
-                  {showProgress && ['pending', 'running', 'paused'].includes(task.status) && (
+                  {showProgress && ['pending', 'running', 'paused'].includes(task?.status || '') && (
                     <TaskProgressIndicator task={task} variant="mini" />
                   )}
                 </div>

@@ -85,9 +85,16 @@ export function LiveViewPane({
     setHasError(false)
     // Automatically set the browser view URL when liveViewUrl is provided
     if (liveViewUrl) {
+      console.log('LiveViewPane: liveViewUrl updated:', liveViewUrl)
       setBrowserViewUrl(liveViewUrl)
+    } else {
+      console.log('LiveViewPane: liveViewUrl is null/undefined')
     }
   }, [sessionId, liveViewUrl])
+
+  useEffect(() => {
+    console.log('LiveViewPane: browserViewUrl updated:', browserViewUrl)
+  }, [browserViewUrl])
 
   useEffect(() => {
     // Auto-scroll chat to bottom
@@ -411,6 +418,7 @@ export function LiveViewPane({
                     <div>Task ID: {taskId.slice(0, 8)}...</div>
                     <div>Session: {sessionId}</div>
                     <div>Status: {getStatusText()}</div>
+                    <div>Live View URL: {liveViewUrl || 'Not available'}</div>
                   </div>
                 </div>
               )}

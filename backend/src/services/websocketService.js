@@ -279,6 +279,20 @@ class WebSocketService {
   }
 
   /**
+   * Send comprehensive task update including session information
+   * @param {string} taskId - Task ID
+   * @param {Object} data - Task update data including session info
+   */
+  sendTaskUpdate(taskId, data = {}) {
+    this.broadcastToTask(taskId, {
+      type: 'taskUpdate',
+      taskId: taskId,
+      timestamp: new Date().toISOString(),
+      ...data
+    })
+  }
+
+  /**
    * Send task error notification
    * @param {string} taskId - Task ID
    * @param {string} error - Error message

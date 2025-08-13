@@ -167,6 +167,44 @@ class BrowserAgent:
                 "live_view_url": None
             }
     
+    async def create_session_only(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Create only the Browserbase session and return live view URL immediately"""
+        self.log_event("session", "Creating Browserbase session for immediate URL access")
+        
+        try:
+            # Create Browserbase session first
+            session_result = await self.create_browserbase_session()
+            if not session_result["success"]:
+                return {
+                    "success": False,
+                    "error": f"Failed to create Browserbase session: {session_result['error']}",
+                    "session_id": None,
+                    "live_view_url": None
+                }
+            
+            # Return session info immediately for frontend
+            self.log_event("session", "Session created successfully, returning URL to frontend")
+            
+            return {
+                "success": True,
+                "session_id": self.session_id,
+                "live_view_url": self.live_view_url,
+                "connect_url": session_result["connect_url"],
+                "message": "Session created successfully, live view URL available"
+            }
+            
+        except Exception as e:
+            error_msg = str(e)
+            self.log_event("error", f"Session creation failed: {error_msg}")
+            
+            return {
+                "success": False,
+                "error": error_msg,
+                "error_type": type(e).__name__,
+                "session_id": None,
+                "live_view_url": None
+            }
+
     async def execute_task(self, task_data: Dict[str, Any]) -> Dict[str, Any]:
         """Execute browser automation task using browser-use with Browserbase"""
         self.log_event("task_start", "Starting browser automation task with Browserbase", task_data)
@@ -179,13 +217,12 @@ class BrowserAgent:
                 
             self.log_event("prompt", "Using task description", {"task_length": len(task_description)})
             
-            # Create Browserbase session first
-            session_result = await self.create_browserbase_session()
-            if not session_result["success"]:
+            # Check if session already exists (created by create_session_only)
+            if not self.browser_session:
                 return {
                     "success": False,
                     "result": None,
-                    "error": f"Failed to create Browserbase session: {session_result['error']}",
+                    "error": "Browser session not initialized. Call create_session_only first.",
                     "session_log": self.session_log,
                     "execution_time": self.calculate_execution_time(),
                     "task_description": task_description
@@ -197,8 +234,8 @@ class BrowserAgent:
                 task_data.get('model')
             )
             
-            # Create agent with Browserbase session
-            self.log_event("agent", "Creating browser-use agent with Browserbase session")
+            # Create agent with existing Browserbase session
+            self.log_event("agent", "Creating browser-use agent with existing Browserbase session")
             self.current_agent = Agent(
                 task=task_description,
                 llm=llm,
@@ -346,7 +383,7 @@ async def main():
         print(json.dumps({
             "success": False, 
             "error": "No task data provided",
-            "usage": "python browserAgent.py '<json_task_data>'"
+            "usage": "python browserAgent.py '<json_task_data>' [mode]"
         }))
         sys.exit(1)
     
@@ -354,6 +391,9 @@ async def main():
         # Parse task data from command line argument
         task_data_str = sys.argv[1]
         task_data = json.loads(task_data_str)
+        
+        # Check if mode is specified (session_only or execute_task)
+        mode = sys.argv[2] if len(sys.argv) > 2 else "execute_task"
         
         # Validate required fields
         if not task_data.get('task'):
@@ -363,9 +403,15 @@ async def main():
             }))
             sys.exit(1)
         
-        # Create and execute browser automation
+        # Create browser automation agent
         agent = BrowserAgent()
-        result = await agent.execute_task(task_data)
+        
+        if mode == "session_only":
+            # Only create session and return live view URL
+            result = await agent.create_session_only(task_data)
+        else:
+            # Execute full task (default behavior)
+            result = await agent.execute_task(task_data)
         
         # Output result as JSON
         print(json.dumps(result, ensure_ascii=False, indent=2))
