@@ -59,7 +59,6 @@ app.use(cors({
   app.use('/health', healthRoutes)
   app.use('/api/v1/auth', authRoutes)
   app.use('/api/v1/tasks', taskRoutes)
-  app.use('/api/v1/browserbase', browserbaseRoutes)
   app.use('/api/v1/ocr', ocrRoutes)
   app.use('/api/v1/tickets', ticketsRoutes)
   app.use('/api/v1/agent-tasks', agentTasksRoutes)
