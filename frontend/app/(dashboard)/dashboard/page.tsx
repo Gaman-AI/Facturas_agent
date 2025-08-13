@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { LogOut, User, Building2, FileText, BarChart3, Zap, Plus, Monitor, Globe, Activity, TrendingUp, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { LogOut, User, Building2, FileText, BarChart3, Zap, Plus, Monitor, Globe, Activity, TrendingUp, CheckCircle, Clock, AlertCircle, CloudUpload, Link as LinkIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,12 +10,14 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuth, useUserProfile } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
-import { SimpleTaskSubmission } from '@/components/SimpleTaskSubmission';
 import { DashboardDualPane } from '@/components/DashboardDualPane';
 import { TaskStats } from '@/components/TaskStats';
 import { TaskList } from '@/components/TaskList';
 import { TaskProgressList } from '@/components/TaskProgressIndicator';
 import { ApiService } from '@/services/api';
+import { Input } from '@/components/ui/input';
+import { tokenManager } from '@/utils/tokenManager';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function DashboardPage() {
   return (
@@ -34,6 +36,15 @@ function DashboardContent() {
   const [tasks, setTasks] = useState<any[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [useDualPane, setUseDualPane] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [vendorUrl, setVendorUrl] = useState<string>('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadedTicketId, setUploadedTicketId] = useState<string | null>(null);
+
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -49,6 +60,50 @@ function DashboardContent() {
 
   const handleSimpleTask = () => {
     router.push('/task/submit');
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setSelectedFile(file);
+    setUploadError(null);
+    setUploadedTicketId(null);
+  };
+
+  const handleUploadTicket = async () => {
+    if (!selectedFile) return;
+    setIsUploading(true);
+    setUploadError(null);
+    setUploadedTicketId(null);
+    try {
+      const token = await tokenManager.getValidToken();
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      if (vendorUrl) formData.append('vendor_url', vendorUrl);
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/tickets/upload`, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `Upload failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const ticketId = data?.data?.ticket_id || data?.ticket_id || null;
+      setUploadedTicketId(ticketId);
+      // Automatically switch to Dual Pane view after successful upload
+      setUseDualPane(true);
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      setUploadError(err?.message || 'Upload failed');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleTaskSubmit = (taskId: string) => {
@@ -166,32 +221,8 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* Task Submission Section */}
+        {/* Ticket Upload / Dual Pane Section */}
         <div className="mb-12">
-          {/* Toggle Button */}
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900">
-                {useDualPane ? 'Dual Pane Task Monitor' : 'Quick Task Submission'}
-              </h3>
-              <p className="text-sm text-slate-600">
-                {useDualPane 
-                  ? 'Create and monitor browser automation tasks in real-time' 
-                  : 'Simple task submission with redirect to monitoring page'
-                }
-              </p>
-            </div>
-            <Button 
-              variant="outline" 
-              onClick={() => setUseDualPane(!useDualPane)}
-              className="flex items-center gap-2"
-            >
-              <Monitor className="w-4 h-4" />
-              {useDualPane ? 'Use Simple View' : 'Use Dual Pane'}
-            </Button>
-          </div>
-
-          {/* Conditional Rendering */}
           {useDualPane ? (
             <div className="h-[900px] mb-8 relative z-10 w-full">
               <DashboardDualPane 
@@ -200,24 +231,85 @@ function DashboardContent() {
               />
             </div>
           ) : (
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm mb-6">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center space-x-2 text-xl">
-                  <Zap className="w-6 h-6 text-yellow-500" />
-                  <span>{t('tasks.simple.title')}</span>
-                </CardTitle>
-                <CardDescription className="text-slate-600">
-                  {t('tasks.simple.description')}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <SimpleTaskSubmission 
-                  onTaskSubmit={handleTaskSubmit}
-                  showRedirect={false}
-                  className="mb-0"
-                />
-              </CardContent>
-            </Card>
+              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm mb-6">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center space-x-2 text-xl">
+                    <CloudUpload className="w-6 h-6 text-pink-500" />
+                    <span>Upload Ticket for OCR</span>
+                  </CardTitle>
+                  <CardDescription className="text-slate-600">
+                    Choose a receipt image or PDF and optionally provide the vendor URL. We’ll extract details and open the dual pane.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Vendor URL */}
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                        <LinkIcon className="w-4 h-4 text-slate-500" /> Vendor URL (optional)
+                      </label>
+                      <Input
+                        type="url"
+                        placeholder="https://facturacion.walmartmexico.com.mx/"
+                        value={vendorUrl}
+                        onChange={(e) => setVendorUrl(e.target.value)}
+                      />
+                    </div>
+
+                    {/* Dropzone-like uploader */}
+                    <div className="rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
+                      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-pink-100">
+                        <CloudUpload className="h-6 w-6 text-pink-600" />
+                      </div>
+                      <p className="text-sm text-slate-700 font-medium">Select or drag-and-drop your receipt</p>
+                      <p className="text-xs text-slate-500 mt-1">Supported types: JPG, PNG, PDF</p>
+                      <input
+                        id="ticket-file"
+                        type="file"
+                        accept="image/*,.pdf"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                      />
+                      <div className="mt-4 flex items-center justify-center gap-3">
+                        <Button
+                          variant="outline"
+                          className="cursor-pointer"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          Choose File
+                        </Button>
+                        <Button onClick={handleUploadTicket} disabled={!selectedFile || isUploading} className="bg-pink-600 hover:bg-pink-700">
+                          {isUploading ? (
+                            <span className="inline-flex items-center gap-2">
+                              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                              Uploading…
+                            </span>
+                          ) : (
+                            'Upload & Open Dual Pane'
+                          )}
+                        </Button>
+                      </div>
+
+                      {selectedFile && (
+                        <div className="mt-3 text-xs text-slate-600">Selected: {selectedFile.name}</div>
+                      )}
+                    </div>
+
+                    {/* Messages */}
+                    {uploadError && (
+                      <Alert className="border-red-200 bg-red-50 text-red-800">
+                        <AlertDescription>{uploadError}</AlertDescription>
+                      </Alert>
+                    )}
+                    {uploadedTicketId && (
+                      <Alert className="border-green-200 bg-green-50 text-green-800">
+                        <AlertDescription>Ticket created: {uploadedTicketId}</AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
           )}
         </div>
 

@@ -11,6 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { websocketService } from '@/services/websocket'
 import ApiService from '@/services/api'
 import { LiveViewPane } from './LiveViewPane'
+import { tokenManager } from '@/utils/tokenManager'
 
 export interface DashboardDualPaneProps {
   onTaskSubmit?: (taskId: string) => void
@@ -37,6 +38,58 @@ export function DashboardDualPane({
     status: 'idle'
   })
   const [currentLiveViewUrl, setCurrentLiveViewUrl] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [uploadedTicketId, setUploadedTicketId] = useState<string | null>(null)
+  const [vendorUrl, setVendorUrl] = useState<string>('')
+
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    setSelectedFile(file)
+    setUploadError(null)
+    setUploadedTicketId(null)
+  }
+
+  const handleImageUpload = async () => {
+    if (!selectedFile) return
+    setIsUploading(true)
+    setUploadError(null)
+    setUploadedTicketId(null)
+    try {
+      const token = await tokenManager.getValidToken()
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+      if (vendorUrl) {
+        formData.append('vendor_url', vendorUrl)
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/v1/tickets/upload`, {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: formData
+      })
+
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(text || `Upload failed with status ${response.status}`)
+      }
+
+      const data = await response.json()
+      const ticketId = data?.data?.ticket_id || data?.ticket_id
+      setUploadedTicketId(ticketId || 'unknown')
+      console.log('✅ Upload success:', data)
+    } catch (err: any) {
+      console.error('❌ Upload error:', err)
+      setUploadError(err?.message || 'Upload failed')
+    } finally {
+      setIsUploading(false)
+    }
+  }
 
   // Check if mobile on mount and resize
   useEffect(() => {
@@ -278,6 +331,46 @@ export function DashboardDualPane({
     return (
       <div className={`h-full min-h-[800px] w-full ${className}`}>
         <div className="flex flex-col h-full gap-6">
+          {/* Image Upload Section */}
+          <Card className="border-2 border-slate-200/60 shadow-lg bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden">
+            <CardHeader className="pb-4 bg-gradient-to-r from-pink-50 to-rose-50 border-b border-slate-200/40">
+              <CardTitle className="flex items-center space-x-2 text-xl">
+                <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-white" />
+                </div>
+                <span>Upload Ticket Image</span>
+              </CardTitle>
+              <CardDescription className="text-slate-600">
+                Select a receipt image to extract ticket details and optionally provide the vendor URL.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="flex flex-col gap-3">
+                <Input
+                  type="url"
+                  placeholder="Vendor URL (e.g., https://facturacion.walmartmexico.com.mx/)"
+                  value={vendorUrl}
+                  onChange={(e) => setVendorUrl(e.target.value)}
+                />
+                <Input type="file" accept="image/*,.pdf" onChange={handleFileChange} />
+                <div className="flex items-center gap-2">
+                  <Button onClick={handleImageUpload} disabled={!selectedFile || isUploading} variant="default">
+                    {isUploading ? 'Uploading…' : 'Upload'}
+                  </Button>
+                  {selectedFile && (
+                    <span className="text-xs text-slate-600">Selected: {selectedFile.name}</span>
+                  )}
+                </div>
+                {uploadError && (
+                  <div className="text-xs text-red-600">{uploadError}</div>
+                )}
+                {uploadedTicketId && (
+                  <div className="text-xs text-green-700">Ticket created: {uploadedTicketId}</div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Task Submission Section */}
           <Card className="border-2 border-slate-200/60 shadow-lg bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden">
             <CardHeader className="pb-4 bg-gradient-to-r from-pink-50 to-rose-50 border-b border-slate-200/40">
@@ -531,17 +624,46 @@ export function DashboardDualPane({
             <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
               <div className="h-full p-4 border-r-2 border-slate-200/40 bg-gradient-to-b from-white to-slate-50/30 min-h-0">
                 <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden">
-                  <LiveViewPane
-                    sessionId="dashboard"
-                    taskId={taskState.taskId || undefined}
-                    status={taskState.status}
-                    onTakeoverRequest={handleTakeoverRequest}
-                    onRefresh={handleRefreshView}
-                    className="h-full"
-                    viewType="taskSubmission"
-                    onTaskSubmit={handleTaskCreated}
-                    onResetTask={resetTaskState}
-                  />
+                  <div className="p-4 border-b border-slate-200/50">
+                    <h3 className="text-sm font-semibold mb-2">Upload Ticket Image</h3>
+                    <div className="flex flex-col gap-2">
+                      <Input
+                        type="url"
+                        placeholder="Vendor URL (e.g., https://facturacion.walmartmexico.com.mx/)"
+                        value={vendorUrl}
+                        onChange={(e) => setVendorUrl(e.target.value)}
+                        className="flex-1"
+                      />
+                      <div className="flex items-center gap-2">
+                      <Input type="file" accept="image/*,.pdf" onChange={handleFileChange} className="flex-1" />
+                      <Button onClick={handleImageUpload} disabled={!selectedFile || isUploading} variant="outline">
+                        {isUploading ? 'Uploading…' : 'Upload'}
+                      </Button>
+                      </div>
+                    </div>
+                    {selectedFile && (
+                      <div className="mt-2 text-xs text-slate-600">Selected: {selectedFile.name}</div>
+                    )}
+                    {uploadError && (
+                      <div className="mt-2 text-xs text-red-600">{uploadError}</div>
+                    )}
+                    {uploadedTicketId && (
+                      <div className="mt-2 text-xs text-green-700">Ticket created: {uploadedTicketId}</div>
+                    )}
+                  </div>
+                  <div className="h-[calc(100%-120px)]">
+                    <LiveViewPane
+                      sessionId="dashboard"
+                      taskId={taskState.taskId || undefined}
+                      status={taskState.status}
+                      onTakeoverRequest={handleTakeoverRequest}
+                      onRefresh={handleRefreshView}
+                      className="h-full"
+                      viewType="taskSubmission"
+                      onTaskSubmit={handleTaskCreated}
+                      onResetTask={resetTaskState}
+                    />
+                  </div>
                 </div>
               </div>
             </ResizablePanel>
