@@ -2,8 +2,9 @@ import express from 'express'
 import path from 'path'
 import fs from 'fs/promises'
 import { fileURLToPath } from 'url'
-import { spawn } from 'child_process'
 import multer from 'multer'
+import { spawn } from 'child_process'
+import { execSync } from 'child_process'
 
 const router = express.Router()
 
@@ -45,30 +46,57 @@ function generateTicketId() {
 }
 
 async function runPythonOCR(imagePath) {
-  return new Promise((resolve, reject) => {
-    const runnerPath = path.join(__dirname, '..', 'services', 'ocr_invoke.py')
+  try {
+    // Use the standalone Python script
     const pythonExec = process.env.PYTHON_EXECUTABLE || 'python'
-
-    const proc = spawn(pythonExec, [runnerPath, imagePath], { stdio: ['ignore', 'pipe', 'pipe'] })
-
-    let stdout = ''
-    let stderr = ''
-    proc.stdout.on('data', d => { stdout += d.toString() })
-    proc.stderr.on('data', d => { stderr += d.toString() })
-    proc.on('close', code => {
-      if (code === 0) {
-        try {
-          const result = JSON.parse(stdout.trim())
-          resolve(result)
-        } catch (e) {
-          reject(new Error(`Failed to parse OCR output: ${e.message}; Output: ${stdout}; Stderr: ${stderr}`))
-        }
-      } else {
-        reject(new Error(`OCR process exited with code ${code}: ${stderr || stdout}`))
-      }
+    const ocrScriptPath = path.resolve(__dirname, '..', 'services', 'run_ocr.py')
+    const backendDir = path.resolve(__dirname, '..')
+    
+    console.log(`[OCR] Script path: ${ocrScriptPath}`)
+    console.log(`[OCR] Backend directory: ${backendDir}`)
+    console.log(`[OCR] Image path: ${imagePath}`)
+    console.log(`[OCR] Current working directory: ${process.cwd()}`)
+    
+    console.log(`[OCR] Executing Python script...`)
+    
+    // Execute the standalone Python script
+    const result = execSync(`${pythonExec} "${ocrScriptPath}" "${imagePath}"`, { 
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      shell: true,
+      cwd: backendDir, // Use the backend directory as working directory
+      env: process.env // Pass all environment variables to Python subprocess
     })
-    proc.on('error', err => reject(err))
-  })
+    
+    console.log(`[OCR] Python output: ${result}`)
+    
+    // Check if result is empty or invalid
+    if (!result || result.trim() === '') {
+      throw new Error('Python script returned empty output')
+    }
+    
+    // Try to parse the JSON result
+    let ocrResult
+    try {
+      ocrResult = JSON.parse(result.trim())
+    } catch (parseError) {
+      console.error(`[OCR] JSON parse error: ${parseError.message}`)
+      console.error(`[OCR] Raw output: ${result}`)
+      throw new Error(`Invalid JSON output from Python script: ${parseError.message}`)
+    }
+    
+    // Check if the result contains an error
+    if (ocrResult.error) {
+      throw new Error(`Python script error: ${ocrResult.error}`)
+    }
+    
+    return ocrResult
+    
+  } catch (error) {
+    console.error(`[OCR] Execution error: ${error.message}`)
+    console.error(`[OCR] Error details:`, error)
+    throw new Error(`OCR processing failed: ${error.message}`)
+  }
 }
 
 // POST /api/v1/tickets/upload
@@ -121,14 +149,35 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     // Normalize extracted data keys for frontend convenience
     const normalized = {
+      // Core fields
       mesa_folio: ocrData?.Mesa_Folio || ocrData?.mesa_folio || null,
       fecha: ocrData?.Fecha || ocrData?.fecha || null,
       id_ticket: ocrData?.ID_Ticket || ocrData?.id_ticket || null,
       total: ocrData?.Total || ocrData?.total || null,
       comercio: ocrData?.Comercio || ocrData?.comercio || null,
-      raw_text: ocrData?.full_text || ocrData?.raw_text || null,
+      
+      // Vendor-specific fields
+      tc_number: ocrData?.['TC#'] || ocrData?.tc_number || null,
+      tr_number: ocrData?.['TR#'] || ocrData?.tr_number || null,
+      id: ocrData?.ID || ocrData?.id || null,
+      folio_venta: ocrData?.Fol_Vta || ocrData?.folio_venta || null,
+      
+      // Raw text and metadata
+      raw_text: ocrData?.Full_Raw_Text || ocrData?.raw_text || ocrData?.full_text || null,
       vendor_type: ocrData?.vendor_type || null,
-      extraction_method: ocrData?.extraction_method || null
+      extraction_method: ocrData?.extraction_method || null,
+      text_length: ocrData?.text_length || null,
+      
+      // Alternative field names for frontend compatibility
+      Mesa_Folio: ocrData?.Mesa_Folio || null,
+      Fecha: ocrData?.Fecha || null,
+      ID_Ticket: ocrData?.ID_Ticket || null,
+      Total: ocrData?.Total || null,
+      Comercio: ocrData?.Comercio || null,
+      'TC#': ocrData?.['TC#'] || null,
+      'TR#': ocrData?.['TR#'] || null,
+      'ID': ocrData?.ID || null,
+      'Fol_Vta': ocrData?.Fol_Vta || null
     }
 
     ticketStore.set(ticketId, {
@@ -161,6 +210,101 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   } catch (error) {
     console.error('Upload error:', error)
     return res.status(500).json({ success: false, error: 'Internal Server Error' })
+  }
+})
+
+// GET /api/v1/tickets/test-ocr
+router.get('/test-ocr', async (req, res) => {
+  try {
+    console.log('[OCR] Testing OCR functionality...')
+    
+    // Test the Python script execution without actually calling the OCR function
+    const pythonExec = process.env.PYTHON_EXECUTABLE || 'python'
+    const ocrScriptPath = path.resolve(__dirname, '..', 'services', 'ocr_functionality.py')
+    const servicesDir = path.dirname(ocrScriptPath)
+    const backendDir = path.resolve(__dirname, '..')
+    
+    console.log(`[OCR] Script path: ${ocrScriptPath}`)
+    console.log(`[OCR] Services directory: ${servicesDir}`)
+    console.log(`[OCR] Backend directory: ${backendDir}`)
+    
+    const pythonCode = `
+import sys
+import json
+import os
+
+print("Python script starting...", file=sys.stderr)
+print(f"Current working directory: {os.getcwd()}", file=sys.stderr)
+print(f"Python executable: {sys.executable}", file=sys.stderr)
+print(f"Python version: {sys.version}", file=sys.stderr)
+
+# Add the services directory to Python path
+services_dir = r'${servicesDir.replace(/\\/g, '\\\\')}'
+print(f"Adding to path: {services_dir}", file=sys.stderr)
+sys.path.insert(0, services_dir)
+
+try:
+    from ocr_functionality import extract_receipt_data
+    print("Import successful", file=sys.stderr)
+    print(json.dumps({"status": "success", "message": "OCR module imported successfully", "path": services_dir}))
+    
+except ImportError as e:
+    error_msg = f"Import failed: {str(e)}"
+    print(error_msg, file=sys.stderr)
+    print(json.dumps({"error": error_msg, "success": False}))
+    sys.exit(1)
+except Exception as e:
+    error_msg = f"Unexpected error: {str(e)}"
+    print(error_msg, file=sys.stderr)
+    print(json.dumps({"error": error_msg, "success": False}))
+    sys.exit(1)
+`
+    
+    console.log(`[OCR] Executing Python test script...`)
+    
+    const result = execSync(pythonCode, { 
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      shell: true,
+      cwd: backendDir,
+      env: process.env // Pass all environment variables to Python subprocess
+    })
+    
+    console.log(`[OCR] Python test output: ${result}`)
+    
+    // Check if result is empty or invalid
+    if (!result || result.trim() === '') {
+      throw new Error('Python test script returned empty output')
+    }
+    
+    // Try to parse the JSON result
+    let testResult
+    try {
+      testResult = JSON.parse(result.trim())
+    } catch (parseError) {
+      console.error(`[OCR] JSON parse error: ${parseError.message}`)
+      console.error(`[OCR] Raw output: ${result}`)
+      throw new Error(`Invalid JSON output from Python test script: ${parseError.message}`)
+    }
+    
+    // Check if the result contains an error
+    if (testResult.error) {
+      throw new Error(`Python test script error: ${testResult.error}`)
+    }
+    
+    return res.json({
+      success: true,
+      message: 'OCR test completed successfully',
+      result: testResult
+    })
+    
+  } catch (error) {
+    console.error('[OCR] Test failed:', error)
+    return res.status(500).json({
+      success: false,
+      error: error.message,
+      details: error.stack
+    })
   }
 })
 

@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 from dotenv import load_dotenv
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.documentintelligence import DocumentIntelligenceClient
@@ -30,8 +31,6 @@ def extract_ticket_number_patterns(text):
     Returns:
         str: Detected ticket number or None
     """
-    print(f"[ENHANCED-OCR] Starting pattern-based ticket number detection")
-    
     # **PATTERN 1: Long continuous numbers (15+ digits)**
     # Example: 11122521255212552254
     continuous_pattern = r'\b\d{15,}\b'
@@ -40,7 +39,6 @@ def extract_ticket_number_patterns(text):
     if continuous_matches:
         # Get the longest continuous number
         longest_continuous = max(continuous_matches, key=len)
-        print(f"[ENHANCED-OCR] Found long continuous number: {longest_continuous} (length: {len(longest_continuous)})")
         return longest_continuous
     
     # **PATTERN 2: Grouped numbers with spaces (4+ groups of 3+ digits)**
@@ -56,7 +54,6 @@ def extract_ticket_number_patterns(text):
             continuous_number = re.sub(r'\s+', '', match.strip())
             if len(continuous_number) >= 12:  # Minimum length for ticket numbers
                 processed_grouped.append(continuous_number)
-                print(f"[ENHANCED-OCR] Found grouped number: '{match}' -> {continuous_number} (length: {len(continuous_number)})")
         
         if processed_grouped:
             longest_grouped = max(processed_grouped, key=len)
@@ -74,7 +71,6 @@ def extract_ticket_number_patterns(text):
             continuous_number = re.sub(r'[-.\s]+', '', match.strip())
             if len(continuous_number) >= 10:  # Minimum length for ticket numbers
                 processed_separator.append(continuous_number)
-                print(f"[ENHANCED-OCR] Found separated number: '{match}' -> {continuous_number} (length: {len(continuous_number)})")
         
         if processed_separator:
             longest_separator = max(processed_separator, key=len)
@@ -99,16 +95,14 @@ def extract_ticket_number_patterns(text):
         
         if filtered_matches:
             longest_fallback = max(filtered_matches, key=len)
-            print(f"[ENHANCED-OCR] Found fallback number: {longest_fallback} (length: {len(longest_fallback)})")
             return longest_fallback
     
-    print(f"[ENHANCED-OCR] No suitable ticket number patterns found")
     return None
 
 def extract_total_patterns(text):
     """
-    Enhanced total amount extraction using pattern-based detection.
-    Looks for monetary amounts with better accuracy, focusing on "total" labels.
+    Enhanced total amount extraction using multiple pattern detection strategies.
+    Returns only the most accurate total amount found.
     
     Args:
         text (str): Full receipt text
@@ -116,93 +110,77 @@ def extract_total_patterns(text):
     Returns:
         float: Detected total amount or None
     """
-    print(f"[ENHANCED-OCR] Starting pattern-based total detection")
+    print(f"[ENHANCED-OCR] Extracting total amount", file=sys.stderr)
     
-    # **PATTERN 1: Exact "TOTAL" label patterns (highest priority)**
-    # Look specifically for "total" label (case insensitive)
-    exact_total_patterns = [
-        r'(?:^|\n)\s*total[\s:$]*([0-9]+[.,][0-9]{2})',  # Line starting with total
-        r'total[\s:$]+([0-9]+[.,][0-9]{2})',  # Total followed by amount
-        r'total\s*\$\s*([0-9]+[.,][0-9]{2})',  # Total $123.45
-        r'(?:^|\n)total\s*([0-9]+[.,][0-9]{2})',  # Total at start of line
-        r'total[\s:]*\$?[\s]*([0-9]+[.,][0-9]{2})',  # Total with optional $
+    # **PATTERN 1: Exact TOTAL label detection (highest priority)**
+    total_patterns = [
+        r'total[\s:]*\$?\s*([0-9]+[.,][0-9]{2})',  # TOTAL: $2997.00, Total 2997.00
+        r'total[\s:]*\$?\s*([0-9]+)',  # TOTAL: $2997, Total 2997
+        r'\$?\s*([0-9]+[.,][0-9]{2})\s*total',  # $2997.00 TOTAL, 2997.00 TOTAL
+        r'\$?\s*([0-9]+)\s*total',  # $2997 TOTAL, 2997 TOTAL
     ]
     
-    for pattern in exact_total_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE | re.MULTILINE)
-        if matches:
-            # Convert all matches and find the most reasonable one
-            total_amounts = []
-            for match in matches:
-                try:
-                    amount_str = match.replace(',', '.')
-                    amount = float(amount_str)
-                    # Filter for reasonable total amounts (not tax amounts or small items)
-                    if 10.0 <= amount <= 100000.0:  # Reasonable total range
-                        total_amounts.append(amount)
-                        print(f"[ENHANCED-OCR] Found exact TOTAL label: {match} -> {amount}")
-                except ValueError:
-                    continue
-            
-            if total_amounts:
-                # If multiple totals found, prefer the largest reasonable one
-                selected_total = max(total_amounts)
-                print(f"[ENHANCED-OCR] Selected exact TOTAL: {selected_total}")
-                return selected_total
-    
-    # **PATTERN 2: Other total-like labels (medium priority)**
-    # Look for other total indicators
-    other_total_patterns = [
-        r'(?:subtotal|importe|amount|sum|suma)[\s:$]*([0-9]+[.,][0-9]{2})',
-        r'(?:total\s+a\s+pagar|amount\s+due)[\s:$]*([0-9]+[.,][0-9]{2})',
-        r'(?:total\s+general|grand\s+total)[\s:$]*([0-9]+[.,][0-9]{2})',
-        r'(?:importe\s+total|total\s+amount)[\s:$]*([0-9]+[.,][0-9]{2})',
-    ]
-    
-    for pattern in other_total_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE | re.MULTILINE)
-        if matches:
-            amounts = []
-            for match in matches:
-                try:
-                    amount_str = match.replace(',', '.')
-                    amount = float(amount_str)
-                    if 10.0 <= amount <= 100000.0:
-                        amounts.append(amount)
-                        print(f"[ENHANCED-OCR] Found labeled total variant: {match} -> {amount}")
-                except ValueError:
-                    continue
-            
-            if amounts:
-                max_amount = max(amounts)
-                print(f"[ENHANCED-OCR] Selected labeled variant total: {max_amount}")
-                return max_amount
-    
-    # **PATTERN 3: End-of-receipt total (lower priority)**
-    # Look for $ amounts in the last portion of the text, but be more selective
-    end_portion = text[-300:]  # Reduced to last 300 characters for more precision
-    print(f"[ENHANCED-OCR] Analyzing end portion: {end_portion[-100:]}...")  # Show last 100 chars for debugging
-    
-    # More specific end-portion patterns
-    end_patterns = [
-        r'(?:^|\n)\s*\$\s*([0-9]+[.,][0-9]{2})\s*(?:\n|$)',  # $123.45 on its own line
-        r'(?:^|\n)\s*([0-9]+[.,][0-9]{2})\s*\$\s*(?:\n|$)',  # 123.45$ on its own line
-        r'(?:^|\n)\s*([0-9]+[.,][0-9]{2})\s*(?:\n|$)',  # Amount on its own line near end
-    ]
-    
-    end_amounts = []
-    for pattern in end_patterns:
-        matches = re.findall(pattern, end_portion, re.MULTILINE)
+    exact_totals = []
+    for pattern in total_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
         for match in matches:
             try:
                 amount_str = match.replace(',', '.')
                 amount = float(amount_str)
-                # More restrictive range for end-portion detection
-                if 50.0 <= amount <= 50000.0:  # Avoid small amounts like tax/change
-                    end_amounts.append(amount)
-                    print(f"[ENHANCED-OCR] Found end-portion amount: {match} -> {amount}")
+                if 1.0 <= amount <= 100000.0:  # Reasonable receipt range
+                    exact_totals.append(amount)
             except ValueError:
                 continue
+    
+    if exact_totals:
+        # If multiple exact totals found, prefer the largest (most likely final total)
+        selected_total = max(exact_totals)
+        print(f"[ENHANCED-OCR] Found exact TOTAL: {selected_total}", file=sys.stderr)
+        return selected_total
+    
+    # **PATTERN 2: Labeled total variants (medium priority)**
+    labeled_variants = [
+        r'(?:gran total|total general|total final)[\s:]*\$?\s*([0-9]+[.,][0-9]{2})',
+        r'(?:amount due|amount|due)[\s:]*\$?\s*([0-9]+[.,][0-9]{2})',
+        r'(?:pay|payment|payable)[\s:]*\$?\s*([0-9]+[.,][0-9]{2})',
+    ]
+    
+    labeled_amounts = []
+    for pattern in labeled_variants:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        for match in matches:
+            try:
+                amount_str = match.replace(',', '.')
+                amount = float(amount_str)
+                if 1.0 <= amount <= 100000.0:
+                    labeled_amounts.append(amount)
+            except ValueError:
+                continue
+    
+    if labeled_amounts:
+        # Get the largest labeled amount
+        max_amount = max(labeled_amounts)
+        print(f"[ENHANCED-OCR] Found labeled total: {max_amount}", file=sys.stderr)
+        return max_amount
+    
+    # **PATTERN 3: End-portion analysis (lower priority)**
+    # Look at the last portion of the receipt for total amounts
+    end_portion = text[-200:] if len(text) > 200 else text
+    
+    # Find monetary amounts in the end portion
+    end_pattern = r'(?:\$\s*)?([0-9]+[.,][0-9]{2})(?:\s*\$)?'
+    end_matches = re.findall(end_pattern, end_portion)
+    
+    end_amounts = []
+    for match in end_matches:
+        try:
+            amount_str = match.replace(',', '.')
+            amount = float(amount_str)
+            # More restrictive range for end-portion detection
+            if 50.0 <= amount <= 50000.0:  # Avoid small amounts like tax/change
+                end_amounts.append(amount)
+        except ValueError:
+            continue
     
     if end_amounts:
         # For end-portion, prefer amounts that appear multiple times or are largest
@@ -212,12 +190,12 @@ def extract_total_patterns(text):
         # If an amount appears multiple times, it's likely the total
         for amount, count in amount_counts.most_common():
             if count > 1:
-                print(f"[ENHANCED-OCR] Selected repeated end-portion total: {amount} (appeared {count} times)")
+                print(f"[ENHANCED-OCR] Found repeated total: {amount}", file=sys.stderr)
                 return amount
         
         # Otherwise, return largest end-portion amount
         max_end_amount = max(end_amounts)
-        print(f"[ENHANCED-OCR] Selected largest end-portion total: {max_end_amount}")
+        print(f"[ENHANCED-OCR] Found end-portion total: {max_end_amount}", file=sys.stderr)
         return max_end_amount
     
     # **PATTERN 4: Fallback - more conservative approach**
@@ -244,15 +222,15 @@ def extract_total_patterns(text):
         # Prefer amounts that appear multiple times
         for amount, count in amount_counts.most_common(3):  # Top 3 most common
             if count >= 2:  # Appears at least twice
-                print(f"[ENHANCED-OCR] Selected repeated fallback total: {amount} (appeared {count} times)")
+                print(f"[ENHANCED-OCR] Found repeated total: {amount}", file=sys.stderr)
                 return amount
         
         # If no repeated amounts, get largest in reasonable range
         largest_fallback = max(fallback_amounts)
-        print(f"[ENHANCED-OCR] Selected conservative fallback total: {largest_fallback}")
+        print(f"[ENHANCED-OCR] Found fallback total: {largest_fallback}", file=sys.stderr)
         return largest_fallback
     
-    print(f"[ENHANCED-OCR] No suitable total amount found")
+    print(f"[ENHANCED-OCR] No suitable total amount found", file=sys.stderr)
     return None
 
 def detect_vendor_type(text, merchant_name=""):
@@ -276,22 +254,18 @@ def detect_vendor_type(text, merchant_name=""):
     ]
     
     if any(indicator in text_lower or indicator in merchant_lower for indicator in costco_indicators):
-        print(f"[ENHANCED-OCR] Detected vendor: COSTCO")
         return 'costco'
     
     # **OXXO DETECTION**
     oxxo_indicators = ['oxxo', 'cadena comercial oxxo']
     if any(indicator in text_lower or indicator in merchant_lower for indicator in oxxo_indicators):
-        print(f"[ENHANCED-OCR] Detected vendor: OXXO")
         return 'oxxo'
     
     # **WALMART DETECTION**
     walmart_indicators = ['walmart', 'supercenter', 'bodega aurrera']
     if any(indicator in text_lower or indicator in merchant_lower for indicator in walmart_indicators):
-        print(f"[ENHANCED-OCR] Detected vendor: WALMART")
         return 'walmart'
     
-    print(f"[ENHANCED-OCR] Detected vendor: GENERIC")
     return 'generic'
 
 def extract_costco_specific_info(text):
@@ -305,8 +279,6 @@ def extract_costco_specific_info(text):
     Returns:
         dict: Costco-specific ticket and folio information
     """
-    print(f"[ENHANCED-OCR] Starting Costco-specific extraction")
-    
     result = {'ticket_id': None, 'folio': None}
     
     # **COSTCO TICKET ID PATTERNS**
@@ -327,7 +299,6 @@ def extract_costco_specific_info(text):
             longest_match = max(matches, key=len)
             if len(longest_match) >= 10:  # Minimum length for Costco ticket
                 result['ticket_id'] = longest_match
-                print(f"[ENHANCED-OCR] Found Costco ticket ID: {longest_match}")
                 break
     
     # If no specific ticket found, use pattern-based detection
@@ -335,7 +306,6 @@ def extract_costco_specific_info(text):
         pattern_ticket = extract_ticket_number_patterns(text)
         if pattern_ticket:
             result['ticket_id'] = pattern_ticket
-            print(f"[ENHANCED-OCR] Using pattern-detected ticket for Costco: {pattern_ticket}")
     
     # **COSTCO FOLIO PATTERNS**
     # Costco folio is often a shorter number
@@ -353,7 +323,6 @@ def extract_costco_specific_info(text):
             for match in matches:
                 if len(match) >= 4 and match != result['ticket_id']:
                     result['folio'] = match
-                    print(f"[ENHANCED-OCR] Found Costco folio: {match}")
                     break
             if result['folio']:
                 break
@@ -365,7 +334,6 @@ def extract_costco_specific_info(text):
         for num in secondary_numbers:
             if num != result['ticket_id'] and len(num) >= 4:
                 result['folio'] = num
-                print(f"[ENHANCED-OCR] Using fallback folio for Costco: {num}")
                 break
     
     return result
@@ -374,6 +342,7 @@ def extract_advanced_ticket_info(text, merchant_name=""):
     """
     Advanced ticket information extraction with enhanced pattern detection.
     Now includes vendor-specific logic and improved total detection.
+    Returns only the best, most accurate results.
     
     Args:
         text (str): Full receipt text
@@ -382,7 +351,7 @@ def extract_advanced_ticket_info(text, merchant_name=""):
     Returns:
         dict: Enhanced ticket information with pattern-based detection
     """
-    print(f"[ENHANCED-OCR] Starting advanced ticket info extraction for merchant: {merchant_name}")
+    print(f"[ENHANCED-OCR] Processing merchant: {merchant_name}", file=sys.stderr)
     
     # **VENDOR DETECTION**
     vendor_type = detect_vendor_type(text, merchant_name)
@@ -392,7 +361,7 @@ def extract_advanced_ticket_info(text, merchant_name=""):
     
     # **VENDOR-SPECIFIC EXTRACTION**
     if vendor_type == 'costco':
-        print(f"[ENHANCED-OCR] Using Costco-specific extraction logic")
+        print(f"[ENHANCED-OCR] Using Costco-specific extraction", file=sys.stderr)
         costco_info = extract_costco_specific_info(text)
         
         # For Costco: ticket_id is primary, folio is secondary
@@ -462,23 +431,22 @@ Vendor context: {vendor_type} - {merchant_name}"""
             openai_data = json.loads(response.choices[0].message.content)
             extracted_id = openai_data.get('id')
             extracted_folio = openai_data.get('folio')
-            extraction_method = f'enhanced_ai_{vendor_type}'
+            extraction_method = f'ai_{vendor_type}'
             
-            print(f"[ENHANCED-OCR] OpenAI extraction - ID: {extracted_id}, Folio: {extracted_folio}")
+            print(f"[ENHANCED-OCR] AI extraction completed", file=sys.stderr)
             
         except Exception as e:
-            print(f"[ENHANCED-OCR] OpenAI extraction failed: {e}")
+            print(f"[ENHANCED-OCR] AI extraction failed, using pattern detection", file=sys.stderr)
             extracted_id = None
             extracted_folio = None
             extraction_method = 'pattern_fallback'
     
     # **ENHANCED FALLBACK: Pattern-based detection**
     if not extracted_id:
-        print(f"[ENHANCED-OCR] No labeled ID found, using pattern-based detection")
+        print(f"[ENHANCED-OCR] Using pattern-based ID detection", file=sys.stderr)
         pattern_ticket_number = extract_ticket_number_patterns(text)
         if pattern_ticket_number:
             extracted_id = pattern_ticket_number
-            print(f"[ENHANCED-OCR] Pattern-based ID detected: {extracted_id}")
     
     # **SECONDARY PATTERN DETECTION for Folio (if still missing)**
     if not extracted_folio:
@@ -497,7 +465,6 @@ Vendor context: {vendor_type} - {merchant_name}"""
                 potential_folio = folio_matches[0]
                 if len(potential_folio) >= 4 and potential_folio != extracted_id:
                     extracted_folio = potential_folio
-                    print(f"[ENHANCED-OCR] Pattern-based Folio detected: {extracted_folio}")
                     break
     
     return {
@@ -512,18 +479,42 @@ def extract_receipt_data(image_path):
     """
     Procesa una imagen de recibo/factura y extrae los datos relevantes usando Azure Document Intelligence y OpenAI.
     Enhanced with pattern-based ticket number detection, improved total extraction, and vendor-specific logic.
+    Returns comprehensive data for the dual pane view including all raw text and mapped fields.
     
     Args:
         image_path (str): Ruta de la imagen del recibo.
     Returns:
-        dict: Diccionario con merchant_name, transaction_date, total, ID y folio (vendor-specific handling).
+        dict: Diccionario completo con todos los campos necesarios para el frontend dual pane view.
     """
-    print(f"[ENHANCED-OCR] Processing receipt: {image_path}")
+    print(f"[ENHANCED-OCR] Processing receipt: {image_path}", file=sys.stderr)
     
-    # Inicializar el cliente de Azure Document Intelligence
-    document_intelligence_client = DocumentIntelligenceClient(
-        endpoint=AZURE_ENDPOINT, credential=AzureKeyCredential(AZURE_KEY)
-    )
+    # Validate environment variables
+    if not AZURE_ENDPOINT or not AZURE_KEY:
+        error_msg = "Missing Azure Document Intelligence credentials. Please check AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT and AZURE_DOCUMENT_INTELLIGENCE_KEY environment variables."
+        print(f"[ENHANCED-OCR] Error: {error_msg}", file=sys.stderr)
+        raise ValueError(error_msg)
+    
+    if not OPENAI_API_KEY:
+        error_msg = "Missing OpenAI API key. Please check OPENAI_API_KEY environment variable."
+        print(f"[ENHANCED-OCR] Error: {error_msg}", file=sys.stderr)
+        raise ValueError(error_msg)
+    
+    # Validate image file exists
+    if not os.path.exists(image_path):
+        error_msg = f"Image file not found: {image_path}"
+        print(f"[ENHANCED-OCR] Error: {error_msg}", file=sys.stderr)
+        raise FileNotFoundError(error_msg)
+    
+    try:
+        # Inicializar el cliente de Azure Document Intelligence
+        document_intelligence_client = DocumentIntelligenceClient(
+            endpoint=AZURE_ENDPOINT, credential=AzureKeyCredential(AZURE_KEY)
+        )
+        print(f"[ENHANCED-OCR] Azure client initialized successfully", file=sys.stderr)
+    except Exception as e:
+        error_msg = f"Failed to initialize Azure client: {str(e)}"
+        print(f"[ENHANCED-OCR] Error: {error_msg}", file=sys.stderr)
+        raise RuntimeError(error_msg)
 
     # Leer la imagen
     with open(image_path, "rb") as image_file:
@@ -559,9 +550,16 @@ def extract_receipt_data(image_path):
             azure_total = total_field.value_currency.amount
         break
 
-    # Extraer texto completo
-    full_text = "\n".join([line.content for page in read_result.pages for line in page.lines])
-    print(f"[ENHANCED-OCR] Extracted text length: {len(full_text)} characters")
+    # Extraer texto completo - Asegurar que se extraiga TODO el texto, no solo la primera mitad
+    full_text = ""
+    for page in read_result.pages:
+        for line in page.lines:
+            full_text += line.content + "\n"
+    
+    # Verificar que tenemos el texto completo
+    print(f"[ENHANCED-OCR] Extracted text length: {len(full_text)} characters", file=sys.stderr)
+    print(f"[ENHANCED-OCR] Text preview (first 200 chars): {full_text[:200]}...", file=sys.stderr)
+    print(f"[ENHANCED-OCR] Text preview (last 200 chars): {full_text[-200:] if len(full_text) > 200 else full_text}", file=sys.stderr)
 
     # **ENHANCED TICKET EXTRACTION with vendor-specific logic**
     ticket_info = extract_advanced_ticket_info(full_text, merchant_name)
@@ -569,70 +567,85 @@ def extract_receipt_data(image_path):
     folio = ticket_info['folio']
     enhanced_total = ticket_info['total']
     vendor_type = ticket_info['vendor_type']
-    extraction_method = ticket_info['extraction_method']
 
-    # **ENHANCED TOTAL SELECTION**
+    # **ENHANCED TOTAL SELECTION - Choose the best available total**
     # Prioritize enhanced pattern-based total over Azure total
     final_total = enhanced_total if enhanced_total is not None else azure_total
     
+    # Log only the final decision, not intermediate steps
     if enhanced_total and azure_total:
-        # If both exist, use the enhanced one but log the difference
         if abs(float(enhanced_total) - float(azure_total)) > 0.01:
-            print(f"[ENHANCED-OCR] Total mismatch - Enhanced: {enhanced_total}, Azure: {azure_total}, Using Enhanced")
+            print(f"[ENHANCED-OCR] Using enhanced total: {enhanced_total} (Azure: {azure_total})", file=sys.stderr)
         else:
-            print(f"[ENHANCED-OCR] Total values match - Using enhanced: {enhanced_total}")
+            print(f"[ENHANCED-OCR] Total confirmed: {enhanced_total}", file=sys.stderr)
     elif enhanced_total:
-        print(f"[ENHANCED-OCR] Using enhanced pattern-based total: {enhanced_total}")
+        print(f"[ENHANCED-OCR] Using enhanced total: {enhanced_total}", file=sys.stderr)
     elif azure_total:
-        print(f"[ENHANCED-OCR] Using Azure-detected total: {azure_total}")
+        print(f"[ENHANCED-OCR] Using Azure total: {azure_total}", file=sys.stderr)
     else:
-        print(f"[ENHANCED-OCR] No total amount detected")
+        print(f"[ENHANCED-OCR] No total amount detected", file=sys.stderr)
 
-    # **VENDOR-SPECIFIC FIELD MAPPING**
-    if vendor_type == 'costco':
-        # For Costco: Use Ticket ID as main ID, and ensure folio is filled
-        print(f"[ENHANCED-OCR] Applying Costco-specific field mapping")
-        
-        # Costco prioritizes Ticket ID over Folio
-        if receipt_id:
-            ticket_id_field = receipt_id  # Main identifier for Costco
-            folio_field = folio if folio else "N/A"  # Secondary identifier
-        else:
-            # If no ticket ID found, check if folio could be the main identifier
-            ticket_id_field = folio if folio and len(folio) >= 8 else "N/A"
-            folio_field = "N/A"
-            
-        print(f"[ENHANCED-OCR] Costco mapping - Ticket ID: {ticket_id_field}, Folio: {folio_field}")
-        
+    # **COMPREHENSIVE FIELD MAPPING for Dual Pane View**
+    # Map all fields that the frontend expects
+    ticket_id_field = receipt_id if receipt_id else "N/A"
+    folio_field = folio if folio else "N/A"
+    
+    # Vendor-specific field mapping
+    tc_number = "N/A"  # TC# field
+    tr_number = "N/A"  # TR# field
+    id_field = "N/A"   # ID field
+    folio_venta = "N/A" # Fol_Vta field
+    
+    # Map fields based on vendor type
+    if vendor_type == 'walmart':
+        # Walmart typically uses TC# and TR# format
+        tc_number = ticket_id_field if ticket_id_field != "N/A" else "N/A"
+        tr_number = folio_field if folio_field != "N/A" else "N/A"
+    elif vendor_type == 'oxxo':
+        # OXXO uses ID and Fol_Vta format
+        id_field = ticket_id_field if ticket_id_field != "N/A" else "N/A"
+        folio_venta = folio_field if folio_field != "N/A" else "N/A"
+    elif vendor_type == 'costco':
+        # Costco uses ID_Ticket and Mesa_Folio format
+        id_field = ticket_id_field if ticket_id_field != "N/A" else "N/A"
+        folio_venta = folio_field if folio_field != "N/A" else "N/A"
     else:
-        # For other vendors: Standard ID/Folio mapping
-        ticket_id_field = receipt_id
-        folio_field = folio
+        # Generic mapping for unknown vendors
+        id_field = ticket_id_field if ticket_id_field != "N/A" else "N/A"
+        folio_venta = folio_field if folio_field != "N/A" else "N/A"
 
-    print(f"[ENHANCED-OCR] Final extraction results:")
-    print(f"  - Merchant: {merchant_name}")
-    print(f"  - Vendor Type: {vendor_type}")
-    print(f"  - Date: {transaction_date}")
-    print(f"  - Total (Enhanced): {enhanced_total}")
-    print(f"  - Total (Azure): {azure_total}")
-    print(f"  - Final Total: {final_total}")
-    print(f"  - Ticket ID: {ticket_id_field}")
-    print(f"  - Folio: {folio_field}")
-    print(f"  - Extraction Method: {extraction_method}")
+    # Show only final, clean results
+    print(f"[ENHANCED-OCR] Final results:", file=sys.stderr)
+    print(f"  Date: {transaction_date}", file=sys.stderr)
+    print(f"  Total: {final_total}", file=sys.stderr)
+    print(f"  ID: {ticket_id_field}", file=sys.stderr)
+    print(f"  Folio: {folio_field}", file=sys.stderr)
+    print(f"  Vendor Type: {vendor_type}", file=sys.stderr)
 
+    # **RETURN COMPREHENSIVE DATA STRUCTURE for Frontend**
     return {
-        "full_text": full_text,
-        "Comercio": merchant_name,
+        # Core extracted fields
+        "Mesa_Folio": folio_field,
         "Fecha": transaction_date,
+        "ID_Ticket": ticket_id_field,
         "Total": final_total,
-        'ID_Ticket': ticket_id_field,
-        'Mesa_Folio': folio_field,
-        'vendor_type': vendor_type,
-        'extraction_method': extraction_method,
-        'enhanced_ocr': True,
-        'total_sources': {
-            'enhanced_total': enhanced_total,
-            'azure_total': azure_total,
-            'selected_total': final_total
-        }
+        
+        # Vendor-specific fields
+        "TC#": tc_number,
+        "TR#": tr_number,
+        "ID": id_field,
+        "Fol_Vta": folio_venta,
+        
+        # Additional fields
+        "Comercio": merchant_name,
+        "comercio": merchant_name,  # Alternative field name
+        
+        # Raw text - COMPLETE text, not truncated
+        "Full_Raw_Text": full_text,
+        "raw_text": full_text,  # Alternative field name for frontend compatibility
+        
+        # Metadata
+        "vendor_type": vendor_type,
+        "extraction_method": ticket_info.get('extraction_method', 'unknown'),
+        "text_length": len(full_text)
     }

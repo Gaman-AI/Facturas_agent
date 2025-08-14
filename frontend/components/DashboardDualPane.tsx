@@ -16,6 +16,7 @@ import { tokenManager } from '@/utils/tokenManager'
 export interface DashboardDualPaneProps {
   onTaskSubmit?: (taskId: string) => void
   className?: string
+  initialTicketData?: any
 }
 
 interface TaskState {
@@ -25,9 +26,23 @@ interface TaskState {
   status: 'idle' | 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'connecting'
 }
 
+// Add interface for ticket data
+interface TicketData {
+  Comercio: string
+  Fecha: string
+  Total: string
+  'TC#': string
+  'TR#': string
+  'ID': string
+  'Fol_Vta': string
+  'ID_Ticket': string
+  'Mesa_Folio': string
+}
+
 export function DashboardDualPane({
   onTaskSubmit,
-  className = ''
+  className = '',
+  initialTicketData
 }: DashboardDualPaneProps) {
   const { t } = useLanguage()
   const [isMobile, setIsMobile] = useState(false)
@@ -43,6 +58,23 @@ export function DashboardDualPane({
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadedTicketId, setUploadedTicketId] = useState<string | null>(null)
   const [vendorUrl, setVendorUrl] = useState<string>('')
+  
+  // Add new state for ticket data and raw text
+  const [ticketData, setTicketData] = useState<TicketData>({
+    Comercio: '',
+    Fecha: '',
+    Total: '',
+    'TC#': '',
+    'TR#': '',
+    'ID': '',
+    'Fol_Vta': '',
+    'ID_Ticket': '',
+    'Mesa_Folio': ''
+  })
+  const [rawText, setRawText] = useState<string>('')
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [ocrSuccess, setOcrSuccess] = useState(false)
+  const [ocrStatus, setOcrStatus] = useState<string>('')
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
 
@@ -58,6 +90,10 @@ export function DashboardDualPane({
     setIsUploading(true)
     setUploadError(null)
     setUploadedTicketId(null)
+    setIsProcessing(true)
+    setOcrSuccess(false)
+    setOcrStatus('Processing image with OCR...')
+    
     try {
       const token = await tokenManager.getValidToken()
       const formData = new FormData()
@@ -82,14 +118,108 @@ export function DashboardDualPane({
       const data = await response.json()
       const ticketId = data?.data?.ticket_id || data?.ticket_id
       setUploadedTicketId(ticketId || 'unknown')
+      
+      // Extract ticket data from the OCR API response
+      if (data?.data?.extracted_data) {
+        const ocrData = data.data.extracted_data
+        console.log('✅ OCR data received:', ocrData)
+        
+        // Set raw text for debugging - check multiple possible field names
+        const rawTextData = ocrData.raw_text || 
+                           ocrData.Full_Raw_Text || 
+                           ocrData.full_text || 
+                           ocrData.text || ''
+        
+        if (rawTextData) {
+          setRawText(rawTextData)
+          console.log('✅ Raw text set from OCR, length:', rawTextData.length)
+        }
+        
+        // Map OCR data to TicketData interface
+        const extractedData: TicketData = {
+          Comercio: ocrData.comercio || ocrData.Comercio || '',
+          Fecha: ocrData.fecha || ocrData.Fecha || '',
+          Total: ocrData.total || ocrData.Total || '',
+          'TC#': ocrData.tc_number || ocrData['TC#'] || '',
+          'TR#': ocrData.tr_number || ocrData['TR#'] || '',
+          'ID': ocrData.id || ocrData.ID || '',
+          'Fol_Vta': ocrData.folio_venta || ocrData['Fol_Vta'] || '',
+          'ID_Ticket': ocrData.id_ticket || ocrData.ID_Ticket || '',
+          'Mesa_Folio': ocrData.mesa_folio || ocrData.Mesa_Folio || ''
+        }
+        
+        setTicketData(extractedData)
+        setOcrSuccess(true)
+        setOcrStatus('OCR completed successfully!')
+        console.log('✅ Ticket data mapped from OCR:', extractedData)
+        
+        // Show success message
+        console.log('✅ OCR processing completed successfully')
+        console.log('📊 Extracted fields:')
+        console.log('  - Mesa/Folio:', extractedData['Mesa_Folio'])
+        console.log('  - Fecha:', extractedData['Fecha'])
+        console.log('  - ID Ticket:', extractedData['ID_Ticket'])
+        console.log('  - Total:', extractedData['Total'])
+        console.log('  - Comercio:', extractedData['Comercio'])
+        console.log('📝 Raw text length:', rawTextData.length)
+        
+      } else {
+        console.warn('⚠️ No extracted_data found in API response')
+        console.log('📋 Full API response:', data)
+        setOcrStatus('OCR completed but no data extracted')
+      }
+      
       console.log('✅ Upload success:', data)
     } catch (err: any) {
       console.error('❌ Upload error:', err)
       setUploadError(err?.message || 'Upload failed')
+      setOcrStatus('OCR processing failed')
     } finally {
       setIsUploading(false)
+      setIsProcessing(false)
     }
   }
+
+  // Initialize ticket data from props if provided
+  useEffect(() => {
+    if (initialTicketData) {
+      console.log('🎯 Initializing ticket data from props:', initialTicketData)
+      
+      // Map the initial data to our TicketData interface
+      // Handle both the normalized fields and the original OCR fields
+      const mappedData: TicketData = {
+        Comercio: initialTicketData.comercio || initialTicketData.Comercio || '',
+        Fecha: initialTicketData.fecha || initialTicketData.Fecha || '',
+        Total: initialTicketData.total || initialTicketData.Total || '',
+        'TC#': initialTicketData.tc_number || initialTicketData['TC#'] || '',
+        'TR#': initialTicketData.tr_number || initialTicketData['TR#'] || '',
+        'ID': initialTicketData.id || initialTicketData.ID || '',
+        'Fol_Vta': initialTicketData.folio_venta || initialTicketData['Fol_Vta'] || '',
+        'ID_Ticket': initialTicketData.id_ticket || initialTicketData.ID_Ticket || '',
+        'Mesa_Folio': initialTicketData.mesa_folio || initialTicketData.Mesa_Folio || ''
+      }
+      
+      setTicketData(mappedData)
+      
+      // Set raw text if available - check multiple possible field names
+      const rawTextData = initialTicketData.raw_text || 
+                         initialTicketData.Full_Raw_Text || 
+                         initialTicketData.full_text || 
+                         initialTicketData.text || ''
+      
+      if (rawTextData) {
+        setRawText(rawTextData)
+        console.log('✅ Raw text set from initial data, length:', rawTextData.length)
+      }
+      
+      // Set OCR success state
+      setOcrSuccess(true)
+      setOcrStatus('OCR completed successfully!')
+      
+      console.log('✅ Ticket data initialized:', mappedData)
+      console.log('✅ Raw text length:', rawTextData.length)
+    }
+  }, [initialTicketData])
 
   // Check if mobile on mount and resize
   useEffect(() => {
@@ -331,73 +461,166 @@ export function DashboardDualPane({
     return (
       <div className={`h-full min-h-[800px] w-full ${className}`}>
         <div className="flex flex-col h-full gap-6">
-          {/* Image Upload Section */}
+          {/* Ticket Data Form Section */}
           <Card className="border-2 border-slate-200/60 shadow-lg bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden">
-            <CardHeader className="pb-4 bg-gradient-to-r from-pink-50 to-rose-50 border-b border-slate-200/40">
+            <CardHeader className="pb-4 bg-gradient-to-r from-red-50 to-rose-50 border-b border-slate-200/40">
               <CardTitle className="flex items-center space-x-2 text-xl">
-                <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-white" />
+                <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
                 </div>
-                <span>Upload Ticket Image</span>
+                <span>Datos del Ticket</span>
               </CardTitle>
               <CardDescription className="text-slate-600">
-                Select a receipt image to extract ticket details and optionally provide the vendor URL.
+                Ingrese los datos del ticket en los campos correspondientes.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4">
-              <div className="flex flex-col gap-3">
-                <Input
-                  type="url"
-                  placeholder="Vendor URL (e.g., https://facturacion.walmartmexico.com.mx/)"
-                  value={vendorUrl}
-                  onChange={(e) => setVendorUrl(e.target.value)}
-                />
-                <Input type="file" accept="image/*,.pdf" onChange={handleFileChange} />
-                <div className="flex items-center gap-2">
-                  <Button onClick={handleImageUpload} disabled={!selectedFile || isUploading} variant="default">
-                    {isUploading ? 'Uploading…' : 'Upload'}
-                  </Button>
+              {/* File Upload Section for Mobile */}
+              <div className="mb-4 p-4 border border-slate-200 rounded-lg bg-slate-50">
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Upload Ticket Image
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={handleFileChange}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Vendor URL (Optional)
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://facturacion.walmartmexico.com.mx/"
+                      value={vendorUrl}
+                      onChange={(e) => setVendorUrl(e.target.value)}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    />
+                  </div>
+                  
                   {selectedFile && (
-                    <span className="text-xs text-slate-600">Selected: {selectedFile.name}</span>
+                    <div className="text-sm text-gray-600">
+                      Selected: {selectedFile.name}
+                    </div>
+                  )}
+                  
+                  <Button
+                    onClick={handleImageUpload}
+                    disabled={!selectedFile || isUploading}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    {isUploading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      'Process Ticket with OCR'
+                    )}
+                  </Button>
+                  
+                  {uploadError && (
+                    <div className="text-sm text-red-600 bg-red-50 p-2 rounded border border-red-200">
+                      {uploadError}
+                    </div>
                   )}
                 </div>
-                {uploadError && (
-                  <div className="text-xs text-red-600">{uploadError}</div>
-                )}
-                {uploadedTicketId && (
-                  <div className="text-xs text-green-700">Ticket created: {uploadedTicketId}</div>
-                )}
               </div>
+              
+              {/* OCR Status for Mobile */}
+              {ocrStatus && (
+                <div className="mb-4">
+                  <div className={`flex items-center gap-3 p-3 rounded-lg ${
+                    ocrSuccess 
+                      ? 'bg-green-50 border border-green-200 text-green-700' 
+                      : isProcessing 
+                        ? 'bg-blue-50 border border-blue-200 text-blue-700'
+                        : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
+                  }`}>
+                    <div className={`w-4 h-4 rounded-full ${
+                      ocrSuccess 
+                        ? 'bg-green-500' 
+                        : isProcessing 
+                          ? 'bg-blue-500 animate-pulse'
+                          : 'bg-yellow-500'
+                    }`}></div>
+                    <span className="text-sm font-medium">{ocrStatus}</span>
+                  </div>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-2 gap-3">
+                {/* Mesa/Folio */}
+                <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Mesa/Folio</label>
+                  <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                    {ticketData['Mesa_Folio'] || 'No disponible'}
+                  </div>
+                </div>
+                
+                {/* Fecha */}
+                <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Fecha</label>
+                  <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                    {ticketData['Fecha'] || 'No disponible'}
+                  </div>
+                </div>
+                
+                {/* ID Ticket */}
+                <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">ID Ticket</label>
+                  <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                    {ticketData['ID_Ticket'] || 'No disponible'}
+                  </div>
+                </div>
+                
+                {/* Total */}
+                <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Total</label>
+                  <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                    {ticketData['Total'] || 'No disponible'}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Full Raw Text Display - New Component */}
+              <div className="mt-4">
+                <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Full Raw Text</label>
+                  <div className="min-h-[120px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800 overflow-y-auto">
+                    {rawText ? (
+                      <pre className="whitespace-pre-wrap text-xs leading-relaxed">
+                        {rawText}
+                      </pre>
+                    ) : (
+                      <span className="text-gray-500 italic">No raw text available</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Raw Text Display for Debugging - Mobile */}
+              {rawText && (
+                <div className="mt-4 p-4 border border-slate-200 rounded-lg bg-slate-50">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Raw OCR Text</h4>
+                  <div className="max-h-32 overflow-y-auto">
+                    <pre className="text-xs text-gray-600 whitespace-pre-wrap bg-white p-2 rounded border">
+                      {rawText}
+                    </pre>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Task Submission Section */}
-          <Card className="border-2 border-slate-200/60 shadow-lg bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden">
-            <CardHeader className="pb-4 bg-gradient-to-r from-pink-50 to-rose-50 border-b border-slate-200/40">
-              <CardTitle className="flex items-center space-x-2 text-xl">
-                <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-white" />
-                </div>
-                <span>{t('tasks.simple.title')}</span>
-              </CardTitle>
-              <CardDescription className="text-slate-600">
-                {t('tasks.simple.description')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-4">
-              <LiveViewPane
-                sessionId="dashboard"
-                taskId={taskState.taskId || undefined}
-                status={taskState.status === 'idle' ? 'pending' : taskState.status}
-                onTakeoverRequest={handleTakeoverRequest}
-                onRefresh={handleRefreshView}
-                className="h-[400px]"
-                viewType="taskSubmission"
-                onTaskSubmit={handleTaskCreated}
-                onResetTask={resetTaskState}
-              />
-            </CardContent>
-          </Card>
+
 
           {/* Live View URL Input */}
           <Card>
@@ -620,49 +843,107 @@ export function DashboardDualPane({
         
         <CardContent className="p-0 flex-1 h-full overflow-hidden min-h-0">
           <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-            {/* Left Pane - Task Submission (35% default) */}
+            {/* Left Pane - Ticket Data Form (35% default) */}
             <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
               <div className="h-full p-4 border-r-2 border-slate-200/40 bg-gradient-to-b from-white to-slate-50/30 min-h-0">
                 <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden">
-                  <div className="p-4 border-b border-slate-200/50">
-                    <h3 className="text-sm font-semibold mb-2">Upload Ticket Image</h3>
-                    <div className="flex flex-col gap-2">
-                      <Input
-                        type="url"
-                        placeholder="Vendor URL (e.g., https://facturacion.walmartmexico.com.mx/)"
-                        value={vendorUrl}
-                        onChange={(e) => setVendorUrl(e.target.value)}
-                        className="flex-1"
-                      />
-                      <div className="flex items-center gap-2">
-                      <Input type="file" accept="image/*,.pdf" onChange={handleFileChange} className="flex-1" />
-                      <Button onClick={handleImageUpload} disabled={!selectedFile || isUploading} variant="outline">
-                        {isUploading ? 'Uploading…' : 'Upload'}
-                      </Button>
+                  {/* Header with icon and title */}
+                  <div className="p-4 border-b border-slate-200/50 bg-gradient-to-r from-red-50 to-red-100">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-800">Datos del Ticket</h3>
+                    </div>
+                  </div>
+                  
+                  {/* OCR Status and Success Indicator */}
+                  {ocrStatus && (
+                    <div className="p-4 border-b border-slate-200/50">
+                      <div className={`flex items-center gap-3 p-3 rounded-lg ${
+                        ocrSuccess 
+                          ? 'bg-green-50 border border-green-200 text-green-700' 
+                          : isProcessing 
+                            ? 'bg-blue-50 border border-blue-200 text-blue-700'
+                            : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
+                      }`}>
+                        <div className={`w-4 h-4 rounded-full ${
+                          ocrSuccess 
+                            ? 'bg-green-500' 
+                            : isProcessing 
+                              ? 'bg-blue-500 animate-pulse'
+                              : 'bg-yellow-500'
+                        }`}></div>
+                        <span className="text-sm font-medium">{ocrStatus}</span>
                       </div>
                     </div>
-                    {selectedFile && (
-                      <div className="mt-2 text-xs text-slate-600">Selected: {selectedFile.name}</div>
+                  )}
+                  
+                  {/* Extracted Ticket Information Display - 2x2 Grid */}
+                  <div className="p-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Mesa/Folio */}
+                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Mesa/Folio</label>
+                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                          {ticketData['Mesa_Folio'] || 'No disponible'}
+                        </div>
+                      </div>
+                      
+                      {/* Fecha */}
+                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Fecha</label>
+                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                          {ticketData['Fecha'] || 'No disponible'}
+                        </div>
+                      </div>
+                      
+                      {/* ID Ticket */}
+                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">ID Ticket</label>
+                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                          {ticketData['ID_Ticket'] || 'No disponible'}
+                        </div>
+                      </div>
+                      
+                      {/* Total */}
+                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Total</label>
+                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                          {ticketData['Total'] || 'No disponible'}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Full Raw Text Display - New Component */}
+                    <div className="mt-4">
+                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Full Raw Text</label>
+                        <div className="min-h-[120px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800 overflow-y-auto">
+                          {rawText ? (
+                            <pre className="whitespace-pre-wrap text-xs leading-relaxed">
+                              {rawText}
+                            </pre>
+                          ) : (
+                            <span className="text-gray-500 italic">No raw text available</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Raw Text Display for Debugging */}
+                    {rawText && (
+                      <div className="mt-4 p-4 border border-slate-200 rounded-lg bg-slate-50">
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Raw OCR Text</h4>
+                        <div className="max-h-32 overflow-y-auto">
+                          <pre className="text-xs text-gray-600 whitespace-pre-wrap bg-white p-2 rounded border">
+                            {rawText}
+                          </pre>
+                        </div>
+                      </div>
                     )}
-                    {uploadError && (
-                      <div className="mt-2 text-xs text-red-600">{uploadError}</div>
-                    )}
-                    {uploadedTicketId && (
-                      <div className="mt-2 text-xs text-green-700">Ticket created: {uploadedTicketId}</div>
-                    )}
-                  </div>
-                  <div className="h-[calc(100%-120px)]">
-                    <LiveViewPane
-                      sessionId="dashboard"
-                      taskId={taskState.taskId || undefined}
-                      status={taskState.status}
-                      onTakeoverRequest={handleTakeoverRequest}
-                      onRefresh={handleRefreshView}
-                      className="h-full"
-                      viewType="taskSubmission"
-                      onTaskSubmit={handleTaskCreated}
-                      onResetTask={resetTaskState}
-                    />
                   </div>
                 </div>
               </div>
