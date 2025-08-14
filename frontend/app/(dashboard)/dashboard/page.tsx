@@ -41,6 +41,7 @@ function DashboardContent() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadedTicketId, setUploadedTicketId] = useState<string | null>(null);
+  const [extractedTicketData, setExtractedTicketData] = useState<any>(null);
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
@@ -56,6 +57,15 @@ function DashboardContent() {
 
   const handleNewTask = () => {
     router.push('/browser-agent-realtime');
+  };
+
+  const handleResetToUpload = () => {
+    setUseDualPane(false);
+    setExtractedTicketData(null);
+    setUploadedTicketId(null);
+    setSelectedFile(null);
+    setVendorUrl('');
+    setUploadError(null);
   };
 
   const handleSimpleTask = () => {
@@ -96,6 +106,19 @@ function DashboardContent() {
       const data = await response.json();
       const ticketId = data?.data?.ticket_id || data?.ticket_id || null;
       setUploadedTicketId(ticketId);
+      
+      // Extract and store the ticket data from OCR response
+      if (data?.data?.extracted_data) {
+        const ocrData = data.data.extracted_data;
+        console.log('✅ OCR data received in dashboard:', ocrData);
+        console.log('📊 OCR data keys:', Object.keys(ocrData));
+        console.log('📝 Raw text available:', !!ocrData.raw_text || !!ocrData.Full_Raw_Text);
+        setExtractedTicketData(ocrData);
+      } else {
+        console.warn('⚠️ No extracted_data found in dashboard response');
+        console.log('📋 Full dashboard response:', data);
+      }
+      
       // Automatically switch to Dual Pane view after successful upload
       setUseDualPane(true);
     } catch (err: any) {
@@ -225,10 +248,34 @@ function DashboardContent() {
         <div className="mb-12">
           {useDualPane ? (
             <div className="h-[900px] mb-8 relative z-10 w-full">
+              {/* Reset Button */}
+              <div className="mb-4 flex justify-end">
+                <Button 
+                  onClick={handleResetToUpload}
+                  variant="outline"
+                  className="border-pink-300 text-pink-700 hover:bg-pink-50"
+                >
+                  ← Back to Upload
+                </Button>
+              </div>
+              
               <DashboardDualPane 
                 onTaskSubmit={handleTaskSubmit}
                 className="h-full w-full"
+                initialTicketData={extractedTicketData}
               />
+              {/* Debug info */}
+              {extractedTicketData && (
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h4 className="text-sm font-medium text-blue-700 mb-2">Debug: Data being passed to Dual Pane</h4>
+                  <div className="text-xs text-blue-600">
+                    <div>Keys: {Object.keys(extractedTicketData).join(', ')}</div>
+                    <div>Raw text length: {extractedTicketData.raw_text?.length || extractedTicketData.Full_Raw_Text?.length || 'N/A'}</div>
+                    <div>Mesa_Folio: {extractedTicketData.Mesa_Folio || extractedTicketData.mesa_folio || 'N/A'}</div>
+                    <div>Fecha: {extractedTicketData.Fecha || extractedTicketData.fecha || 'N/A'}</div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
               <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm mb-6">
