@@ -132,7 +132,23 @@ async def create_browserbase_session():
     
     # Get the proper live view/debug URLs using Browserbase debug method
     debug_info = bb.sessions.debug(session.id)
-    live_view_url = debug_info.debugger_fullscreen_url
+    
+    # Construct standard devtools inspector URL instead of fullscreen
+    # Extract session ID and page ID from the debug info
+    if hasattr(debug_info, 'debugger_fullscreen_url') and debug_info.debugger_fullscreen_url:
+        # Parse the existing URL to extract session and page IDs
+        import re
+        url_match = re.search(r'wss=connect\.browserbase\.com/debug/([^/]+)/devtools/page/([^?]+)', debug_info.debugger_fullscreen_url)
+        if url_match:
+            session_id = url_match.group(1)
+            page_id = url_match.group(2)
+            live_view_url = f"https://www.browserbase.com/devtools/inspector.html?wss=connect.browserbase.com/debug/{session_id}/devtools/page/{page_id}?debug=true"
+        else:
+            # Fallback to fullscreen URL if parsing fails
+            live_view_url = debug_info.debugger_fullscreen_url
+    else:
+        # Fallback if debug info doesn't have the expected URL
+        live_view_url = f"https://www.browserbase.com/devtools/inspector.html?wss=connect.browserbase.com/debug/{session.id}/devtools/page/default?debug=true"
     
     # Print session details for monitoring and frontend iframe integration
     print(f"Session ID: {session.id}")
@@ -152,7 +168,7 @@ def create_browser_profile() -> BrowserProfile:
     )
 
 
-async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini-2024-07-18", temperature: float = 0.5, max_steps: int = 30):
+async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", temperature: float = 0.5, max_steps: int = 30):
     """
     Run a browser automation task using Browserbase session with proper resource management
     
@@ -222,7 +238,7 @@ async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini-2024-07-1
         raise
 
 
-async def run_browser_task_with_session_info(task_prompt: str, model: str = "gpt-4o-mini-2024-07-18", temperature: float = 0.5, max_steps: int = 30):
+async def run_browser_task_with_session_info(task_prompt: str, model: str = "gpt-4o-mini", temperature: float = 0.5, max_steps: int = 30):
     """
     Run a browser automation task using Browserbase session and return both result and session information
     
@@ -262,7 +278,23 @@ async def run_browser_task_with_session_info(task_prompt: str, model: str = "gpt
         # Get the proper live view/debug URLs using Browserbase debug method
         bb = Browserbase(api_key=os.environ["BROWSERBASE_API_KEY"])
         debug_info = bb.sessions.debug(browserbase_session.id)
-        session_info["live_view_url"] = debug_info.debugger_fullscreen_url
+        
+        # Construct standard devtools inspector URL instead of fullscreen
+        # Extract session ID and page ID from the debug info
+        if hasattr(debug_info, 'debugger_fullscreen_url') and debug_info.debugger_fullscreen_url:
+            # Parse the existing URL to extract session and page IDs
+            import re
+            url_match = re.search(r'wss=connect\.browserbase\.com/debug/([^/]+)/devtools/page/([^?]+)', debug_info.debugger_fullscreen_url)
+            if url_match:
+                session_id = url_match.group(1)
+                page_id = url_match.group(2)
+                session_info["live_view_url"] = f"https://www.browserbase.com/devtools/inspector.html?wss=connect.browserbase.com/debug/{session_id}/devtools/page/{page_id}?debug=true"
+            else:
+                # Fallback to fullscreen URL if parsing fails
+                session_info["live_view_url"] = debug_info.debugger_fullscreen_url
+        else:
+            # Fallback if debug info doesn't have the expected URL
+            session_info["live_view_url"] = f"https://www.browserbase.com/devtools/inspector.html?wss=connect.browserbase.com/debug/{browserbase_session.id}/devtools/page/default?debug=true"
         
         print(f"[SESSION] Created Browserbase session: {session_info['session_id']}")
         print(f"[SESSION] Live view URL (devtools): {session_info['live_view_url']}")
@@ -367,7 +399,7 @@ async def main():
             # Extract task parameters from JSON
             # Support both 'task' (from API) and 'prompt' (legacy) field names
             prompt = task_data.get('task', '') or task_data.get('prompt', '')
-            model = task_data.get('model', 'gpt-4o-mini-2024-07-18')
+            model = task_data.get('model', 'gpt-4o-mini')
             temperature = task_data.get('temperature', 0.7)
             max_steps = task_data.get('max_steps', 30)
             vendor_url = task_data.get('vendor_url', '')
@@ -443,7 +475,7 @@ async def main():
         task_text = " ".join(sys.argv[1:])
         try:
             print(f"[RUNNING] Executing task: {task_text[:100]}...")
-            result = await run_browser_task(task_text, model="gpt-4o-mini-2024-07-18")
+            result = await run_browser_task(task_text, model="gpt-4o-mini")
             print(f"[SUCCESS] Task completed successfully!")
             print(f"Result: {str(result)}")
         except Exception as e:

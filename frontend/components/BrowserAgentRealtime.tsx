@@ -144,10 +144,10 @@ const BrowserAgentRealtime: React.FC<BrowserAgentRealtimeProps> = ({
     setConnectionError(null);
     
     try {
-      const connected = await websocketService.connectBrowserAgent(newSessionId);
-      if (!connected) {
-        throw new Error('Failed to establish WebSocket connection');
-      }
+              const connected = await websocketService.startBrowserAgentPolling(newSessionId);
+              if (!connected) {
+          throw new Error('Failed to start task monitoring');
+        }
     } catch (error) {
       setIsConnecting(false);
       const errorMessage = error instanceof Error ? error.message : 'Unknown connection error';
@@ -201,7 +201,7 @@ const BrowserAgentRealtime: React.FC<BrowserAgentRealtimeProps> = ({
   };
 
   const stopTask = () => {
-    websocketService.disconnect();
+    websocketService.stopPolling(sessionId!);
     setIsRunning(false);
     setIsConnected(false);
     setSessionId(null);
@@ -214,7 +214,7 @@ const BrowserAgentRealtime: React.FC<BrowserAgentRealtimeProps> = ({
   };
 
   const reconnect = async () => {
-    websocketService.disconnect();
+    websocketService.stopPolling(sessionId!);
     setIsConnected(false);
     setConnectionError(null);
     
@@ -262,6 +262,7 @@ const BrowserAgentRealtime: React.FC<BrowserAgentRealtimeProps> = ({
                     <li>Backend server is running on port 8000</li>
                     <li>Run: <code className="bg-gray-100 px-1 rounded">cd backend && python main.py</code></li>
                     <li>Check if port 8000 is available</li>
+                    <li>Task monitoring will use API polling instead of WebSocket connections</li>
                   </ul>
                 </div>
               </AlertDescription>

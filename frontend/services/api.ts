@@ -509,18 +509,36 @@ export class ApiService {
         params: { offset: skip, limit }
       });
       
+      console.log('Raw API response:', response.data);
+      
       // Transform the response to match the Task interface
       const browserUseResponse = response.data as BrowserUseTasksResponse;
-      return browserUseResponse.data.tasks.map(task => ({
-        id: task.task_id,
-        prompt: task.prompt_preview || 'Browser automation task',
-        status: task.status as 'pending' | 'running' | 'paused' | 'completed' | 'failed',
-        created_at: task.created_at,
-        completed_at: task.completed_at,
-        error_message: task.error,
-        result: task.result,
-        steps: [] // Browser-use tasks don't have steps in the same format
-      }));
+      
+      if (!browserUseResponse?.data?.tasks) {
+        console.warn('Invalid API response structure:', browserUseResponse);
+        return [];
+      }
+      
+      const transformedTasks = browserUseResponse.data.tasks.map(task => {
+        if (!task.task_id) {
+          console.warn('Task missing task_id:', task);
+          return null;
+        }
+        
+        return {
+          id: task.task_id,
+          prompt: task.prompt_preview || 'Browser automation task',
+          status: task.status as 'pending' | 'running' | 'paused' | 'completed' | 'failed',
+          created_at: task.created_at,
+          completed_at: task.completed_at,
+          error_message: task.error,
+          result: task.result,
+          steps: [] // Browser-use tasks don't have steps in the same format
+        };
+      }).filter(Boolean); // Remove null entries
+      
+      console.log('Transformed tasks:', transformedTasks);
+      return transformedTasks;
     } catch (error) {
       console.error('Error fetching tasks:', error);
       // Return empty array as fallback

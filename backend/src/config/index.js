@@ -52,6 +52,7 @@ const config = {
     executable: process.env.PYTHON_EXECUTABLE || 'python',
     browserUsePath: './browser-use',
     timeout: parseInt(process.env.PYTHON_TASK_TIMEOUT) || 300000, // 5 minutes default
+    sessionTimeout: parseInt(process.env.PYTHON_SESSION_TIMEOUT) || 120000, // 2 minutes default for session creation
     maxRetries: parseInt(process.env.PYTHON_MAX_RETRIES) || 3,
   },
 

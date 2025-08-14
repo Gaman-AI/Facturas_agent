@@ -817,7 +817,7 @@ router.get('/browser-use/:taskId', validateTaskParams, asyncHandler(async (req, 
       prompt: task.prompt,
       // Add session information for live viewing
       session_id: task.session_id || task.sessionId,
-      live_view_url: task.live_view_url || task.liveViewUrl || (task.session_id ? `https://www.browserbase.com/sessions/${task.session_id}` : null),
+      live_view_url: task.live_view_url || task.liveViewUrl || null,
       browser_session_id: task.browser_session_id || task.browserSessionId
     }
 

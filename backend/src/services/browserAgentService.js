@@ -9,6 +9,7 @@
 
 import { v4 as uuidv4 } from 'uuid'
 import pythonBridge from './pythonBridge.js'
+import websocketService from './websocketService.js'
 
 class BrowserAgentService {
   constructor() {
@@ -301,7 +302,39 @@ class BrowserAgentService {
         max_steps: task.maxSteps
       }
       
-      // Execute task using Python bridge
+      // Step 1: Create Browserbase session first to get live view URL immediately
+      console.log(`🔗 Creating Browserbase session for task ${taskId}...`)
+      const sessionResult = await pythonBridge.createBrowserSession(pythonTaskData)
+      
+      if (!sessionResult.success) {
+        throw new Error(`Failed to create Browserbase session: ${sessionResult.error}`)
+      }
+      
+      // Step 2: Send immediate WebSocket update with live view URL
+      if (sessionResult.session_id && sessionResult.live_view_url) {
+        const sessionUpdate = {
+          taskId: taskId,
+          status: 'running',
+          sessionId: sessionResult.session_id,
+          liveViewUrl: sessionResult.live_view_url,
+          browserSessionId: sessionResult.session_id
+        }
+        
+        // Send WebSocket update for live view URL immediately
+        websocketService.sendTaskUpdate(taskId, sessionUpdate)
+        
+        console.log(`🔗 WebSocket update sent for task ${taskId}:`, sessionUpdate)
+        
+        // Update task with session information immediately
+        this.updateTaskStatus(taskId, 'running', {
+          sessionId: sessionResult.session_id,
+          liveViewUrl: sessionResult.live_view_url,
+          browserSessionId: sessionResult.session_id
+        })
+      }
+      
+      // Step 3: Execute the actual task using the existing session
+      console.log(`🚀 Executing task for ${taskId} using existing session...`)
       const result = await pythonBridge.executeBrowserTask(pythonTaskData)
       
       const executionTime = Date.now() - startTime
@@ -313,16 +346,20 @@ class BrowserAgentService {
           executionTimeMs: executionTime,
           modelUsed: result.model_used,
           stepsTaken: result.steps_taken,
-          // Store session information if available
-          sessionId: result.session_id,
-          liveViewUrl: result.live_view_url,
-          browserSessionId: result.browser_session_id
+          // Keep session information from session creation
+          sessionId: sessionResult.session_id,
+          liveViewUrl: sessionResult.live_view_url,
+          browserSessionId: sessionResult.session_id
         })
       } else {
         this.updateTaskStatus(taskId, 'failed', {
           error: result.error,
           errorType: result.error_type,
-          executionTimeMs: executionTime
+          executionTimeMs: executionTime,
+          // Keep session information even on failure
+          sessionId: sessionResult.session_id,
+          liveViewUrl: sessionResult.live_view_url,
+          browserSessionId: sessionResult.session_id
         })
       }
       
@@ -375,6 +412,22 @@ class BrowserAgentService {
     
     // Store updated task
     this.tasks.set(taskId, task)
+    
+    // Send WebSocket update with session information if available
+    if (updates.sessionId || updates.liveViewUrl) {
+      const updateData = {
+        taskId: taskId,
+        status: status,
+        sessionId: updates.sessionId || task.sessionId,
+        liveViewUrl: updates.liveViewUrl || task.liveViewUrl,
+        browserSessionId: updates.browserSessionId || task.browserSessionId
+      }
+      
+      // Send via WebSocket for real-time updates
+      websocketService.sendTaskUpdate(taskId, updateData)
+      
+      console.log(`🔗 WebSocket status update sent for task ${taskId}:`, updateData)
+    }
   }
 
   /**
