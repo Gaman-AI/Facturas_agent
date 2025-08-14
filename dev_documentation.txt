@@ -18,6 +18,66 @@ This comprehensive document includes:
 
 ## Latest Updates
 
+### 2025-01-28 16:15 - Virtual Environment Setup and Dependency Management for Hybrid Backend
+
+**Date & Time**: 2025-01-28 16:15
+
+**Objective**: Clarify dependency management strategy for hybrid backend (Node.js + Python) and provide comprehensive virtual environment setup guidance for Azure AI services integration.
+
+**Context**: The project uses a hybrid backend architecture with Node.js as the main server and Python for browser automation and Azure AI services. This creates confusion about whether to use `npm` or `pip` for dependencies.
+
+**Changes Made**:
+
+1. **Updated Python Dependencies** (`backend/requirements.txt`):
+   - Added comprehensive Azure AI SDK packages
+   - Organized dependencies by category (Azure, AI, Browser automation, etc.)
+   - Included all necessary packages for Azure Document Intelligence
+   - Added browser-use specific dependencies
+
+2. **Created Virtual Environment Setup Guide** (`backend/SETUP_VIRTUAL_ENVIRONMENT.md`):
+   - Comprehensive step-by-step setup instructions
+   - Both `uv` (recommended) and traditional `pip` approaches
+   - Hybrid backend architecture explanation
+   - Separate dependency management for Node.js and Python
+   - Troubleshooting guide and common issues
+
+3. **Created Windows PowerShell Automation Script** (`backend/setup-virtual-env.ps1`):
+   - Automated virtual environment creation and setup
+   - Dependency installation and validation
+   - Error handling and user feedback
+   - Windows-specific activation commands
+   - Installation testing for all components
+
+**Dependency Management Strategy**:
+- **Node.js Dependencies**: Managed through `npm` (Express, Supabase, etc.)
+- **Python Dependencies**: Managed through `pip` (Azure SDKs, browser-use, etc.)
+- **Azure Services**: Python-only, managed through pip
+- **Browser Automation**: Python-only, managed through pip
+- **Main API Server**: Node.js-only, managed through npm
+
+**Key Benefits**:
+- **Clear Separation**: No confusion about which package manager to use
+- **Proper Isolation**: Python dependencies in virtual environment
+- **Azure Integration**: Complete SDK support for Document Intelligence
+- **Automated Setup**: One-click environment configuration on Windows
+- **Comprehensive Documentation**: Step-by-step setup and troubleshooting
+
+**Files Created/Modified**:
+- `backend/requirements.txt` - Enhanced with comprehensive Azure dependencies
+- `backend/SETUP_VIRTUAL_ENVIRONMENT.md` - Complete setup guide
+- `backend/setup-virtual-env.ps1` - Windows automation script
+
+**Next Steps for Developers**:
+1. Run `.\setup-virtual-env.ps1` from backend directory (Windows)
+2. Follow manual setup guide for other platforms
+3. Configure Azure credentials in `.env` file
+4. Activate virtual environment before running Python code
+5. Use separate terminals for Python and Node.js services
+
+**Testing Status**: Virtual environment setup is now fully documented and automated. Ready for developer onboarding and production deployment.
+
+---
+
 ### 2025-01-28 15:52 - Fixed OCR Flow Issues and Improved System Architecture
 
 **Date & Time**: 2025-01-28 15:52
