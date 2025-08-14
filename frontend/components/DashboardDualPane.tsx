@@ -37,6 +37,11 @@ interface TicketData {
   'Fol_Vta': string
   'ID_Ticket': string
   'Mesa_Folio': string
+  // Additional fields for vendor facturacion
+  'Store_Branch_Plaza': string
+  'Register_Station_Terminal': string
+  'Payment_Type': string
+  'Card_Last_4_Digits': string
 }
 
 export function DashboardDualPane({
@@ -69,7 +74,11 @@ export function DashboardDualPane({
     'ID': '',
     'Fol_Vta': '',
     'ID_Ticket': '',
-    'Mesa_Folio': ''
+    'Mesa_Folio': '',
+    'Store_Branch_Plaza': '',
+    'Register_Station_Terminal': '',
+    'Payment_Type': '',
+    'Card_Last_4_Digits': ''
   })
   const [rawText, setRawText] = useState<string>('')
   const [isProcessing, setIsProcessing] = useState(false)
@@ -145,7 +154,11 @@ export function DashboardDualPane({
           'ID': ocrData.id || ocrData.ID || '',
           'Fol_Vta': ocrData.folio_venta || ocrData['Fol_Vta'] || '',
           'ID_Ticket': ocrData.id_ticket || ocrData.ID_Ticket || '',
-          'Mesa_Folio': ocrData.mesa_folio || ocrData.Mesa_Folio || ''
+          'Mesa_Folio': ocrData.mesa_folio || ocrData.Mesa_Folio || '',
+          'Store_Branch_Plaza': ocrData.store_branch_plaza || ocrData['Store_Branch_Plaza'] || '',
+          'Register_Station_Terminal': ocrData.register_station_terminal || ocrData['Register_Station_Terminal'] || '',
+          'Payment_Type': ocrData.payment_type || ocrData['Payment_Type'] || '',
+          'Card_Last_4_Digits': ocrData.card_last_4_digits || ocrData['Card_Last_4_Digits'] || ''
         }
         
         setTicketData(extractedData)
@@ -161,6 +174,10 @@ export function DashboardDualPane({
         console.log('  - ID Ticket:', extractedData['ID_Ticket'])
         console.log('  - Total:', extractedData['Total'])
         console.log('  - Comercio:', extractedData['Comercio'])
+        console.log('  - Store/Branch/Plaza:', extractedData['Store_Branch_Plaza'])
+        console.log('  - Register/Station/Terminal:', extractedData['Register_Station_Terminal'])
+        console.log('  - Payment Type:', extractedData['Payment_Type'])
+        console.log('  - Card Last 4 Digits:', extractedData['Card_Last_4_Digits'])
         console.log('📝 Raw text length:', rawTextData.length)
         
       } else {
@@ -196,7 +213,11 @@ export function DashboardDualPane({
         'ID': initialTicketData.id || initialTicketData.ID || '',
         'Fol_Vta': initialTicketData.folio_venta || initialTicketData['Fol_Vta'] || '',
         'ID_Ticket': initialTicketData.id_ticket || initialTicketData.ID_Ticket || '',
-        'Mesa_Folio': initialTicketData.mesa_folio || initialTicketData.Mesa_Folio || ''
+        'Mesa_Folio': initialTicketData.mesa_folio || initialTicketData.Mesa_Folio || '',
+        'Store_Branch_Plaza': initialTicketData.store_branch_plaza || initialTicketData['Store_Branch_Plaza'] || '',
+        'Register_Station_Terminal': initialTicketData.register_station_terminal || initialTicketData['Register_Station_Terminal'] || '',
+        'Payment_Type': initialTicketData.payment_type || initialTicketData['Payment_Type'] || '',
+        'Card_Last_4_Digits': initialTicketData.card_last_4_digits || initialTicketData['Card_Last_4_Digits'] || ''
       }
       
       setTicketData(mappedData)
@@ -556,7 +577,7 @@ export function DashboardDualPane({
                 </div>
               )}
               
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 {/* Mesa/Folio */}
                 <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Mesa/Folio</label>
@@ -586,6 +607,38 @@ export function DashboardDualPane({
                   <label className="block text-sm font-medium text-gray-700 mb-2">Total</label>
                   <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
                     {ticketData['Total'] || 'No disponible'}
+                  </div>
+                </div>
+                
+                {/* Store/Branch/Plaza */}
+                <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Store/Branch/Plaza</label>
+                  <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                    {ticketData['Store_Branch_Plaza'] || 'No disponible'}
+                  </div>
+                </div>
+                
+                {/* Register/Station/Terminal */}
+                <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Register/Station/Terminal</label>
+                  <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                    {ticketData['Register_Station_Terminal'] || 'No disponible'}
+                  </div>
+                </div>
+                
+                {/* Payment Type */}
+                <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Type</label>
+                  <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                    {ticketData['Payment_Type'] || 'No disponible'}
+                  </div>
+                </div>
+                
+                {/* Last 4 digits of card */}
+                <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Card Last 4 Digits</label>
+                  <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                    {ticketData['Card_Last_4_Digits'] || 'No disponible'}
                   </div>
                 </div>
               </div>
@@ -883,7 +936,7 @@ export function DashboardDualPane({
                   
                   {/* Extracted Ticket Information Display - 2x2 Grid */}
                   <div className="p-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                       {/* Mesa/Folio */}
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
                         <label className="block text-sm font-medium text-gray-700 mb-2">Mesa/Folio</label>
@@ -913,6 +966,38 @@ export function DashboardDualPane({
                         <label className="block text-sm font-medium text-gray-700 mb-2">Total</label>
                         <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
                           {ticketData['Total'] || 'No disponible'}
+                        </div>
+                      </div>
+                      
+                      {/* Store/Branch/Plaza */}
+                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Store/Branch/Plaza</label>
+                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                          {ticketData['Store_Branch_Plaza'] || 'No disponible'}
+                        </div>
+                      </div>
+                      
+                      {/* Register/Station/Terminal */}
+                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Register/Station/Terminal</label>
+                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                          {ticketData['Register_Station_Terminal'] || 'No disponible'}
+                        </div>
+                      </div>
+                      
+                      {/* Payment Type */}
+                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Payment Type</label>
+                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                          {ticketData['Payment_Type'] || 'No disponible'}
+                        </div>
+                      </div>
+                      
+                      {/* Last 4 digits of card */}
+                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Card Last 4 Digits</label>
+                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
+                          {ticketData['Card_Last_4_Digits'] || 'No disponible'}
                         </div>
                       </div>
                     </div>
