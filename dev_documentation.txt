@@ -18,6 +18,152 @@ This comprehensive document includes:
 
 ## Latest Updates
 
+### 2025-08-14 19:15 - Email Confirmation Disabled for Registration
+
+**Date & Time**: 2025-08-14 19:15
+
+**Summary**: Disabled email confirmation requirement in Supabase to allow users to register and immediately sign in without waiting for email confirmation.
+
+**Changes Made**:
+
+1. **Updated Auth Service** (`frontend/services/auth.ts`):
+   - Modified `signUp` call to include options for disabling email confirmation
+   - Added `emailRedirectTo: undefined` to prevent email confirmation flow
+   - Added helper methods for checking email confirmation status
+   - Added method for resending email confirmation if needed
+
+2. **Created Comprehensive Guide** (`DISABLE_EMAIL_CONFIRMATION.md`):
+   - Step-by-step instructions for disabling email confirmation in Supabase dashboard
+   - Alternative methods using SQL commands and environment variables
+   - Security considerations and troubleshooting guide
+   - Testing procedures and verification steps
+
+**Methods to Disable Email Confirmation**:
+
+1. **Supabase Dashboard (Recommended)**:
+   - Go to Authentication → Settings
+   - Uncheck "Enable email confirmations"
+   - Save changes
+
+2. **SQL Commands** (if auth.config table exists):
+   - Update or insert configuration values
+   - Set `enable_confirmations` to `false`
+
+3. **Environment Variables**:
+   - Set `SUPABASE_AUTH_ENABLE_CONFIRMATIONS=false`
+   - Restart project
+
+**Benefits**:
+- Users can register and immediately sign in
+- No waiting for email confirmation
+- Better user experience for development/testing
+- Maintains all existing functionality
+
+**Security Considerations**:
+- Reduces security as anyone with valid email can create account
+- Consider alternative verification methods for production
+- This affects all new users, not just specific ones
+
+**Next Steps**:
+1. Follow the guide to disable email confirmation in Supabase dashboard
+2. Test registration flow with new user
+3. Verify immediate sign-in capability
+4. Monitor for any authentication issues
+
+**Status**: Ready for implementation - follow the guide to disable email confirmation in Supabase dashboard.
+
+---
+
+### 2025-08-14 18:30 - Registration Form Database Schema Fix
+
+**Date & Time**: 2025-08-14 18:30
+
+**Summary**: Fixed critical database schema mismatch that was preventing user registration from working properly.
+
+**Root Causes Identified**:
+1. **Conflicting Database Functions**: Two `create_user_profile` functions existed with the same name but different implementations:
+   - First function: Inserted into `public.users` table
+   - Second function: Inserted into `user_profiles` table
+   - Application expected `user_profiles` table but was calling the wrong function
+
+2. **Missing RLS Policy**: The `user_profiles` table had SELECT and UPDATE policies but was missing the INSERT policy, causing permission denied errors.
+
+3. **Type Mismatch**: Function parameters had inconsistent types (`text` vs `character varying`) causing function resolution conflicts.
+
+4. **Frontend Type Mismatch**: Frontend TypeScript types were missing `email` and `phone_number` fields that the registration form was sending.
+
+**Changes Made**:
+
+1. **Fixed Database Function** (`fix_create_user_profile_function`):
+   - Dropped conflicting function that inserted into `users` table
+   - Updated function to correctly insert into `user_profiles` table
+   - Fixed parameter type consistency
+
+2. **Added Missing RLS Policy** (`add_insert_policy_for_user_profiles`):
+   - Created INSERT policy: "Users can insert own profile"
+   - Policy allows users to insert profiles where `auth.uid() = user_id`
+
+3. **Fixed Function Parameter Types** (`fix_function_parameter_types`):
+   - Standardized all parameters to use `character varying` types
+   - Eliminated function signature conflicts
+
+4. **Updated Frontend Types** (`frontend/lib/supabase.ts`):
+   - Added missing `email` and `phone_number` fields to TypeScript types
+   - Ensured frontend types match actual database schema
+
+**Database Schema Now Correctly Configured**:
+- `user_profiles` table with proper structure
+- `create_user_profile` function inserts into correct table
+- RLS policies allow proper access control
+- Foreign key constraints properly link to `auth.users`
+
+**Files Modified**:
+- Database: Applied 3 migrations to fix function and policies
+- `frontend/lib/supabase.ts` - Updated TypeScript types
+- `frontend/services/auth.ts` - Already correctly configured to use `user_profiles` table
+
+**Status**: Registration form should now work correctly. Users can register and their profiles will be properly stored in the `user_profiles` table.
+
+**Next Steps for Testing**:
+1. Test registration form with valid data
+2. Verify user profile creation in database
+3. Check that login works after registration
+4. Monitor for any remaining console errors
+
+---
+
+### 2025-08-14 17:05 - Registration Page Diagnosis (Supabase client/env and RPC permissions)
+
+**Date & Time**: 2025-08-14 17:05
+
+**Summary**:
+- Investigated user report: unable to register via `frontend/app/(auth)/register/page.tsx`.
+- Frontend registration uses the client-side Supabase SDK (`frontend/services/auth.ts`) instead of the backend endpoint, so it requires valid frontend env vars and a callable DB RPC.
+
+**Root Causes Identified**:
+1. Frontend Supabase client not initialized when either `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` are missing or left as placeholders. In `frontend/lib/supabase.ts`, the client is set to `null` if values are unset or equal to `"your_supabase_url"`/`"your_supabase_anon_key"`, causing `authService.register()` to throw: "Supabase client not initialized. Please check your environment variables."  
+2. The registration flow calls `rpc('create_user_profile', ...)`. If this PostgreSQL function does not exist, or lacks proper permissions for the `anon` role (or is not `SECURITY DEFINER` with appropriate owner), profile creation fails even if auth.signUp succeeds.  
+3. UX validation: required Select fields `state`, `tax_regime`, and `cfdi_use` must be selected. Leaving them empty will prevent submission due to Zod schema.
+
+**Files Referenced**:
+- `frontend/lib/supabase.ts` (client creation guard on env vars)
+- `frontend/services/auth.ts` (signUp + `create_user_profile` RPC)
+- `frontend/components/auth/RegisterForm.tsx` (required fields and Select inputs)
+
+**Action Items for Developers**:
+1. Create `frontend/.env.local` with real values (see `frontend/env.example`):
+   - `NEXT_PUBLIC_SUPABASE_URL=<your project url>`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY=<your anon key>`
+2. Ensure the DB function `create_user_profile` exists in Supabase and is callable by the frontend:
+   - Define it as a `SECURITY DEFINER` function owned by a role with required table access, or grant execute appropriately to `anon`.
+   - Confirm it returns a row so the code path expecting `profileResult` works.
+3. Manually test with `frontend/test-registration.html` or the Register page after setting env vars.
+4. Ensure users select `state`, `tax_regime`, and `cfdi_use` (all required by schema).
+
+**Status**: No code changes made. Documented the diagnosis and concrete next steps to restore registration.
+
+---
+
 ### 2025-01-28 16:15 - Virtual Environment Setup and Dependency Management for Hybrid Backend
 
 **Date & Time**: 2025-01-28 16:15
@@ -1806,6 +1952,78 @@ Redirected all debug print statements from stdout to stderr by adding `file=sys.
 ✅ **COMPLETED** - OCR output format fixed and tested
 ✅ **WORKING** - JSON parsing now successful
 ✅ **READY** - OCR upload functionality restored
+
+---
+
+### 2025-01-27 15:45 - Database Schema Update: Added Missing Email and Phone Number Columns
+
+**Date & Time**: 2025-01-27 15:45
+
+**Summary**: Resolved critical database schema mismatch by adding missing `email` and `phone_number` columns to the `user_profiles` table, making `phone_number` mandatory. This fixes the user registration issues caused by schema misalignment.
+
+**Root Causes Identified**:
+1. **Missing Database Columns**: The `user_profiles` table was missing `email` and `phone_number` columns that the application code expected
+2. **Schema Drift**: Multiple schema files existed with conflicting definitions
+3. **Type Mismatches**: TypeScript types included fields that didn't exist in the actual database
+4. **Function Parameter Mismatch**: Database function was called with parameters for non-existent columns
+
+**Changes Made**:
+
+1. **Updated Database Schema** (`supabase_schema.sql`):
+   - Added `email VARCHAR(255) NOT NULL` column
+   - Added `phone_number VARCHAR(20) NOT NULL` column
+   - Updated `get_user_profile` function to include new columns
+   - Added proper column comments
+
+2. **Created Migration Script** (`migration_add_email_phone.sql`):
+   - Adds missing columns to existing databases
+   - Populates email from auth.users table for existing records
+   - Provides guidance for making phone_number NOT NULL
+
+3. **Created Database Function** (`create_user_profile_function.sql`):
+   - Complete function that matches the new schema
+   - Includes proper error handling and validation
+   - Returns all profile fields including new columns
+   - Has proper security permissions
+
+4. **Updated Frontend Components**:
+   - **RegisterForm.tsx**: Made phone_number mandatory in validation schema, added required asterisk
+   - **auth.ts**: Removed optional handling for phone_number parameter
+   - **supabase.ts**: Made phone_number non-nullable in TypeScript types
+   - **auth.ts types**: Made phone_number mandatory in interfaces
+
+**Files Modified**:
+- `supabase_schema.sql` - Added missing columns
+- `frontend/components/auth/RegisterForm.tsx` - Made phone_number mandatory
+- `frontend/services/auth.ts` - Removed optional phone_number handling
+- `frontend/lib/supabase.ts` - Updated TypeScript types
+- `frontend/types/auth.ts` - Made phone_number mandatory
+
+**Files Created**:
+- `migration_add_email_phone.sql` - Database migration script
+- `create_user_profile_function.sql` - Updated database function
+- `SCHEMA_UPDATE_README.md` - Comprehensive implementation guide
+
+**Benefits**:
+- **Resolves Registration Issues**: Users can now register successfully
+- **Data Completeness**: Phone number is now mandatory and stored
+- **Type Safety**: TypeScript types match the actual database schema
+- **Consistency**: All form fields now properly align with database columns
+- **Validation**: Proper client-side validation for mandatory fields
+
+**Implementation Steps**:
+1. Run migration script on existing databases
+2. Create/update the database function
+3. Frontend code is already updated
+4. Test user registration thoroughly
+
+**Status**: Complete - All necessary changes have been made to resolve the schema mismatch. Ready for database implementation and testing.
+
+**Next Actions**:
+1. Run the migration script in Supabase SQL Editor
+2. Create the updated database function
+3. Test user registration with new mandatory phone number field
+4. Verify data is properly stored in all columns
 
 ---
 

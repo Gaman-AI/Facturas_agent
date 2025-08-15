@@ -60,18 +60,27 @@ export const validate = (schema) => {
 
 // Common validation schemas
 export const schemas = {
-  // User registration schema
+  // User registration schema - updated for new database structure
   register: {
     body: z.object({
       email: z.string().email('Invalid email format'),
       password: z.string().min(8, 'Password must be at least 8 characters'),
       rfc: z.string().regex(
-        /^[A-ZÑ&]{3,4}[0-9]{2}(0[1-9]|1[0-2])(0[1-9]|[12][0-9]|3[01])[A-Z0-9]{2}[0-9A]$/,
+        /^[A-Z&Ñ]{3,4}[0-9]{6}[A-Z0-9]{3}$/,
         'Invalid RFC format'
       ),
-      fiscal_regime: z.enum(['601', '603', '605', '606', '608', '610', '611', '612', '614', '616', '620', '621', '622', '623', '624', '625', '626']),
-      postal_code: z.string().regex(/^[0-9]{5}$/, 'Invalid postal code'),
-      company_name: z.string().min(1, 'Company name is required').optional()
+      country: z.string().min(1, 'Country is required').default('México'),
+      company_name: z.string().min(1, 'Company name is required'),
+      street: z.string().min(1, 'Street is required'),
+      exterior_number: z.string().min(1, 'Exterior number is required'),
+      interior_number: z.string().optional(),
+      colony: z.string().min(1, 'Colony is required'),
+      municipality: z.string().min(1, 'Municipality is required'),
+      zip_code: z.string().regex(/^[0-9]{5}$/, 'Invalid zip code format'),
+      state: z.string().min(1, 'State is required'),
+      tax_regime: z.string().min(1, 'Tax regime is required'), // Stored as text, not enum
+      cfdi_use: z.string().min(1, 'CFDI use is required'), // Stored as text, not enum  
+      phone_number: z.string().optional()
     })
   },
   

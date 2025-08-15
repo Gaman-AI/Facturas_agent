@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration Form Test</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .error { color: red; margin-top: 10px; }
+        .success { color: green; margin-top: 10px; }
+        .warning { color: orange; margin-top: 10px; }
+        .info { color: blue; margin-top: 10px; }
+        .result { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #eee; border-radius: 4px; }
+        .test-section h3 { margin-top: 0; color: #333; }
+        .status { padding: 5px 10px; border-radius: 3px; font-size: 12px; font-weight: bold; }
+        .status.pending { background: #fff3cd; color: #856404; }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .log-entry { margin: 5px 0; padding: 5px; background: #f8f9fa; border-left: 3px solid #007bff; }
+        .log-entry.error { border-left-color: #dc3545; }
+        .log-entry.success { border-left-color: #28a745; }
+        .log-entry.warning { border-left-color: #ffc107; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Registration Form Test Suite</h1>
+    <p>This comprehensive test suite will test the registration form validation and Supabase registration flow.</p>
+    
+    <!-- Configuration Section -->
+    <div class="test-section">
+        <h3>⚙️ Configuration</h3>
+        <div class="form-group">
+            <label for="supabaseUrl">Supabase URL:</label>
+            <input type="text" id="supabaseUrl" placeholder="https://your-project.supabase.co" style="width: 400px;">
+        </div>
+        <div class="form-group">
+            <label for="supabaseKey">Supabase Anon Key:</label>
+            <input type="text" id="supabaseKey" placeholder="your-anon-key" style="width: 400px;">
+        </div>
+        <button onclick="testConfiguration()">Test Configuration</button>
+        <span id="configStatus" class="status pending">Pending</span>
+    </div>
+
+    <!-- Form Validation Test Section -->
+    <div class="test-section">
+        <h3>📝 Form Validation Tests</h3>
+        <button onclick="testFormValidation()">Test Form Validation</button>
+        <button onclick="testRequiredFields()">Test Required Fields</button>
+        <button onclick="testFieldFormats()">Test Field Formats</button>
+        <div id="validationResults"></div>
+    </div>
+
+    <!-- Registration Flow Test Section -->
+    <div class="test-section">
+        <h3>🚀 Registration Flow Tests</h3>
+        <button onclick="testFullRegistration()">Test Full Registration</button>
+        <button onclick="testStepByStep()">Test Step by Step</button>
+        <button onclick="testErrorScenarios()">Test Error Scenarios</button>
+        <div id="registrationResults"></div>
+    </div>
+
+    <!-- Test Data Generator -->
+    <div class="test-section">
+        <h3>🎲 Test Data Generator</h3>
+        <button onclick="generateTestData()">Generate New Test Data</button>
+        <button onclick="useSampleData()">Use Sample Data</button>
+        <div id="testDataInfo"></div>
+    </div>
+
+    <!-- Registration Form -->
+    <div class="test-section">
+        <h3>📋 Registration Form</h3>
+        <form id="registrationForm">
+            <div class="form-group">
+                <label for="email">Email: *</label>
+                <input type="email" id="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password: *</label>
+                <input type="password" id="password" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="rfc">RFC: *</label>
+                <input type="text" id="rfc" required maxlength="13" style="text-transform: uppercase;">
+            </div>
+            
+            <div class="form-group">
+                <label for="company_name">Company Name: *</label>
+                <input type="text" id="company_name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="street">Street: *</label>
+                <input type="text" id="street" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="exterior_number">Exterior Number: *</label>
+                <input type="text" id="exterior_number" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="interior_number">Interior Number:</label>
+                <input type="text" id="interior_number">
+            </div>
+            
+            <div class="form-group">
+                <label for="colony">Colony: *</label>
+                <input type="text" id="colony" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="municipality">Municipality: *</label>
+                <input type="text" id="municipality" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="zip_code">Zip Code: *</label>
+                <input type="text" id="zip_code" required maxlength="5">
+            </div>
+            
+            <div class="form-group">
+                <label for="state">State: *</label>
+                <select id="state" required>
+                    <option value="">Select State</option>
+                    <option value="Ciudad de México">Ciudad de México</option>
+                    <option value="Jalisco">Jalisco</option>
+                    <option value="Nuevo León">Nuevo León</option>
+                    <option value="Guanajuato">Guanajuato</option>
+                    <option value="Puebla">Puebla</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="tax_regime">Tax Regime: *</label>
+                <select id="tax_regime" required>
+                    <option value="">Select Tax Regime</option>
+                    <option value="601">601 - General de Ley Personas Morales</option>
+                    <option value="603">603 - Personas Morales con Fines no Lucrativos</option>
+                    <option value="605">605 - Sueldos y Salarios</option>
+                    <option value="606">606 - Arrendamiento</option>
+                    <option value="608">608 - Demás ingresos</option>
+                    <option value="610">610 - Residentes en el Extranjero</option>
+                    <option value="611">611 - Ingresos por Dividendos</option>
+                    <option value="612">612 - Personas Físicas con Actividades Empresariales</option>
+                    <option value="614">614 - Ingresos por intereses</option>
+                    <option value="616">616 - Sin obligaciones fiscales</option>
+                    <option value="620">620 - Sociedades Cooperativas de Producción</option>
+                    <option value="621">621 - Incorporación Fiscal</option>
+                    <option value="622">622 - Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras</option>
+                    <option value="623">623 - Opcional para Grupos de Sociedades</option>
+                    <option value="624">624 - Coordinados</option>
+                    <option value="625">625 - Régimen de las Actividades Empresariales con ingresos a través de Plataformas Tecnológicas</option>
+                    <option value="626">626 - Régimen Simplificado de Confianza</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="cfdi_use">CFDI Use: *</label>
+                <select id="cfdi_use" required>
+                    <option value="">Select CFDI Use</option>
+                    <option value="G01">G01 - Adquisición de mercancías</option>
+                    <option value="G02">G02 - Devoluciones, descuentos o bonificaciones</option>
+                    <option value="G03">G03 - Gastos en general</option>
+                    <option value="I01">I01 - Construcciones</option>
+                    <option value="I02">I02 - Mobilario y equipo de oficina por inversiones</option>
+                    <option value="I03">I03 - Equipo de transporte</option>
+                    <option value="I04">I04 - Equipo de cómputo y accesorios</option>
+                    <option value="I05">I05 - Dados, troqueles, moldes, matrices y herramental</option>
+                    <option value="I06">I06 - Comunicaciones telefónicas</option>
+                    <option value="I07">I07 - Comunicaciones satelitales</option>
+                    <option value="I08">I08 - Otra maquinaria y equipo</option>
+                    <option value="D01">D01 - Honorarios médicos, dentales y gastos hospitalarios</option>
+                    <option value="D02">D02 - Gastos médicos por incapacidad o discapacidad</option>
+                    <option value="D03">D03 - Gastos funerales</option>
+                    <option value="D04">D04 - Donativos</option>
+                    <option value="D05">D05 - Intereses reales efectivamente pagados por créditos hipotecarios</option>
+                    <option value="D06">D06 - Aportaciones voluntarias al SAR</option>
+                    <option value="D07">D07 - Gastos por transportación escolar</option>
+                    <option value="D08">D08 - Depósitos en cuentas para el ahorro</option>
+                    <option value="D09">D09 - Pagos por servicios educativos</option>
+                    <option value="D10">D10 - Pagos por servicios de transporte escolar</option>
+                    <option value="P01">P01 - Por definir</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="phone_number">Phone Number:</label>
+                <input type="tel" id="phone_number">
+            </div>
+            
+            <button type="submit">Submit Registration</button>
+        </form>
+    </div>
+
+    <!-- Results and Logs -->
+    <div class="test-section">
+        <h3>📊 Test Results & Logs</h3>
+        <button onclick="clearLogs()">Clear Logs</button>
+        <button onclick="exportLogs()">Export Logs</button>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        let supabase = null;
+        let testResults = [];
+        let currentTestData = {};
+
+        // Initialize with sample data
+        document.addEventListener('DOMContentLoaded', function() {
+            useSampleData();
+        });
+
+        // Test Configuration
+        async function testConfiguration() {
+            const url = document.getElementById('supabaseUrl').value;
+            const key = document.getElementById('supabaseKey').value;
+            const status = document.getElementById('configStatus');
+            
+            if (!url || !key) {
+                status.textContent = 'Missing Credentials';
+                status.className = 'status error';
+                log('Configuration test failed: Missing credentials', 'error');
+                return;
+            }
+
+            try {
+                status.textContent = 'Testing...';
+                status.className = 'status pending';
+                
+                supabase = supabase.createClient(url, key);
+                
+                // Test connection by trying to access auth
+                const { data, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    throw error;
+                }
+                
+                status.textContent = 'Connected';
+                status.className = 'status success';
+                log('Configuration test passed: Successfully connected to Supabase', 'success');
+                
+            } catch (error) {
+                status.textContent = 'Connection Failed';
+                status.className = 'status error';
+                log(`Configuration test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Test Form Validation
+        function testFormValidation() {
+            const results = document.getElementById('validationResults');
+            results.innerHTML = '<h4>Form Validation Test Results:</h4>';
+            
+            const tests = [
+                { field: 'email', value: 'invalid-email', expected: 'invalid' },
+                { field: 'email', value: 'valid@email.com', expected: 'valid' },
+                { field: 'password', value: 'weak', expected: 'invalid' },
+                { field: 'password', value: 'StrongPass123', expected: 'valid' },
+                { field: 'rfc', value: 'INVALID', expected: 'invalid' },
+                { field: 'rfc', value: 'XAXX010101000', expected: 'valid' },
+                { field: 'zip_code', value: '123', expected: 'invalid' },
+                { field: 'zip_code', value: '12345', expected: 'valid' }
+            ];
+            
+            tests.forEach(test => {
+                const field = document.getElementById(test.field);
+                const isValid = validateField(test.field, test.value);
+                const status = isValid === (test.expected === 'valid') ? 'PASS' : 'FAIL';
+                const color = status === 'PASS' ? 'success' : 'error';
+                
+                results.innerHTML += `<div class="log-entry ${color}">${status}: ${test.field} = "${test.value}" (expected: ${test.expected})</div>`;
+            });
+        }
+
+        // Test Required Fields
+        function testRequiredFields() {
+            const results = document.getElementById('validationResults');
+            results.innerHTML = '<h4>Required Fields Test Results:</h4>';
+            
+            const requiredFields = ['email', 'password', 'rfc', 'company_name', 'street', 'exterior_number', 'colony', 'municipality', 'zip_code', 'state', 'tax_regime', 'cfdi_use'];
+            
+            requiredFields.forEach(field => {
+                const element = document.getElementById(field);
+                const isEmpty = !element.value.trim();
+                const status = isEmpty ? 'FAIL' : 'PASS';
+                const color = isEmpty ? 'error' : 'success';
+                
+                results.innerHTML += `<div class="log-entry ${color}">${status}: ${field} is ${isEmpty ? 'empty' : 'filled'}</div>`;
+            });
+        }
+
+        // Test Field Formats
+        function testFieldFormats() {
+            const results = document.getElementById('validationResults');
+            results.innerHTML = '<h4>Field Format Test Results:</h4>';
+            
+            const formatTests = [
+                { field: 'email', value: document.getElementById('email').value, pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, name: 'Email format' },
+                { field: 'rfc', value: document.getElementById('rfc').value, pattern: /^[A-Z&Ñ]{3,4}[0-9]{6}[A-Z0-9]{3}$/, name: 'RFC format' },
+                { field: 'zip_code', value: document.getElementById('zip_code').value, pattern: /^[0-9]{5}$/, name: 'Zip code format' }
+            ];
+            
+            formatTests.forEach(test => {
+                const isValid = test.pattern.test(test.value);
+                const status = isValid ? 'PASS' : 'FAIL';
+                const color = isValid ? 'success' : 'error';
+                
+                results.innerHTML += `<div class="log-entry ${color}">${status}: ${test.name} - "${test.value}" ${isValid ? 'matches' : 'does not match'} pattern</div>`;
+            });
+        }
+
+        // Test Full Registration
+        async function testFullRegistration() {
+            if (!supabase) {
+                log('Cannot test registration: Supabase not configured', 'error');
+                return;
+            }
+
+            log('Starting full registration test...', 'info');
+            
+            try {
+                // Step 1: Test auth signup
+                log('Step 1: Testing auth signup...', 'info');
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: currentTestData.email,
+                    password: currentTestData.password,
+                });
+
+                if (authError) {
+                    log(`Auth signup failed: ${authError.message}`, 'error');
+                    return;
+                }
+
+                if (!authData.user) {
+                    log('No user data returned from signup', 'error');
+                    return;
+                }
+
+                log(`✅ Auth signup successful: User ID ${authData.user.id}`, 'success');
+
+                // Step 2: Test profile creation
+                log('Step 2: Testing profile creation...', 'info');
+                const { data: profileResult, error: profileError } = await supabase.rpc('create_user_profile', {
+                    p_user_id: authData.user.id,
+                    p_rfc: currentTestData.rfc,
+                    p_country: currentTestData.country,
+                    p_company_name: currentTestData.company_name,
+                    p_street: currentTestData.street,
+                    p_exterior_number: currentTestData.exterior_number,
+                    p_interior_number: currentTestData.interior_number,
+                    p_colony: currentTestData.colony,
+                    p_municipality: currentTestData.municipality,
+                    p_zip_code: currentTestData.zip_code,
+                    p_state: currentTestData.state,
+                    p_tax_regime: currentTestData.tax_regime,
+                    p_cfdi_use: currentTestData.cfdi_use,
+                    p_email: currentTestData.email,
+                    p_phone_number: currentTestData.phone_number
+                });
+
+                if (profileError) {
+                    log(`Profile creation failed: ${profileError.message}`, 'error');
+                    return;
+                }
+
+                log('✅ Profile creation successful', 'success');
+                log('🎉 Full registration test completed successfully!', 'success');
+
+                // Clean up test user
+                await supabase.auth.signOut();
+
+            } catch (error) {
+                log(`Registration test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Test Step by Step
+        async function testStepByStep() {
+            if (!supabase) {
+                log('Cannot test registration: Supabase not configured', 'error');
+                return;
+            }
+
+            log('Starting step-by-step registration test...', 'info');
+            
+            // Test each step individually
+            await testAuthStep();
+            await testProfileStep();
+        }
+
+        // Test Error Scenarios
+        async function testErrorScenarios() {
+            if (!supabase) {
+                log('Cannot test error scenarios: Supabase not configured', 'error');
+                return;
+            }
+
+            log('Starting error scenario tests...', 'info');
+            
+            // Test duplicate email
+            await testDuplicateEmail();
+            
+            // Test duplicate RFC
+            await testDuplicateRFC();
+            
+            // Test invalid data
+            await testInvalidData();
+        }
+
+        // Helper Functions
+        function validateField(fieldName, value) {
+            switch (fieldName) {
+                case 'email':
+                    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+                case 'password':
+                    return value.length >= 8 && /[A-Z]/.test(value) && /[a-z]/.test(value) && /[0-9]/.test(value);
+                case 'rfc':
+                    return /^[A-Z&Ñ]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(value);
+                case 'zip_code':
+                    return /^[0-9]{5}$/.test(value);
+                default:
+                    return value.trim().length > 0;
+            }
+        }
+
+        function generateTestData() {
+            const timestamp = Date.now();
+            currentTestData = {
+                email: `test${timestamp}@example.com`,
+                password: 'TestPass123!',
+                rfc: `XAXX${String(timestamp).slice(-6)}000`,
+                company_name: `Test Company ${timestamp}`,
+                street: `Test Street ${timestamp}`,
+                exterior_number: '123',
+                interior_number: 'A',
+                colony: 'Test Colony',
+                municipality: 'Test Municipality',
+                zip_code: '12345',
+                state: 'Ciudad de México',
+                tax_regime: '601',
+                cfdi_use: 'G01',
+                phone_number: '+52 55 1234 5678'
+            };
+            
+            populateForm(currentTestData);
+            updateTestDataInfo();
+            log('Generated new test data', 'info');
+        }
+
+        function useSampleData() {
+            currentTestData = {
+                email: 'test@example.com',
+                password: 'TestPass123!',
+                rfc: 'XAXX010101000',
+                company_name: 'Test Company S.A. de C.V.',
+                street: 'Av. Insurgentes Sur',
+                exterior_number: '1234',
+                interior_number: '4B',
+                colony: 'Del Valle',
+                municipality: 'Benito Juárez',
+                zip_code: '03100',
+                state: 'Ciudad de México',
+                tax_regime: '601',
+                cfdi_use: 'G01',
+                phone_number: '+52 55 1234 5678'
+            };
+            
+            populateForm(currentTestData);
+            updateTestDataInfo();
+            log('Loaded sample test data', 'info');
+        }
+
+        function populateForm(data) {
+            Object.keys(data).forEach(key => {
+                const element = document.getElementById(key);
+                if (element) {
+                    element.value = data[key];
+                }
+            });
+        }
+
+        function updateTestDataInfo() {
+            const info = document.getElementById('testDataInfo');
+            info.innerHTML = `
+                <strong>Current Test Data:</strong><br>
+                Email: ${currentTestData.email}<br>
+                RFC: ${currentTestData.rfc}<br>
+                Company: ${currentTestData.company_name}
+            `;
+        }
+
+        function log(message, type = 'info') {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logs.appendChild(logEntry);
+            logs.scrollTop = logs.scrollHeight;
+            
+            // Also log to console
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        function exportLogs() {
+            const logs = document.getElementById('logs').innerText;
+            const blob = new Blob([logs], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `registration-test-logs-${new Date().toISOString().slice(0, 19)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Form submission handler
+        document.getElementById('registrationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!supabase) {
+                log('Cannot submit: Supabase not configured', 'error');
+                return;
+            }
+
+            log('Form submitted, starting registration...', 'info');
+            await testFullRegistration();
+        });
+
+        // Auto-generate test data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            generateTestData();
+        });
+    </script>
+</body>
+</html>

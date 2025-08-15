@@ -1,0 +1,17 @@
+{
+  "email": "new.test@example.com",
+  "password": "SecurePassword123!",
+  "rfc": "XAXX020202001", 
+  "country": "México",
+  "company_name": "Real Test Company S.A. de C.V.",
+  "street": "Calle Insurgentes 456",
+  "exterior_number": "456",
+  "interior_number": "B", 
+  "colony": "Roma Norte",
+  "municipality": "Cuauhtémoc",
+  "zip_code": "06700",
+  "state": "Ciudad de México",
+  "tax_regime": "601 - General de Ley Personas Morales",
+  "cfdi_use": "G03 - Gastos en general",
+  "phone_number": "+52 55 9876 5432"
+}

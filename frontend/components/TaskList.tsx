@@ -74,7 +74,7 @@ export function TaskList({
   });
 
   const { t, language } = useLanguage();
-  const dateLocale = language === 'es' ? es : enUS;
+  const dateLocale = enUS; // Only English is supported
 
   // Real-time monitoring
   const { updates, isMonitoring, addTask, removeTask, refresh: refreshMonitor } = useTaskListMonitor({

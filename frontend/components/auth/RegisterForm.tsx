@@ -60,6 +60,7 @@ export function RegisterForm() {
     state: z.string().min(2, t('validation.state.minLength', { min: 2 })),
     tax_regime: z.string().min(1, t('validation.taxRegime.required')),
     cfdi_use: z.string().min(1, t('validation.cfdiUse.required')),
+    phone_number: z.string().min(1, t('validation.phoneNumber.required')),
   })
 
   type RegisterFormData = z.infer<typeof registerSchema>
@@ -98,6 +99,7 @@ export function RegisterForm() {
       state: '',
       tax_regime: '',
       cfdi_use: '',
+      phone_number: '',
     },
   })
 
@@ -399,6 +401,20 @@ export function RegisterForm() {
               </Select>
               {errors.cfdi_use && (
                 <p className="text-sm text-red-500">{errors.cfdi_use.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone_number">{t('register.phoneNumber.label')} *</Label>
+              <Input
+                id="phone_number"
+                type="tel"
+                placeholder={t('register.phoneNumber.placeholder')}
+                className={errors.phone_number ? 'border-red-500' : ''}
+                {...register('phone_number')}
+              />
+              {errors.phone_number && (
+                <p className="text-sm text-red-500">{errors.phone_number.message}</p>
               )}
             </div>
           </div>

@@ -55,7 +55,7 @@ export const useUserProfile = () => {
   
   const getDisplayName = () => {
     if (!profile) return '';
-    return profile.razon_social || profile.rfc || '';
+    return profile.company_name || profile.rfc || '';
   };
   
   const getRFCMasked = () => {
@@ -70,13 +70,13 @@ export const useUserProfile = () => {
     if (!profile) return '';
     
     const addressParts = [
-      profile.calle,
-      profile.numero_ext,
-      profile.numero_int ? `Int. ${profile.numero_int}` : '',
-      profile.colonia,
-      profile.delegacion_municipio,
-      profile.estado,
-      profile.codigo_postal
+      profile.street,
+      profile.exterior_number,
+      profile.interior_number ? `Int. ${profile.interior_number}` : '',
+      profile.colony,
+      profile.municipality,
+      profile.state,
+      profile.zip_code
     ].filter(Boolean);
     
     return addressParts.join(', ');
@@ -97,10 +97,10 @@ export const useUserProfile = () => {
     
     return {
       rfc: profile.rfc,
-      razonSocial: profile.razon_social,
-      regimenFiscal: profile.regimen_fiscal,
-      usoCFDI: profile.uso_cfdi,
-      codigoPostal: profile.codigo_postal,
+      razonSocial: profile.company_name,
+      regimenFiscal: profile.tax_regime,
+      usoCFDI: profile.cfdi_use,
+      codigoPostal: profile.zip_code,
     };
   };
   

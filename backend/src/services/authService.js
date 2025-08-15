@@ -2,9 +2,10 @@ import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import config from '../config/index.js'
 import { AuthenticationError, ValidationError, ConflictError } from '../middleware/errorHandler.js'
+import supabaseService from './supabase.js'
 
 /**
- * Authentication Service using Supabase MCP Server
+ * Authentication Service using real Supabase integration
  * Handles user registration, login, and profile management
  */
 class AuthService {
@@ -13,52 +14,87 @@ class AuthService {
   }
 
   /**
-   * Register a new user with CFDI profile
+   * Register a new user with CFDI profile using real Supabase integration
    */
   async register(userData) {
-    const { email, password, rfc, fiscal_regime, postal_code, company_name } = userData
+    const { 
+      email, 
+      password, 
+      rfc, 
+      country, 
+      company_name, 
+      street, 
+      exterior_number, 
+      interior_number, 
+      colony, 
+      municipality, 
+      zip_code, 
+      state, 
+      tax_regime, 
+      cfdi_use, 
+      phone_number 
+    } = userData
 
     try {
-      // Hash password
-      const saltRounds = 12
-      const hashedPassword = await bcrypt.hash(password, saltRounds)
+      // Step 1: Create user in Supabase Auth
+      const { data: authData, error: authError } = await supabaseService.adminClient.auth.signUp({
+        email: email,
+        password: password,
+      })
 
-      // Create user in Supabase Auth using MCP
-      // Note: This would typically use Supabase Auth service, but we'll simulate for now
-      const userId = this.generateUserId()
-      
-      // Create user profile with CFDI data using MCP
-      const insertQuery = `
-        INSERT INTO user_profiles (user_id, rfc, fiscal_regime, postal_code, company_name)
-        VALUES ('${userId}', '${rfc}', '${fiscal_regime}', '${postal_code}', '${company_name || ''}')
-        RETURNING *
-      `
-
-      // For now, we'll simulate the user creation
-      // In a real implementation, this would use the Supabase MCP tools
-      const userProfile = {
-        id: this.generateUserId(),
-        user_id: userId,
-        rfc,
-        fiscal_regime,
-        postal_code,
-        company_name,
-        created_at: new Date().toISOString()
+      if (authError) {
+        throw new AuthenticationError(`Authentication failed: ${authError.message}`)
       }
+
+      if (!authData.user) {
+        throw new AuthenticationError('No user data returned from authentication')
+      }
+
+      // Step 2: Create user profile using our database function
+      const { data: profileResult, error: profileError } = await supabaseService.adminClient
+        .rpc('create_user_profile', {
+          p_user_id: authData.user.id,
+          p_rfc: rfc.toUpperCase(),
+          p_country: country || 'México',
+          p_company_name: company_name,
+          p_street: street,
+          p_exterior_number: exterior_number,
+          p_interior_number: interior_number || null,
+          p_colony: colony,
+          p_municipality: municipality,
+          p_zip_code: zip_code,
+          p_state: state,
+          p_tax_regime: tax_regime,
+          p_cfdi_use: cfdi_use,
+          p_email: email,
+          p_phone_number: phone_number || null,
+        })
+
+      if (profileError) {
+        console.error('Profile creation error:', profileError)
+        throw new ValidationError(`Profile creation failed: ${profileError.message}`)
+      }
+
+      if (!profileResult || profileResult.length === 0) {
+        throw new ValidationError('No profile data returned from creation')
+      }
+
+      // Get the created profile
+      const profile = Array.isArray(profileResult) ? profileResult[0] : profileResult
 
       // Generate JWT token
       const token = this.generateToken({
-        sub: userId,
-        email,
+        sub: authData.user.id,
+        email: authData.user.email,
         role: 'authenticated'
       })
 
       return {
         success: true,
         user: {
-          id: userId,
-          email,
-          profile: userProfile
+          id: authData.user.id,
+          email: authData.user.email,
+          profile: profile
         },
         token,
         expiresIn: config.jwt.expiresIn
@@ -66,13 +102,17 @@ class AuthService {
 
     } catch (error) {
       // Handle duplicate RFC error
-      if (error.code === '23505' && error.constraint === 'user_profiles_rfc_key') {
+      if (error.message && error.message.includes('RFC') && error.message.includes('already exists')) {
         throw new ConflictError('RFC already registered')
       }
 
-      // Handle duplicate email error  
-      if (error.code === '23505' && error.constraint === 'users_email_key') {
-        throw new ConflictError('Email already registered')
+      // Handle duplicate email error
+      if (error.message && error.message.includes('User') && error.message.includes('already has a profile')) {
+        throw new ConflictError('User already has a profile')
+      }
+
+      if (error instanceof AuthenticationError || error instanceof ValidationError || error instanceof ConflictError) {
+        throw error
       }
 
       throw new ValidationError(`Registration failed: ${error.message}`)
