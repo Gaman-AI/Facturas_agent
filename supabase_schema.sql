@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
     state VARCHAR(100) NOT NULL,
     tax_regime VARCHAR(10) NOT NULL,
     cfdi_use VARCHAR(10) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone_number VARCHAR(20) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -175,6 +177,8 @@ RETURNS TABLE (
     state VARCHAR,
     tax_regime VARCHAR,
     cfdi_use VARCHAR,
+    email VARCHAR,
+    phone_number VARCHAR,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) AS $$
@@ -195,6 +199,8 @@ BEGIN
         p.state,
         p.tax_regime,
         p.cfdi_use,
+        p.email,
+        p.phone_number,
         p.created_at,
         p.updated_at
     FROM public.user_profiles p
@@ -227,6 +233,8 @@ COMMENT ON COLUMN public.user_profiles.country IS 'Country, defaults to México'
 COMMENT ON COLUMN public.user_profiles.company_name IS 'Company name / Razón Social';
 COMMENT ON COLUMN public.user_profiles.tax_regime IS 'SAT Tax Regime code (e.g., 601, 612, etc.)';
 COMMENT ON COLUMN public.user_profiles.cfdi_use IS 'CFDI Use code (e.g., G01, G03, etc.)';
+COMMENT ON COLUMN public.user_profiles.email IS 'User email address for CFDI operations';
+COMMENT ON COLUMN public.user_profiles.phone_number IS 'User phone number for CFDI operations (mandatory)';
 
 -- Insert some test data (optional - remove for production)
 -- INSERT INTO auth.users (id, email) VALUES ('00000000-0000-0000-0000-000000000001', 'test@example.com');

@@ -17,7 +17,7 @@ interface SimpleTaskSubmissionPaneProps {
   onTaskSubmit?: (taskId: string) => void
   onResetTask?: () => void
   taskId?: string
-  status?: 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'connecting'
+  status?: 'idle' | 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'connecting'
   className?: string
 }
 

@@ -54,22 +54,36 @@ class AuthService {
     this.checkSupabase();
     
     try {
-      // Step 1: Create user account
+      console.log('🚀 Starting registration for:', registerData.email);
+      
+      // Step 1: Create user account with email confirmation disabled
+      console.log('📝 Step 1: Creating auth user...');
       const { data: authData, error: authError } = await this.supabase!.auth.signUp({
         email: registerData.email,
         password: registerData.password,
+        options: {
+          // Disable email confirmation requirement
+          emailRedirectTo: undefined,
+          data: {
+            // Add any additional user metadata here if needed
+          }
+        }
       });
 
       if (authError) {
+        console.error('❌ Auth signup failed:', authError);
         throw this.formatAuthError(authError);
       }
 
       if (!authData.user) {
+        console.error('❌ No user data returned from signup');
         throw new Error('No user data returned from registration');
       }
 
+      console.log('✅ Step 1 completed: Auth user created with ID:', authData.user.id);
+
       // Step 2: Create user profile using the safe database function
-      // This handles validation, RFC uniqueness, and atomic operations
+      console.log('📝 Step 2: Creating user profile...');
       const { data: profileResult, error: profileError } = await this.supabase!
         .rpc('create_user_profile', {
           p_user_id: authData.user.id,
@@ -85,23 +99,35 @@ class AuthService {
           p_state: registerData.state,
           p_tax_regime: registerData.tax_regime,
           p_cfdi_use: registerData.cfdi_use,
+          p_email: registerData.email,
+          p_phone_number: registerData.phone_number,
         });
 
       if (profileError) {
-        console.error('Profile creation error:', profileError);
+        console.error('❌ Profile creation error:', profileError);
         throw this.formatAuthError(profileError);
       }
 
       if (!profileResult || profileResult.length === 0) {
+        console.error('❌ No profile data returned from creation');
         throw new Error('No profile data returned from creation');
       }
+
+      console.log('✅ Step 2 completed: Profile created successfully');
 
       // Return the first result from the function
       const profile = Array.isArray(profileResult) ? profileResult[0] : profileResult;
       
+      console.log('🎉 Registration completed successfully!');
       return { user: authData.user, profile };
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error('💥 Registration error caught:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        code: (error as any)?.code,
+        details: (error as any)?.details,
+        stack: error instanceof Error ? error.stack : undefined
+      });
       throw this.formatAuthError(error);
     }
   }
@@ -278,6 +304,56 @@ class AuthService {
     } catch (error) {
       console.error('Email check error:', error);
       return false;
+    }
+  }
+
+  /**
+   * Check if user needs email confirmation
+   */
+  async checkEmailConfirmationStatus(userId: string): Promise<{ confirmed: boolean; message: string }> {
+    this.checkSupabase();
+    
+    try {
+      const { data: { user }, error } = await this.supabase!.auth.admin.getUserById(userId);
+      
+      if (error) {
+        throw this.formatAuthError(error);
+      }
+
+      if (!user) {
+        return { confirmed: false, message: 'User not found' };
+      }
+
+      const confirmed = user.email_confirmed_at !== null;
+      const message = confirmed 
+        ? 'Email is confirmed and user can sign in'
+        : 'Email confirmation required before sign in';
+
+      return { confirmed, message };
+    } catch (error) {
+      console.error('Email confirmation check error:', error);
+      return { confirmed: false, message: 'Unable to check email confirmation status' };
+    }
+  }
+
+  /**
+   * Resend email confirmation (if needed)
+   */
+  async resendEmailConfirmation(email: string): Promise<void> {
+    this.checkSupabase();
+    
+    try {
+      const { error } = await this.supabase!.auth.resend({
+        type: 'signup',
+        email: email.toLowerCase(),
+      });
+
+      if (error) {
+        throw this.formatAuthError(error);
+      }
+    } catch (error) {
+      console.error('Resend email confirmation error:', error);
+      throw this.formatAuthError(error);
     }
   }
 

@@ -99,7 +99,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
   }
 
   // Translation function - HYDRATION SAFE
-  const t = (key: string, params?: Record<string, string | number>): string => {
+  const t = (key: string, fallback?: string | Record<string, string | number>): string => {
     // During SSR and initial hydration, always return English fallbacks
     if (!isMounted || !translations || Object.keys(translations).length === 0) {
       const loadingFallbacks: Record<string, string> = {
@@ -133,15 +133,46 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
         'tasks.simple.aiModel': 'AI Model',
         'tasks.simple.creating': 'Creating Task...',
         'tasks.simple.submit': 'Start Task',
-        'tasks.simple.userNote': 'Task will be executed as'
+        'tasks.simple.userNote': 'Task will be executed as',
+        // Validation messages
+        'validation.email.required': 'Email is required',
+        'validation.email.invalid': 'Invalid email format',
+        'validation.password.minLength': 'Password must be at least {min} characters',
+        'validation.password.uppercase': 'Password must contain at least one uppercase letter',
+        'validation.password.lowercase': 'Password must contain at least one lowercase letter',
+        'validation.password.number': 'Password must contain at least one number',
+        'validation.rfc.length': 'RFC must be between {min} and {max} characters',
+        'validation.rfc.invalid': 'Invalid RFC format',
+        'validation.country.required': 'Country is required',
+        'validation.companyName.minLength': 'Company name must be at least {min} characters',
+        'validation.street.minLength': 'Street must be at least {min} characters',
+        'validation.exteriorNumber.required': 'Exterior number is required',
+        'validation.colony.minLength': 'Colony must be at least {min} characters',
+        'validation.municipality.minLength': 'Municipality must be at least {min} characters',
+        'validation.zipCode.length': 'Zip code must be {length} digits',
+        'validation.zipCode.invalid': 'Invalid zip code format',
+        'validation.state.minLength': 'State must be at least {min} characters',
+        'validation.taxRegime.required': 'Tax regime is required',
+        'validation.cfdiUse.required': 'CFDI use is required'
       }
-      return loadingFallbacks[key] || key
+      
+      let fallbackText = fallback
+      if (typeof fallback === 'object') {
+        // Handle parameterized fallbacks
+        fallbackText = loadingFallbacks[key] || key
+        Object.entries(fallback).forEach(([paramKey, paramValue]) => {
+          fallbackText = (fallbackText as string).replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(paramValue))
+        })
+      }
+      
+      return loadingFallbacks[key] || fallbackText || key
     }
 
-    let translation = translations[key] || key
+    let translation = translations[key] || fallback || key
 
-    if (params) {
-      Object.entries(params).forEach(([paramKey, paramValue]) => {
+    // Handle parameterized translations
+    if (typeof fallback === 'object' && fallback !== null) {
+      Object.entries(fallback).forEach(([paramKey, paramValue]) => {
         translation = translation.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(paramValue))
       })
     }

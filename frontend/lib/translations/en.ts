@@ -97,6 +97,8 @@ const en: Translations = {
   'register.taxRegime.placeholder': 'Select your tax regime',
   'register.cfdiUse.label': 'CFDI Use',
   'register.cfdiUse.placeholder': 'Select CFDI use',
+  'register.phoneNumber.label': 'Phone Number (Optional)',
+  'register.phoneNumber.placeholder': '+52 55 1234 5678',
 
   // Validation Messages
   'validation.email.required': 'Email is required',
@@ -192,7 +194,7 @@ const en: Translations = {
   'error.unauthorized': 'Unauthorized',
   'error.notFound': 'Resource not found',
   'error.serverError': 'Server error',
-  'error.registrationFailed': 'Registration failed',
+  'error.registrationFailed': 'Registration failed. Please try again.',
   'error.loginFailed': 'Login failed',
 
   // Success Messages
@@ -324,6 +326,30 @@ const en: Translations = {
   'settings.notifications': 'Notifications',
   'settings.security': 'Security',
   'settings.account': 'Account',
+
+  // Validation Messages
+  'validation.email.required': 'Email is required',
+  'validation.email.invalid': 'Invalid email format',
+  'validation.password.minLength': 'Password must be at least {min} characters',
+  'validation.password.uppercase': 'Password must contain at least one uppercase letter',
+  'validation.password.lowercase': 'Password must contain at least one lowercase letter',
+  'validation.password.number': 'Password must contain at least one number',
+  'validation.rfc.length': 'RFC must be between {min} and {max} characters',
+  'validation.rfc.invalid': 'Invalid RFC format',
+  'validation.country.required': 'Country is required',
+  'validation.companyName.minLength': 'Company name must be at least {min} characters',
+  'validation.street.minLength': 'Street must be at least {min} characters',
+  'validation.exteriorNumber.required': 'Exterior number is required',
+  'validation.colony.minLength': 'Colony must be at least {min} characters',
+  'validation.municipality.minLength': 'Municipality must be at least {min} characters',
+  'validation.zipCode.length': 'Zip code must be {length} digits',
+  'validation.zipCode.invalid': 'Invalid zip code format',
+  'validation.state.minLength': 'State must be at least {min} characters',
+  'validation.taxRegime.required': 'Tax regime is required',
+  'validation.cfdiUse.required': 'CFDI use is required',
+
+  // Error Messages
+  'error.registrationFailed': 'Registration failed. Please try again.',
 
   // Metadata
   'meta.title': 'CFDI 4.0 Automation System',

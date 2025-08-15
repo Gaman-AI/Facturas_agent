@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test RPC Function</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .result { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>Test RPC Function: create_user_profile</h1>
+    <p>This page tests if the <code>create_user_profile</code> RPC function exists and is callable.</p>
+    
+    <div>
+        <label for="supabaseUrl">Supabase URL:</label>
+        <input type="text" id="supabaseUrl" placeholder="https://your-project.supabase.co" style="width: 400px;">
+    </div>
+    <div style="margin-top: 10px;">
+        <label for="supabaseKey">Supabase Anon Key:</label>
+        <input type="text" id="supabaseKey" placeholder="your-anon-key" style="width: 400px;">
+    </div>
+    <div style="margin-top: 10px;">
+        <button onclick="testRPCFunction()">Test RPC Function</button>
+    </div>
+    
+    <div id="result" class="result" style="display: none;"></div>
+
+    <script>
+        async function testRPCFunction() {
+            const supabaseUrl = document.getElementById('supabaseUrl').value;
+            const supabaseKey = document.getElementById('supabaseKey').value;
+            
+            if (!supabaseUrl || !supabaseKey) {
+                showResult('Please enter both Supabase URL and Anon Key', 'error');
+                return;
+            }
+            
+            const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                showResult('Testing RPC function...', 'info');
+                
+                // Test 1: Check if function exists by calling it with minimal data
+                console.log('Testing create_user_profile RPC function...');
+                
+                const { data, error } = await supabase.rpc('create_user_profile', {
+                    p_user_id: '00000000-0000-0000-0000-000000000000', // Dummy UUID
+                    p_rfc: 'TEST123456789',
+                    p_country: 'México',
+                    p_company_name: 'Test Company',
+                    p_street: 'Test Street',
+                    p_exterior_number: '123',
+                    p_interior_number: null,
+                    p_colony: 'Test Colony',
+                    p_municipality: 'Test Municipality',
+                    p_zip_code: '12345',
+                    p_state: 'Test State',
+                    p_tax_regime: '601',
+                    p_cfdi_use: 'G01',
+                    p_email: 'test@example.com',
+                    p_phone_number: null
+                });
+                
+                if (error) {
+                    if (error.message.includes('function') && error.message.includes('does not exist')) {
+                        showResult('❌ RPC function "create_user_profile" does not exist in your database!', 'error');
+                        showResult('You need to create this function first. See the SQL script in the documentation.', 'error');
+                    } else if (error.message.includes('permission denied')) {
+                        showResult('❌ Permission denied: The anon role cannot execute this function', 'error');
+                        showResult('You need to grant EXECUTE permission to the anon role.', 'error');
+                    } else {
+                        showResult(`❌ RPC function error: ${error.message}`, 'error');
+                        showResult(`Error code: ${error.code}`, 'error');
+                    }
+                } else {
+                    showResult('✅ RPC function "create_user_profile" exists and is callable!', 'success');
+                    showResult('The function returned data, which means it\'s working correctly.', 'success');
+                }
+                
+            } catch (error) {
+                console.error('Test error:', error);
+                showResult(`❌ Unexpected error: ${error.message}`, 'error');
+            }
+        }
+        
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = message;
+            resultDiv.appendChild(div);
+            resultDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

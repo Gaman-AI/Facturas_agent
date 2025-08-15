@@ -1,0 +1,17 @@
+{
+  "email": "test.user@example.com",
+  "password": "TestPassword123!",
+  "rfc": "XAXX010101000", 
+  "country": "México",
+  "company_name": "Test Company S.A. de C.V.",
+  "street": "Av. Reforma 123",
+  "exterior_number": "123",
+  "interior_number": "A",
+  "colony": "Centro",
+  "municipality": "Miguel Hidalgo",
+  "zip_code": "11560",
+  "state": "Ciudad de México",
+  "tax_regime": "601 - General de Ley Personas Morales",
+  "cfdi_use": "G01 - Adquisición de mercancías",
+  "phone_number": "+52 55 1234 5678"
+}

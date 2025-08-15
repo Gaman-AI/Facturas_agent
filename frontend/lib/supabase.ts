@@ -36,6 +36,8 @@ export type Database = {
           state: string
           tax_regime: string
           cfdi_use: string
+          email: string
+          phone_number: string
           created_at: string | null
           updated_at: string | null
         }
@@ -54,6 +56,8 @@ export type Database = {
           state: string
           tax_regime: string
           cfdi_use: string
+          email: string
+          phone_number: string
           created_at?: string | null
           updated_at?: string | null
         }
@@ -72,6 +76,8 @@ export type Database = {
           state?: string
           tax_regime?: string
           cfdi_use?: string
+          email?: string
+          phone_number?: string
           created_at?: string | null
           updated_at?: string | null
         }

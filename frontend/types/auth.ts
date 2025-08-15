@@ -6,7 +6,7 @@ export interface LoginCredentials {
   password: string;
 }
 
-// Registration data interface - updated to match your exact required schema
+// Registration data interface - updated to match new database schema
 export interface RegisterData {
   email: string;
   password: string;
@@ -22,26 +22,29 @@ export interface RegisterData {
   state: string; // State
   tax_regime: string; // Tax_Regime
   cfdi_use: string; // CFDI_Use
+  phone_number: string; // phone_number
 }
 
-// User profile interface - matches your exact required database schema
+// User profile interface - matches new database schema (lowercase column names)
 export interface UserProfile {
   id: string;
-  user_id: string | null;
+  user_id: string;
   rfc: string;
   country: string;
   company_name: string;
   street: string;
   exterior_number: string;
-  interior_number: string | null;
+  interior_number?: string;
   colony: string;
   municipality: string;
   zip_code: string;
   state: string;
   tax_regime: string;
   cfdi_use: string;
-  created_at: string | null;
-  updated_at: string | null;
+  email: string;
+  phone_number: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // User interface from Supabase auth

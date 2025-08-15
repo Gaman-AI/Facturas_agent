@@ -37,7 +37,7 @@ export default function TaskMonitorPage() {
           // Demo mode - create mock data
           setTaskStatus('running')
           setSessionId(`demo_session_${taskId}`)
-          setLiveViewUrl(null) // Use local browser automation for demo
+          setLiveViewUrl(undefined) // Use local browser automation for demo
           setIsLoading(false)
           return
         }
@@ -61,7 +61,7 @@ export default function TaskMonitorPage() {
           
           // Set up local browser automation session
           setSessionId(`local_session_${taskId}`)
-          setLiveViewUrl(null) // No live view URL for local browser automation
+          setLiveViewUrl(undefined) // No live view URL for local browser automation
         } else {
           // If task fetch failed, show error
           const errorMessage = taskResponse?.error || 'Task not found or API unavailable'
