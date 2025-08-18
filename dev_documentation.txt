@@ -307,7 +307,7 @@
 <Card className="lg:col-span-2 border-0 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
 ```
 
-**Benefits Achieved**:
+**Benefits**:
 ✅ **Better Visual Separation**: Clear distinction between dual pane and dashboard overview
 ✅ **Improved User Experience**: Users can easily identify different sections
 ✅ **Enhanced Interactivity**: Hover effects make interface more engaging
@@ -3298,6 +3298,207 @@ The OCR processing was failing with a Unicode encoding error: `'charmap' codec c
 
 ---
 
+### 2025-01-27 23:00 - Documented Complete Ticket Flow and Data Passing Mechanism
+
+**Date & Time**: 2025-01-27 23:00
+
+**Objective**: Document the complete flow of ticket processing and how extracted details are passed between the dual pane view and ticket processing system.
+
+**Complete Ticket Flow Analysis**:
+
+## **1. Ticket Upload and OCR Processing Flow**
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant D as Dashboard
+    participant B as Backend API
+    participant O as OCR Service
+    participant DP as Dual Pane View
+    participant T as Task System
+
+    U->>D: Upload ticket image + vendor URL
+    D->>B: POST /api/v1/tickets/upload
+    B->>O: Process image with Azure Document Intelligence
+    O->>B: Return extracted_data with 15+ fields
+    B->>D: Response with ticket_id + extracted_data
+    D->>D: Store extractedTicketData in state
+    D->>D: Auto-switch to dual pane mode
+    D->>DP: Pass initialTicketData prop
+    DP->>DP: Initialize ticketData and rawText from props
+    DP->>DP: Display extracted details in left pane
+    U->>DP: Click "Start Agent Task"
+    DP->>T: Create browser automation task with combined prompt
+    T->>T: Execute automation using extracted data
+```
+
+## **2. Data Structure Flow**
+
+### **Backend OCR Response Structure**:
+The OCR service returns a comprehensive data structure with both normalized and alternative field names:
+
+```json
+{
+  "extracted_data": {
+    // Core fields (normalized)
+    "mesa_folio": "2194722",
+    "fecha": "04/06/2025", 
+    "id_ticket": "10LGA50YMB1",
+    "total": 47.0,
+    "comercio": "VILLA MAGNA SLP",
+    
+    // Vendor-specific fields
+    "tc_number": "N/A",
+    "tr_number": "N/A", 
+    "id": "10LGA50YMB1",
+    "folio_venta": "2194722",
+    
+    // Enhanced fields
+    "store_branch_plaza": "LOMAS 4A SECCION",
+    "register_station_terminal": "03621",
+    "payment_type": "TARJETA DE CREDITO",
+    "card_last_4_digits": "4532",
+    
+    // Raw text and metadata
+    "raw_text": "Complete extracted text...",
+    "vendor_type": "oxxo",
+    "extraction_method": "ai_oxxo",
+    "text_length": 549,
+    
+    // Alternative field names for frontend compatibility
+    "Mesa_Folio": "2194722",
+    "Fecha": "04/06/2025",
+    "ID_Ticket": "10LGA50YMB1",
+    "Total": 47.0,
+    "Comercio": "VILLA MAGNA SLP",
+    "TC#": "N/A",
+    "TR#": "N/A",
+    "ID": "10LGA50YMB1",
+    "Fol_Vta": "2194722",
+    "Store_Branch_Plaza": "LOMAS 4A SECCION",
+    "Register_Station_Terminal": "03621",
+    "Payment_Type": "TARJETA DE CREDITO",
+    "Card_Last_4_Digits": "4532"
+  }
+}
+```
+
+### **Frontend Data Mapping**:
+The DashboardDualPane component receives `initialTicketData` and maps it to the `TicketData` interface:
+
+```typescript
+// Data mapping in useEffect
+const mappedData: TicketData = {
+  Comercio: initialTicketData.comercio || initialTicketData.Comercio || '',
+  Fecha: initialTicketData.fecha || initialTicketData.Fecha || '',
+  Total: initialTicketData.total || initialTicketData.Total || '',
+  'TC#': initialTicketData.tc_number || initialTicketData['TC#'] || '',
+  'TR#': initialTicketData.tr_number || initialTicketData['TR#'] || '',
+  'ID': initialTicketData.id || initialTicketData.ID || '',
+  'Fol_Vta': initialTicketData.folio_venta || initialTicketData['Fol_Vta'] || '',
+  'ID_Ticket': initialTicketData.id_ticket || initialTicketData.ID_Ticket || '',
+  'Mesa_Folio': initialTicketData.mesa_folio || initialTicketData.Mesa_Folio || '',
+  'Store_Branch_Plaza': initialTicketData.store_branch_plaza || initialTicketData['Store_Branch_Plaza'] || '',
+  'Register_Station_Terminal': initialTicketData.register_station_terminal || initialTicketData['Register_Station_Terminal'] || '',
+  'Payment_Type': initialTicketData.payment_type || initialTicketData['Payment_Type'] || '',
+  'Card_Last_4_Digits': initialTicketData.card_last_4_digits || initialTicketData['Card_Last_4_Digits'] || ''
+}
+```
+
+## **3. Task Creation and Data Passing**
+
+### **Combined Prompt Generation**:
+When the user clicks "Start Agent Task", the component creates a comprehensive prompt combining:
+
+1. **Vendor URL** - Target website for automation
+2. **User Profile Information** - Company name, RFC, address
+3. **Extracted Ticket Details** - All 13 ticket fields
+4. **Raw OCR Text** - Complete extracted text for context
+
+```typescript
+const combinedPrompt = `${vendorUrl}
+
+USER INFORMATION:
+- Company/Name: ${userProfile?.company_name || 'Not available'}
+- RFC: ${userProfile?.rfc || 'Not available'}
+- Address: ${userProfile?.address || 'Not available'}
+
+TICKET DETAILS:
+- Store/Comercio: ${ticketData.Comercio || 'Not available'}
+- Date/Fecha: ${ticketData.Fecha || 'Not available'}
+- Total Amount: ${ticketData.Total || 'Not available'}
+- TC Number: ${ticketData['TC#'] || 'Not available'}
+- TR Number: ${ticketData['TR#'] || 'Not available'}
+- ID: ${ticketData.ID || 'Not available'}
+- Folio Venta: ${ticketData['Fol_Vta'] || 'Not available'}
+- Ticket ID: ${ticketData['ID_Ticket'] || 'Not available'}
+- Mesa/Folio: ${ticketData['Mesa_Folio'] || 'Not available'}
+- Store/Branch/Plaza: ${ticketData['Store_Branch_Plaza'] || 'Not available'}
+- Register/Station/Terminal: ${ticketData['Register_Station_Terminal'] || 'Not available'}
+- Payment Type: ${ticketData['Payment_Type'] || 'Not available'}
+- Card Last 4 Digits: ${ticketData['Card_Last_4_Digits'] || 'Not available'}
+
+RAW OCR TEXT: ${rawText}`;
+```
+
+### **Task Submission**:
+The combined prompt is sent to the browser automation system:
+
+```typescript
+const response = await ApiService.createBrowserUseTask({
+  task: combinedPrompt,
+  vendor_url: vendorUrl
+});
+```
+
+## **4. Key Data Flow Points**
+
+### **Data Source**: 
+- **OCR Service** → Extracts structured data from receipt images
+- **Backend API** → Normalizes and returns both field formats
+- **Dashboard** → Receives and stores extracted data
+- **Dual Pane** → Initializes with received data and displays it
+
+### **Data Destination**:
+- **Task System** → Receives comprehensive prompt with all extracted details
+- **Browser Agent** → Uses the data to automate form filling
+- **Vendor Portal** → Receives accurate data for CFDI generation
+
+### **Data Transformation**:
+- **Raw OCR** → Structured fields → Normalized response → Frontend mapping → Combined prompt
+- **Field Compatibility** → Both lowercase and uppercase field names supported
+- **Vendor-Specific Mapping** → Automatic field mapping based on detected vendor type
+
+## **5. Benefits of This Flow**
+
+1. **Complete Data Preservation**: All extracted details are preserved and passed through the entire flow
+2. **Dual Field Format Support**: Frontend can handle both normalized and original field names
+3. **Rich Context**: Browser agent receives comprehensive information for accurate automation
+4. **User Verification**: Users can review all extracted details before starting automation
+5. **Flexible Integration**: System can handle different vendor types and field structures
+6. **Real-time Updates**: Live view shows automation progress using the extracted data
+
+## **6. Data Integrity Assurance**
+
+- **Field Validation**: All 13 ticket fields are extracted and validated
+- **Fallback Handling**: Alternative field names ensure compatibility
+- **Raw Text Preservation**: Complete OCR text is maintained for debugging
+- **Vendor Detection**: Automatic vendor-specific field mapping
+- **Error Handling**: Comprehensive error handling at each step
+
+**Conclusion**: The ticket flow ensures that **ALL extracted details from the dual pane view are passed directly to the ticket processing system**. The data flows seamlessly from OCR extraction → Backend normalization → Frontend display → Task creation → Browser automation, maintaining complete data integrity throughout the process.
+
+**Files Analyzed**:
+- `frontend/components/DashboardDualPane.tsx` - Data initialization and task creation
+- `frontend/app/(dashboard)/dashboard/page.tsx` - Data passing and state management
+- `backend/src/services/ocr_functionality.py` - OCR data structure
+- `backend/src/routes/tickets.js` - API response normalization
+- `backend/src/services/browserService.js` - Task execution
+
+**Testing Status**: The flow is fully implemented and ready for end-to-end testing to verify data integrity from OCR extraction through task execution.
+
+---
+
 **End of Development Documentation**
 
 ### Recent Changes
@@ -3439,3 +3640,120 @@ The OCR processing was failing with a Unicode encoding error: `'charmap' codec c
 - Confirm both mobile and desktop layouts show complete information
 - Check that Comercio field spans full width appropriately
 - Ensure no content is cut off or hidden from users
+
+### 2025-01-27 23:15 - Implemented Editable Extracted Details Fields in Dual Pane View
+
+**Date & Time**: 2025-01-27 23:15
+
+**Objective**: Make all extracted ticket details fields editable in the dual pane view so users can modify values before starting the agent task. The edited values (not the original extracted ones) will be passed to the agent.
+
+**Implementation Details**:
+
+## **1. Field Conversion to Editable Inputs**
+
+### **Desktop Layout (2x2 Grid)**:
+- Converted all 13 ticket fields from static display divs to editable input fields
+- Fields include: Mesa/Folio, Fecha, ID_Ticket, Total, Store_Branch_Plaza, Register_Station_Terminal, Payment_Type, Card_Last_4_Digits, TC#, TR#, ID, Fol_Vta, Comercio
+- Each field has proper onChange handlers that update the ticketData state
+
+### **Mobile Layout (3-Column Grid)**:
+- Applied same editable functionality to mobile layout
+- Maintained responsive design with 3-column grid for smaller screens
+- All fields are consistently editable across both layouts
+
+## **2. Input Field Features**
+
+### **State Management**:
+```typescript
+// Each field updates the ticketData state
+onChange={(e) => setTicketData(prev => ({ ...prev, 'Field_Name': e.target.value }))}
+```
+
+### **Styling**:
+- Consistent input styling with focus states
+- Red border theme matching existing design
+- Proper placeholder text for each field
+- Full width inputs for better usability
+
+### **User Experience**:
+- Clear visual feedback when editing
+- Focus rings on input selection
+- Placeholder text indicating what to enter
+- Maintains existing color scheme and layout
+
+## **3. User Interface Enhancements**
+
+### **Editable Fields Notice**:
+- Added blue info box above both desktop and mobile layouts
+- Clear message: "All fields are editable. Edit any values before starting the agent task."
+- Info icon for better visual communication
+- Consistent placement across both layouts
+
+### **Field Labels**:
+- Maintained existing field labels and descriptions
+- Clear identification of what each field represents
+- Consistent with original OCR extraction field names
+
+## **4. Data Flow for Agent Task**
+
+### **Current Implementation**:
+- When user clicks "Start Agent Task", the component uses the current `ticketData` state
+- This includes any edited values, not the original extracted values
+- The combined prompt is generated using the edited data
+- No special endpoints or database updates are needed
+
+### **Data Integrity**:
+- Original extracted data is preserved in the initial state
+- Users can edit any field as needed
+- Edited values are used for agent task creation
+- Simple, straightforward approach without complexity
+
+## **5. Benefits of This Implementation**
+
+1. **User Control**: Users can correct any OCR errors or modify values as needed
+2. **No Backend Changes**: Simple frontend-only implementation
+3. **Immediate Effect**: Changes take effect immediately in the UI
+4. **Consistent Experience**: Same editing capability on both desktop and mobile
+5. **Clear Communication**: Users understand that fields are editable
+6. **Data Accuracy**: Agent receives the most accurate, user-verified data
+
+## **6. Technical Implementation**
+
+### **State Updates**:
+- Each input field has its own onChange handler
+- Updates are applied immediately to the ticketData state
+- No debouncing or complex state management needed
+- Simple React state pattern for immediate updates
+
+### **Component Structure**:
+- Maintained existing component structure
+- Added editable functionality without breaking existing features
+- Consistent with current codebase patterns
+- No additional dependencies required
+
+### **Responsive Design**:
+- Desktop: 2x2 grid layout with editable inputs
+- Mobile: 3-column grid with same editable functionality
+- Consistent styling and behavior across all screen sizes
+
+## **7. User Workflow**
+
+1. **Upload Ticket**: User uploads receipt image
+2. **Review Extracted Data**: OCR extracts and displays ticket details
+3. **Edit Fields**: User can edit any field that needs correction
+4. **Start Agent Task**: Click button to start automation with edited values
+5. **Agent Execution**: Browser agent uses the edited (not original) values
+
+## **8. No Special Features Added**
+
+- **No Database Updates**: Edited values are not stored or recorded
+- **No Endpoint Changes**: All existing APIs remain unchanged
+- **No History Tracking**: No record of what was edited
+- **Simple Implementation**: Just frontend state management for immediate use
+
+**Conclusion**: The dual pane view now provides fully editable extracted details fields that allow users to modify any ticket information before starting the agent task. The edited values are automatically used when creating the agent task, ensuring accuracy without adding complexity to the backend or database systems.
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx` - Converted static fields to editable inputs for both desktop and mobile layouts
+
+**Testing Status**: Ready for testing - users should now be able to edit all extracted details fields and see their changes reflected when starting the agent task.
