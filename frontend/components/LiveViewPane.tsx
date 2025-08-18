@@ -393,7 +393,8 @@ export function LiveViewPane({
             allow="clipboard-read; clipboard-write; camera; microphone; geolocation"
             style={{ 
               pointerEvents: takeoverMode ? 'none' : 'auto',
-              minHeight: '400px'
+              minHeight: '600px',
+              height: '100%'
             }}
             onLoad={handleIframeLoad}
             onError={handleIframeError}

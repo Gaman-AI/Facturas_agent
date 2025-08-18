@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import 'react-toastify/dist/ReactToastify.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { LanguageProvider } from '@/contexts/LanguageContext'
+import { ToastContainer } from 'react-toastify'
 
 export const metadata: Metadata = {
   title: 'CFDI 4.0 Automation System',
@@ -27,6 +29,7 @@ export default function RootLayout({
         <LanguageProvider>
           <AuthProvider>
             {children}
+            <ToastContainer />
           </AuthProvider>
         </LanguageProvider>
       </body>

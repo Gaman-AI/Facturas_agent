@@ -486,7 +486,7 @@ export class ApiService {
 
   // Task Management
   static async createTask(prompt: string): Promise<Task> {
-    const response = await apiClient.post('/tasks', { prompt });
+    const response = await apiClient.post('/tasks', { task: prompt });
     const data = response.data;
     
     // Ensure the response matches our Task interface
@@ -604,8 +604,7 @@ export class ApiService {
     prompt?: string;
     task?: string;
     vendor_url?: string;
-    customer_details?: any;
-    invoice_details?: any;
+    ocr_ticket_data?: any;
     model?: string;
     temperature?: number;
     max_steps?: number;
@@ -616,8 +615,7 @@ export class ApiService {
     const normalizedRequest = {
       prompt: request.prompt || request.task,
       vendor_url: request.vendor_url,
-      customer_details: request.customer_details,
-      invoice_details: request.invoice_details,
+      ocr_ticket_data: request.ocr_ticket_data,
       model: request.model || 'gpt-4o-mini',
       temperature: request.temperature || 0.7,
       max_steps: request.max_steps || 30,

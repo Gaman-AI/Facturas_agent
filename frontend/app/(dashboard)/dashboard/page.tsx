@@ -247,7 +247,7 @@ function DashboardContent() {
         {/* Ticket Upload / Dual Pane Section */}
         <div className="mb-12">
           {useDualPane ? (
-            <div className="h-[900px] mb-8 relative z-10 w-full">
+            <div className="h-[750px] mb-4 relative z-10 w-full">
               {/* Reset Button */}
               <div className="mb-4 flex justify-end">
                 <Button 
@@ -263,19 +263,9 @@ function DashboardContent() {
                 onTaskSubmit={handleTaskSubmit}
                 className="h-full w-full"
                 initialTicketData={extractedTicketData}
+                vendorUrl={vendorUrl}
+                userProfile={profile}
               />
-              {/* Debug info */}
-              {extractedTicketData && (
-                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <h4 className="text-sm font-medium text-blue-700 mb-2">Debug: Data being passed to Dual Pane</h4>
-                  <div className="text-xs text-blue-600">
-                    <div>Keys: {Object.keys(extractedTicketData).join(', ')}</div>
-                    <div>Raw text length: {extractedTicketData.raw_text?.length || extractedTicketData.Full_Raw_Text?.length || 'N/A'}</div>
-                    <div>Mesa_Folio: {extractedTicketData.Mesa_Folio || extractedTicketData.mesa_folio || 'N/A'}</div>
-                    <div>Fecha: {extractedTicketData.Fecha || extractedTicketData.fecha || 'N/A'}</div>
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
               <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm mb-6">
@@ -360,9 +350,23 @@ function DashboardContent() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-4">
+        {/* Visual Separator */}
+        {useDualPane && (
+          <div className="mb-4">
+            <div className="h-px bg-gradient-to-r from-transparent via-pink-200 to-transparent"></div>
+            <div className="text-center mt-4">
+              <div className="inline-flex items-center px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-pink-200/50">
+                <div className="w-2 h-2 bg-pink-400 rounded-full mr-2"></div>
+                <span className="text-sm font-medium text-pink-700">Dashboard Overview</span>
+                <div className="w-2 h-2 bg-pink-400 rounded-full ml-2"></div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
           {/* User Profile Card */}
-          <Card className="lg:col-span-2 border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+          <Card className="lg:col-span-2 border-0 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
             <CardHeader className="pb-4">
                               <CardTitle className="flex items-center space-x-2">
                   <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
@@ -434,7 +438,7 @@ function DashboardContent() {
           {/* Quick Actions & Stats */}
           <div className="space-y-6">
             {/* Quick Actions */}
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
               <CardHeader className="pb-4">
                                                  <CardTitle className="flex items-center space-x-2">
                   <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
@@ -477,7 +481,7 @@ function DashboardContent() {
             </Card>
 
             {/* System Status */}
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
               <CardHeader className="pb-4">
                                                  <CardTitle className="flex items-center space-x-2">
                   <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
@@ -512,7 +516,7 @@ function DashboardContent() {
             </Card>
 
             {/* Recent Activity */}
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
               <CardHeader className="pb-4">
                                  <CardTitle className="flex items-center space-x-2">
                    <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">

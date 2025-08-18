@@ -6,6 +6,7 @@ import browserService from '../services/browserService.js'
 import browserAgentService from '../services/browserAgentService.js'
 import taskService from '../services/taskService.js'
 import queueService from '../services/queueService.js'
+import authService from '../services/authService.js'
 
 const router = express.Router()
 
@@ -668,13 +669,12 @@ router.get('/browser/health', asyncHandler(async (req, res) => {
  * @desc    Create and execute a browser automation task using local browser-use
  * @access  Private
  */
-router.post('/browser-use', asyncHandler(async (req, res) => {
-  const userId = 'anonymous'
+router.post('/browser-use', authenticate, asyncHandler(async (req, res) => {
+  const userId = req.user.id
   const {
     prompt,
     vendor_url,
-    customer_details,
-    invoice_details,
+    ocr_ticket_data,
     model,
     temperature,
     max_steps,
@@ -682,13 +682,13 @@ router.post('/browser-use', asyncHandler(async (req, res) => {
   } = req.body
 
   // Validate required fields
-  if (!prompt && !vendor_url) {
+  if (!vendor_url) {
     return res.status(400).json({
       success: false,
       error: {
         code: 'VALIDATION_ERROR',
-        message: 'Either prompt or vendor_url must be provided',
-        details: { fields: ['prompt', 'vendor_url'] }
+        message: 'vendor_url is required',
+        details: { fields: ['vendor_url'] }
       },
       meta: {
         timestamp: new Date().toISOString(),
@@ -698,12 +698,30 @@ router.post('/browser-use', asyncHandler(async (req, res) => {
   }
 
   try {
-    // Create the browser task
-    const task = await browserAgentService.createTask(userId, {
-      prompt,
+    // Fetch complete user profile
+    const userProfile = await authService.getUserProfile(userId)
+    
+    if (!userProfile || userProfile.error) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'USER_PROFILE_NOT_FOUND',
+          message: 'User profile not found or error fetching profile',
+          details: userProfile?.error || 'Profile fetch failed'
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: req.id
+        }
+      })
+    }
+
+    // Combine user profile, OCR data, and vendor URL
+    const completeTaskData = {
       vendor_url,
-      customer_details,
-      invoice_details,
+      user_profile: userProfile,
+      ocr_ticket_data: ocr_ticket_data || {},
+      prompt: prompt || null,
       model,
       temperature,
       max_steps,
@@ -711,7 +729,10 @@ router.post('/browser-use', asyncHandler(async (req, res) => {
       request_id: req.id,
       user_agent: req.headers['user-agent'],
       ip_address: req.ip
-    })
+    }
+
+    // Create the browser task
+    const task = await browserAgentService.createTask(userId, completeTaskData)
 
     res.status(201).json({
       success: true,
