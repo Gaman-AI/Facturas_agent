@@ -774,9 +774,22 @@ def extract_receipt_data(image_path):
     full_text = ""
     for page in read_result.pages:
         for line in page.lines:
-            full_text += line.content + "\n"
+            # Ensure line content is properly encoded and safe for JSON
+            line_content = line.content
+            if line_content:
+                # Clean any problematic Unicode characters that might cause encoding issues
+                try:
+                    # Try to encode/decode to ensure it's valid UTF-8
+                    line_content.encode('utf-8').decode('utf-8')
+                    full_text += line_content + "\n"
+                except (UnicodeEncodeError, UnicodeDecodeError):
+                    # If there are encoding issues, try to clean the text
+                    print(f"[ENHANCED-OCR] Warning: Unicode issue in line content, cleaning...", file=sys.stderr)
+                    # Remove or replace problematic characters
+                    cleaned_content = line_content.encode('ascii', 'ignore').decode('ascii')
+                    full_text += cleaned_content + "\n"
     
-    # Verificar que tenemos el texto completo
+    # Verify that tenemos el texto completo
     print(f"[ENHANCED-OCR] Extracted text length: {len(full_text)} characters", file=sys.stderr)
     print(f"[ENHANCED-OCR] Text preview (first 200 chars): {full_text[:200]}...", file=sys.stderr)
     print(f"[ENHANCED-OCR] Text preview (last 200 chars): {full_text[-200:] if len(full_text) > 200 else full_text}", file=sys.stderr)
@@ -853,7 +866,7 @@ def extract_receipt_data(image_path):
     print(f"  Card Last 4 Digits: {card_last_4_digits}", file=sys.stderr)
 
     # **RETURN COMPREHENSIVE DATA STRUCTURE for Frontend**
-    return {
+    result_data = {
         # Core extracted fields
         "Mesa_Folio": folio_field,
         "Fecha": transaction_date,
@@ -889,3 +902,40 @@ def extract_receipt_data(image_path):
         "extraction_method": ticket_info.get('extraction_method', 'unknown'),
         "text_length": len(full_text)
     }
+    
+    # Final safety check: ensure all values are JSON-safe
+    def make_json_safe(obj):
+        """Recursively make all values in the object JSON-safe"""
+        if isinstance(obj, dict):
+            return {k: make_json_safe(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [make_json_safe(item) for item in obj]
+        elif isinstance(obj, str):
+            try:
+                # Test if the string can be JSON encoded
+                json.dumps(obj)
+                return obj
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                # If there are encoding issues, clean the string
+                print(f"[ENHANCED-OCR] Warning: Cleaning problematic string for JSON safety", file=sys.stderr)
+                return obj.encode('ascii', 'ignore').decode('ascii')
+        else:
+            return obj
+    
+    # Apply safety check to the result
+    safe_result = make_json_safe(result_data)
+    
+    # Test JSON serialization before returning
+    try:
+        json.dumps(safe_result, ensure_ascii=False)
+        print(f"[ENHANCED-OCR] Result is JSON-safe", file=sys.stderr)
+    except Exception as e:
+        print(f"[ENHANCED-OCR] Warning: JSON serialization test failed: {e}", file=sys.stderr)
+        # Fallback: return minimal safe data
+        safe_result = {
+            "error": "Data contained problematic characters and was cleaned",
+            "success": False,
+            "text_length": len(full_text) if full_text else 0
+        }
+    
+    return safe_result

@@ -47,8 +47,8 @@ class BrowserAgentService {
       // Task configuration
       prompt: taskData.prompt || null,
       vendorUrl: taskData.vendor_url || null,
-      customerDetails: taskData.customer_details || null,
-      invoiceDetails: taskData.invoice_details || null,
+      userProfile: taskData.user_profile || null,
+      ocrTicketData: taskData.ocr_ticket_data || null,
       
       // LLM settings
       model: taskData.model || 'gpt-4.1-mini',
@@ -295,8 +295,8 @@ class BrowserAgentService {
       const pythonTaskData = {
         prompt: task.prompt,
         vendor_url: task.vendorUrl,
-        customer_details: task.customerDetails,
-        invoice_details: task.invoiceDetails,
+        user_profile: task.userProfile,
+        ocr_ticket_data: task.ocrTicketData,
         model: task.model,
         temperature: task.temperature,
         max_steps: task.maxSteps
