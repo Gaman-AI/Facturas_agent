@@ -776,109 +776,172 @@ RAW OCR TEXT: ${rawText}`;
                 </div>
               )}
               
+              {/* Extracted Ticket Information Display - Mobile Layout - EDITABLE */}
+              {/* Editable Fields Notice - Mobile */}
+              <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 text-blue-700">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-xs font-medium">All fields are editable. Edit any values before starting the agent task.</span>
+                </div>
+              </div>
+              
               <div className="grid grid-cols-3 gap-2">
                 {/* Mesa/Folio */}
                 <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                   <label className="block text-xs font-medium text-gray-700 mb-1">Mesa/Folio</label>
-                  <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                    {ticketData['Mesa_Folio'] || 'No disponible'}
-                  </div>
+                  <input
+                    type="text"
+                    value={ticketData['Mesa_Folio'] || ''}
+                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': e.target.value }))}
+                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Enter Mesa/Folio"
+                  />
                 </div>
                 
                 {/* Fecha */}
                 <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                   <label className="block text-xs font-medium text-gray-700 mb-1">Fecha</label>
-                  <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                    {ticketData['Fecha'] || 'No disponible'}
-                  </div>
+                  <input
+                    type="text"
+                    value={ticketData['Fecha'] || ''}
+                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Fecha': e.target.value }))}
+                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Enter Fecha"
+                  />
                 </div>
                 
                 {/* ID Ticket */}
                 <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                   <label className="block text-xs font-medium text-gray-700 mb-1">ID Ticket</label>
-                  <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                    {ticketData['ID_Ticket'] || 'No disponible'}
-                  </div>
+                  <input
+                    type="text"
+                    value={ticketData['ID_Ticket'] || ''}
+                    onChange={(e) => setTicketData(prev => ({ ...prev, 'ID_Ticket': e.target.value }))}
+                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Enter ID Ticket"
+                  />
                 </div>
                 
                 {/* Total */}
                 <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                   <label className="block text-xs font-medium text-gray-700 mb-1">Total</label>
-                  <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                    {ticketData['Total'] || 'No disponible'}
-                  </div>
+                  <input
+                    type="text"
+                    value={ticketData['Total'] || ''}
+                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Total': e.target.value }))}
+                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Enter Total"
+                  />
                 </div>
                 
                 {/* Store/Branch/Plaza */}
                 <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                   <label className="block text-xs font-medium text-gray-700 mb-1">Store/Branch/Plaza</label>
-                  <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                    {ticketData['Store_Branch_Plaza'] || 'No disponible'}
-                  </div>
+                  <input
+                    type="text"
+                    value={ticketData['Store_Branch_Plaza'] || ''}
+                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': e.target.value }))}
+                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Enter Store/Branch/Plaza"
+                  />
                 </div>
                 
                 {/* Register/Station/Terminal */}
                 <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                   <label className="block text-xs font-medium text-gray-700 mb-1">Register/Station/Terminal</label>
-                  <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                    {ticketData['Register_Station_Terminal'] || 'No disponible'}
-                  </div>
+                  <input
+                    type="text"
+                    value={ticketData['Register_Station_Terminal'] || ''}
+                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': e.target.value }))}
+                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Enter Register/Station/Terminal"
+                  />
                 </div>
                 
                 {/* Payment Type */}
                 <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                   <label className="block text-xs font-medium text-gray-700 mb-1">Payment Type</label>
-                  <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                    {ticketData['Payment_Type'] || 'No disponible'}
-                  </div>
+                  <input
+                    type="text"
+                    value={ticketData['Payment_Type'] || ''}
+                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Payment_Type': e.target.value }))}
+                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Enter Payment Type"
+                  />
                 </div>
                 
                 {/* Last 4 digits of card */}
                 <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                   <label className="block text-xs font-medium text-gray-700 mb-1">Card Last 4 Digits</label>
-                  <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                    {ticketData['Card_Last_4_Digits'] || 'No disponible'}
-                  </div>
+                  <input
+                    type="text"
+                    value={ticketData['Card_Last_4_Digits'] || ''}
+                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': e.target.value }))}
+                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Enter Card Last 4 Digits"
+                  />
                 </div>
                 
                 {/* TC# */}
                 <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                   <label className="block text-xs font-medium text-gray-700 mb-1">TC#</label>
-                  <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                    {ticketData['TC#'] || 'No disponible'}
-                  </div>
+                  <input
+                    type="text"
+                    value={ticketData['TC#'] || ''}
+                    onChange={(e) => setTicketData(prev => ({ ...prev, 'TC#': e.target.value }))}
+                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Enter TC#"
+                  />
                 </div>
                 
                 {/* TR# */}
                 <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                   <label className="block text-xs font-medium text-gray-700 mb-1">TR#</label>
-                  <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                    {ticketData['TR#'] || 'No disponible'}
-                  </div>
+                  <input
+                    type="text"
+                    value={ticketData['TR#'] || ''}
+                    onChange={(e) => setTicketData(prev => ({ ...prev, 'TR#': e.target.value }))}
+                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Enter TR#"
+                  />
                 </div>
                 
                 {/* ID */}
                 <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                   <label className="block text-xs font-medium text-gray-700 mb-1">ID</label>
-                  <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                    {ticketData['ID'] || 'No disponible'}
-                  </div>
+                  <input
+                    type="text"
+                    value={ticketData['ID'] || ''}
+                    onChange={(e) => setTicketData(prev => ({ ...prev, 'ID': e.target.value }))}
+                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Enter ID"
+                  />
                 </div>
                 
                 {/* Fol_Vta */}
                 <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                   <label className="block text-xs font-medium text-gray-700 mb-1">Fol_Vta</label>
-                  <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                    {ticketData['Fol_Vta'] || 'No disponible'}
-                  </div>
+                  <input
+                    type="text"
+                    value={ticketData['Fol_Vta'] || ''}
+                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Fol_Vta': e.target.value }))}
+                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Enter Fol_Vta"
+                  />
                 </div>
                 
                 {/* Comercio - Full width */}
                 <div className="bg-gray-50 border border-red-200 rounded-lg p-2 col-span-3">
                   <label className="block text-xs font-medium text-gray-700 mb-1">Comercio</label>
-                  <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                    {ticketData['Comercio'] || 'No disponible'}
-                  </div>
+                  <input
+                    type="text"
+                    value={ticketData['Comercio'] || ''}
+                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Comercio': e.target.value }))}
+                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Enter Comercio"
+                  />
                 </div>
               </div>
               
@@ -1295,111 +1358,173 @@ RAW OCR TEXT: ${rawText}`;
                     </div>
                   )}
                   
-                  {/* Extracted Ticket Information Display - 2x2 Grid */}
+                  {/* Extracted Ticket Information Display - 2x2 Grid - EDITABLE */}
                   <div className="p-3 flex flex-col h-full" style={{ minHeight: '400px' }}>
+                    {/* Editable Fields Notice */}
+                    <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex items-center gap-2 text-blue-700">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-xs font-medium">All fields are editable. Edit any values before starting the agent task.</span>
+                      </div>
+                    </div>
+                    
                     <div className="grid grid-cols-2 gap-2 flex-shrink-0 mb-4">
                       {/* Mesa/Folio */}
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">Mesa/Folio</label>
-                        <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                          {ticketData['Mesa_Folio'] || 'No disponible'}
-                        </div>
+                        <input
+                          type="text"
+                          value={ticketData['Mesa_Folio'] || ''}
+                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': e.target.value }))}
+                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Enter Mesa/Folio"
+                        />
                       </div>
                       
                       {/* Fecha */}
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">Fecha</label>
-                        <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                          {ticketData['Fecha'] || 'No disponible'}
-                        </div>
+                        <input
+                          type="text"
+                          value={ticketData['Fecha'] || ''}
+                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Fecha': e.target.value }))}
+                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Enter Fecha"
+                        />
                       </div>
                       
                       {/* ID Ticket */}
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">ID Ticket</label>
-                        <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                          {ticketData['ID_Ticket'] || 'No disponible'}
-                        </div>
+                        <input
+                          type="text"
+                          value={ticketData['ID_Ticket'] || ''}
+                          onChange={(e) => setTicketData(prev => ({ ...prev, 'ID_Ticket': e.target.value }))}
+                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Enter ID Ticket"
+                        />
                       </div>
                       
                       {/* Total */}
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">Total</label>
-                        <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                          {ticketData['Total'] || 'No disponible'}
-                        </div>
+                        <input
+                          type="text"
+                          value={ticketData['Total'] || ''}
+                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Total': e.target.value }))}
+                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Enter Total"
+                        />
                       </div>
                       
                       {/* Store/Branch/Plaza */}
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">Store/Branch/Plaza</label>
-                        <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                          {ticketData['Store_Branch_Plaza'] || 'No disponible'}
-                        </div>
+                        <input
+                          type="text"
+                          value={ticketData['Store_Branch_Plaza'] || ''}
+                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': e.target.value }))}
+                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Enter Store/Branch/Plaza"
+                        />
                       </div>
                       
                       {/* Register/Station/Terminal */}
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">Register/Station/Terminal</label>
-                        <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                          {ticketData['Register_Station_Terminal'] || 'No disponible'}
-                        </div>
+                        <input
+                          type="text"
+                          value={ticketData['Register_Station_Terminal'] || ''}
+                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': e.target.value }))}
+                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Enter Register/Station/Terminal"
+                        />
                       </div>
                       
                       {/* Payment Type */}
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">Payment Type</label>
-                        <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                          {ticketData['Payment_Type'] || 'No disponible'}
-                        </div>
+                        <input
+                          type="text"
+                          value={ticketData['Payment_Type'] || ''}
+                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Payment_Type': e.target.value }))}
+                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Enter Payment Type"
+                        />
                       </div>
                       
                       {/* Last 4 digits of card */}
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">Card Last 4 Digits</label>
-                        <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                          {ticketData['Card_Last_4_Digits'] || 'No disponible'}
-                        </div>
+                        <input
+                          type="text"
+                          value={ticketData['Card_Last_4_Digits'] || ''}
+                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': e.target.value }))}
+                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Enter Card Last 4 Digits"
+                        />
                       </div>
                       
                       {/* TC# */}
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">TC#</label>
-                        <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                          {ticketData['TC#'] || 'No disponible'}
-                        </div>
+                        <input
+                          type="text"
+                          value={ticketData['TC#'] || ''}
+                          onChange={(e) => setTicketData(prev => ({ ...prev, 'TC#': e.target.value }))}
+                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Enter TC#"
+                        />
                       </div>
                       
                       {/* TR# */}
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">TR#</label>
-                        <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                          {ticketData['TR#'] || 'No disponible'}
-                        </div>
+                        <input
+                          type="text"
+                          value={ticketData['TR#'] || ''}
+                          onChange={(e) => setTicketData(prev => ({ ...prev, 'TR#': e.target.value }))}
+                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Enter TR#"
+                        />
                       </div>
                       
                       {/* ID */}
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">ID</label>
-                        <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                          {ticketData['ID'] || 'No disponible'}
-                        </div>
+                        <input
+                          type="text"
+                          value={ticketData['ID'] || ''}
+                          onChange={(e) => setTicketData(prev => ({ ...prev, 'ID': e.target.value }))}
+                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Enter ID"
+                        />
                       </div>
                       
                       {/* Fol_Vta */}
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">Fol_Vta</label>
-                        <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                          {ticketData['Fol_Vta'] || 'No disponible'}
-                        </div>
+                        <input
+                          type="text"
+                          value={ticketData['Fol_Vta'] || ''}
+                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Fol_Vta': e.target.value }))}
+                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Enter Fol_Vta"
+                        />
                       </div>
                       
                       {/* Comercio - Full width */}
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-2 col-span-2">
                         <label className="block text-xs font-medium text-gray-700 mb-1">Comercio</label>
-                        <div className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-hidden">
-                          {ticketData['Comercio'] || 'No disponible'}
-                        </div>
+                        <input
+                          type="text"
+                          value={ticketData['Comercio'] || ''}
+                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Comercio': e.target.value }))}
+                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          placeholder="Enter Comercio"
+                        />
                       </div>
                     </div>
                     
