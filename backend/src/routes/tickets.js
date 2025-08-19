@@ -59,13 +59,14 @@ async function runPythonOCR(imagePath) {
     
     console.log(`[OCR] Executing Python script...`)
     
-    // Execute the standalone Python script
+    // Execute the standalone Python script with better encoding handling
     const result = execSync(`${pythonExec} "${ocrScriptPath}" "${imagePath}"`, { 
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: true,
       cwd: backendDir, // Use the backend directory as working directory
-      env: process.env // Pass all environment variables to Python subprocess
+      env: { ...process.env, PYTHONIOENCODING: 'utf-8' }, // Force Python to use UTF-8
+      maxBuffer: 10 * 1024 * 1024 // 10MB buffer for large OCR results
     })
     
     console.log(`[OCR] Python output: ${result}`)
@@ -75,13 +76,28 @@ async function runPythonOCR(imagePath) {
       throw new Error('Python script returned empty output')
     }
     
-    // Try to parse the JSON result
+    // Try to parse the JSON result with additional safety measures
     let ocrResult
     try {
-      ocrResult = JSON.parse(result.trim())
+      // Clean the result string to remove any problematic characters
+      const cleanedResult = result.trim()
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+        .replace(/[\uFFFD]/g, '') // Remove replacement characters
+      
+      ocrResult = JSON.parse(cleanedResult)
     } catch (parseError) {
       console.error(`[OCR] JSON parse error: ${parseError.message}`)
       console.error(`[OCR] Raw output: ${result}`)
+      
+      // Try to extract any useful information from the error
+      if (result.includes('error') || result.includes('Error')) {
+        // Look for error messages in the output
+        const errorMatch = result.match(/error["\s]*:["\s]*([^"\n]+)/i)
+        if (errorMatch) {
+          throw new Error(`Python script error: ${errorMatch[1]}`)
+        }
+      }
+      
       throw new Error(`Invalid JSON output from Python script: ${parseError.message}`)
     }
     

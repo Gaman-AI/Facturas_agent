@@ -23,7 +23,12 @@ def main():
         # Check if image path was provided
         if len(sys.argv) != 2:
             error_msg = "Usage: python run_ocr.py <image_path>"
-            print(json.dumps({"error": error_msg, "success": False}))
+            # Use stderr for error messages and ensure proper encoding
+            print(f"[OCR] Error: {error_msg}", file=sys.stderr)
+            error_result = {"error": error_msg, "success": False}
+            # Use sys.stdout.buffer for binary-safe output to avoid encoding issues
+            sys.stdout.buffer.write(json.dumps(error_result, ensure_ascii=False).encode('utf-8'))
+            sys.stdout.buffer.write(b'\n')
             sys.exit(1)
         
         image_path = sys.argv[1]
@@ -31,26 +36,35 @@ def main():
         # Validate image path exists
         if not os.path.exists(image_path):
             error_msg = f"Image file not found: {image_path}"
-            print(json.dumps({"error": error_msg, "success": False}))
+            print(f"[OCR] Error: {error_msg}", file=sys.stderr)
+            error_result = {"error": error_msg, "success": False}
+            sys.stdout.buffer.write(json.dumps(error_result, ensure_ascii=False).encode('utf-8'))
+            sys.stdout.buffer.write(b'\n')
             sys.exit(1)
         
         # Process the image
         print(f"[OCR] Processing image: {image_path}", file=sys.stderr)
         result = extract_receipt_data(image_path)
         
-        # Return successful result
-        print(json.dumps(result, ensure_ascii=False))
+        # Return successful result using binary-safe output
+        json_output = json.dumps(result, ensure_ascii=False)
+        sys.stdout.buffer.write(json_output.encode('utf-8'))
+        sys.stdout.buffer.write(b'\n')
         
     except ImportError as e:
         error_msg = f"Import failed: {str(e)}"
         print(f"[OCR] Import error: {error_msg}", file=sys.stderr)
-        print(json.dumps({"error": error_msg, "success": False}))
+        error_result = {"error": error_msg, "success": False}
+        sys.stdout.buffer.write(json.dumps(error_result, ensure_ascii=False).encode('utf-8'))
+        sys.stdout.buffer.write(b'\n')
         sys.exit(1)
     except Exception as e:
         error_msg = f"OCR processing failed: {str(e)}"
         print(f"[OCR] Error: {error_msg}", file=sys.stderr)
         print(f"[OCR] Traceback: {traceback.format_exc()}", file=sys.stderr)
-        print(json.dumps({"error": error_msg, "success": False}))
+        error_result = {"error": error_msg, "success": False}
+        sys.stdout.buffer.write(json.dumps(error_result, ensure_ascii=False).encode('utf-8'))
+        sys.stdout.buffer.write(b'\n')
         sys.exit(1)
 
 if __name__ == "__main__":

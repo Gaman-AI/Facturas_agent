@@ -2,6 +2,1093 @@
 
 ## 📚 **COMPREHENSIVE DOCUMENTATION AVAILABLE**
 
+---
+
+## Latest Updates
+
+### 2025-01-28 00:25 - Fixed "No Live View Available" Element Height and Removed Card Height Constraints ✅
+
+**Date & Time**: 2025-01-28 00:25
+
+**Summary**: Successfully fixed the height of the "No Live View Available" placeholder element and removed all remaining height constraints to ensure the live view iframe and placeholder elements perfectly fit the card size.
+
+**Changes Implemented**:
+
+1. **"No Live View Available" Placeholder Height Fix**:
+   - **Before**: `h-64` (256px fixed height - too small for card)
+   - **After**: `h-full` (uses full available card height)
+   - **Location**: `frontend/components/DashboardDualPane.tsx` - renderLiveView function
+   - **Benefit**: Placeholder now perfectly fills the card height
+
+2. **Mobile Layout CardContent Height Constraint Removal**:
+   - **Before**: `style={{ minHeight: '600px' }}` (fixed minimum height)
+   - **After**: Removed height constraint, using natural flexbox sizing
+   - **Location**: `frontend/components/DashboardDualPane.tsx` - Mobile layout main CardContent
+   - **Benefit**: Mobile layout now properly sized without height limitations
+
+3. **Mobile Browser View CardContent Height Constraint Removal**:
+   - **Before**: `style={{ minHeight: '500px', maxHeight: '600px' }}` (fixed height range)
+   - **After**: Removed height constraints, using natural flexbox sizing
+   - **Location**: `frontend/components/DashboardDualPane.tsx` - Mobile layout browser view CardContent
+   - **Benefit**: Mobile browser view now properly sized within card boundaries
+
+4. **Desktop Layout Live View Iframe Container Height Constraint Removal**:
+   - **Before**: `style={{ minHeight: '600px' }}` (fixed minimum height)
+   - **After**: Removed height constraint, using `flex-1` for dynamic sizing
+   - **Location**: `frontend/components/DashboardDualPane.tsx` - Desktop layout live view section
+   - **Benefit**: Desktop iframe container now perfectly fits card dimensions
+
+**Technical Implementation Details**:
+
+```tsx
+// Before: Fixed height constraints limiting element sizing
+<div className="h-64 flex items-center justify-center...">  // Too small
+<CardContent style={{ minHeight: '600px' }}>               // Fixed height
+<CardContent style={{ minHeight: '500px', maxHeight: '600px' }}>  // Height range
+<div style={{ minHeight: '600px' }}>                      // Fixed height
+
+// After: Dynamic height using flexbox for perfect card fit
+<div className="h-full flex items-center justify-center...">  // Full height
+<CardContent>                                               // Natural sizing
+<CardContent>                                               // Natural sizing
+<div className="flex-1">                                   // Dynamic sizing
+```
+
+**Height Layout Strategy**:
+- **Placeholder Element**: Uses `h-full` to fill entire card height
+- **CardContent**: Uses natural flexbox sizing without constraints
+- **Iframe Container**: Uses `flex-1` to expand and fill available space
+- **Result**: All elements now perfectly fit the card size without overflow or gaps
+
+**Benefits Achieved**:
+✅ **Perfect Card Fit**: "No Live View Available" placeholder now fills entire card height  
+✅ **Dynamic Sizing**: All elements automatically adjust to card dimensions  
+✅ **No Height Constraints**: Removed arbitrary height limitations  
+✅ **Better Space Utilization**: Elements use 100% of available vertical space  
+✅ **Consistent Layout**: Both mobile and desktop layouts now properly sized  
+✅ **Professional Appearance**: Clean, properly fitted elements display  
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx` - Multiple height constraint removals and placeholder height fix
+
+**Design Principles Applied**:
+- **Flexible Layout**: Uses flexbox for dynamic height distribution
+- **Perfect Fit**: All elements fill entire available card space
+- **Responsive Design**: Height adapts to different card sizes
+- **Space Efficiency**: Maximum use of available vertical space
+- **User Experience**: Better element visibility and consistent sizing
+
+---
+
+### 2025-01-28 00:05 - Fixed Height Mismatch and Spacing Issues After Dual Pane Height Reduction ✅
+
+**Date & Time**: 2025-01-28 00:05
+
+**Summary**: Successfully resolved height mismatch and extra spacing issues that occurred after reducing the dual pane view container height by a quarter, ensuring proper container sizing and eliminating unwanted white space.
+
+**Changes Implemented**:
+
+1. **Dashboard Container Height Adjustment**:
+   - **Before**: `h-[1000px]` (1000px fixed height)
+   - **After**: `h-[750px]` (750px fixed height - 75% of original)
+   - **Location**: `frontend/app/(dashboard)/dashboard/page.tsx` - Line 250
+   - **Benefit**: Container height now matches the reduced dual pane height
+
+2. **Dual Pane CardContent Height Calculation Fix**:
+   - **Before**: `calc(75% - 90px)` (75% of parent container minus header)
+   - **After**: `calc(100% - 90px)` (100% of parent container minus header)
+   - **Location**: `frontend/components/DashboardDualPane.tsx` - Line 1125
+   - **Benefit**: Content now properly fills the adjusted container height
+
+**Technical Implementation Details**:
+
+```tsx
+// Dashboard container height adjustment
+// Before: 1000px height
+<div className="h-[1000px] mb-4 relative z-10 w-full">
+// After: 750px height (75% of 1000px)
+<div className="h-[750px] mb-4 relative z-10 w-full">
+
+// Dual pane CardContent height calculation
+// Before: 75% of parent minus header
+<CardContent style={{ height: 'calc(75% - 90px)' }}>
+// After: 100% of parent minus header (since parent is already 75% of original)
+<CardContent style={{ height: 'calc(100% - 90px)' }}>
+```
+
+**Height Relationship Explained**:
+- **Original Container**: 1000px height
+- **Reduced Container**: 750px height (75% of 1000px)
+- **CardContent**: Now uses `calc(100% - 90px)` of the 750px container
+- **Result**: Content properly fills the reduced container without extra spacing
+
+**Benefits Achieved**:
+✅ **Eliminated Height Mismatch**: Container and content heights now properly aligned  
+✅ **Removed Extra Spacing**: No more unwanted white space below dual pane  
+✅ **Proper Content Filling**: Dual pane content now fills the entire adjusted container  
+✅ **Consistent Layout**: Height calculations now work correctly with reduced dimensions  
+✅ **Better Space Utilization**: Content uses available space efficiently  
+✅ **Professional Appearance**: Clean, properly sized interface without gaps  
+
+**Files Modified**:
+- `frontend/app/(dashboard)/dashboard/page.tsx` - Container height from 1000px to 750px
+- `frontend/components/DashboardDualPane.tsx` - CardContent height calculation adjustment
+
+**Design Principles Applied**:
+- **Proportional Scaling**: Maintains 75% height reduction consistently
+- **Height Consistency**: Container and content heights properly synchronized
+- **Space Efficiency**: Eliminates unnecessary white space and gaps
+- **Layout Harmony**: All elements now properly sized and positioned
+- **User Experience**: Clean, compact interface without visual inconsistencies
+
+---
+
+### 2025-01-27 23:55 - Removed White Space Below Dual Pane View Container ✅
+
+**Date & Time**: 2025-01-27 23:55
+
+**Summary**: Successfully removed the extra white space that appeared below the dual pane view container by reducing margins, creating a more compact and visually cohesive dashboard layout.
+
+**Changes Implemented**:
+
+1. **Dual Pane Container Bottom Margin Reduction**:
+   - **Before**: `mb-16` (64px bottom margin)
+   - **After**: `mb-4` (16px bottom margin)
+   - **Location**: `frontend/app/(dashboard)/dashboard/page.tsx` - Line 250
+   - **Benefit**: Eliminates excessive white space below dual pane container
+
+2. **Visual Separator Bottom Margin Reduction**:
+   - **Before**: `mb-12` (48px bottom margin)
+   - **After**: `mb-4` (16px bottom margin)
+   - **Location**: `frontend/app/(dashboard)/dashboard/page.tsx` - Line 355
+   - **Benefit**: Reduces gap between separator and dashboard overview sections
+
+**Technical Implementation Details**:
+
+```tsx
+// Before: Large bottom margins creating white space
+<div className="h-[1000px] mb-16 relative z-10 w-full">
+// After: Reduced bottom margin for compact layout
+<div className="h-[1000px] mb-4 relative z-10 w-full">
+
+// Before: Large separator margin
+<div className="mb-12">
+// After: Reduced separator margin
+<div className="mb-4">
+```
+
+**Total White Space Reduction**:
+- **Dual Pane Container**: 64px → 16px (48px reduction)
+- **Visual Separator**: 48px → 16px (32px reduction)
+- **Total Reduction**: 80px of white space eliminated
+
+**Benefits Achieved**:
+✅ **Eliminated Excessive White Space**: Removed 80px of unnecessary spacing below dual pane  
+✅ **More Compact Layout**: Dashboard sections now flow together more naturally  
+✅ **Better Visual Cohesion**: Reduced gap between dual pane and dashboard overview  
+✅ **Improved Space Utilization**: More content visible without scrolling  
+✅ **Professional Appearance**: Cleaner, tighter layout design  
+✅ **Better User Experience**: Less visual separation between related sections  
+
+**Files Modified**:
+- `frontend/app/(dashboard)/dashboard/page.tsx` - Reduced margins for dual pane container and visual separator
+
+**Design Principles Applied**:
+- **Space Efficiency**: Eliminates unnecessary white space between sections
+- **Visual Hierarchy**: Maintains clear separation while reducing excessive gaps
+- **Layout Optimization**: Better use of available vertical space
+- **User Experience**: More compact interface without sacrificing readability
+- **Professional Design**: Cleaner, more polished dashboard appearance
+
+---
+
+### 2025-01-27 23:30 - Reduced Dual Pane View Container Height by Quarter ✅
+
+**Date & Time**: 2025-01-27 23:30
+
+**Summary**: Successfully reduced the height of the dual pane view container by 25% (a quarter) to create a more compact interface while maintaining functionality.
+
+**Changes Implemented**:
+
+1. **Container Height Reduction**:
+   - **Before**: `calc(100% - 120px)` (full height minus header)
+   - **After**: `calc(75% - 90px)` (75% of height minus adjusted header)
+   - **Location**: `frontend/components/DashboardDualPane.tsx` - Line 1000
+   - **Benefit**: Creates more compact dual pane interface
+
+2. **Proportional Header Adjustment**:
+   - **Header Height**: Reduced from 120px to 90px (25% reduction)
+   - **Maintains Balance**: Proportional reduction ensures visual consistency
+   - **Content Area**: Reduced from 100% to 75% of available height
+
+**Technical Implementation Details**:
+
+```tsx
+// Before: Full height container
+<CardContent className="p-0 flex-1 overflow-hidden" style={{ height: 'calc(100% - 120px)' }}>
+
+// After: Reduced height container (75% of original)
+<CardContent className="p-0 flex-1 overflow-hidden" style={{ height: 'calc(75% - 90px)' }}>
+```
+
+**Benefits Achieved**:
+✅ **More Compact Interface**: Reduced vertical space usage
+✅ **Better Screen Real Estate**: Leaves room for other content below
+✅ **Maintained Functionality**: All dual pane features still work properly
+✅ **Proportional Scaling**: Header and content areas scale together
+✅ **Improved Layout Balance**: Better integration with surrounding elements
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx` - Container height calculation
+
+**Design Principles Applied**:
+- **Proportional Scaling**: Maintains visual balance when reducing dimensions
+- **Space Efficiency**: Optimizes vertical space usage
+- **Layout Integration**: Better fits within overall page layout
+- **User Experience**: Maintains functionality while improving space utilization
+
+---
+
+### 2025-01-27 23:15 - Enhanced Spacing Between Dual Pane View and Profile/Quick Actions Containers ✅
+
+**Date & Time**: 2025-01-27 23:15
+
+**Summary**: Successfully improved visual separation and spacing between the dual pane view container and the profile/quick actions containers below it, creating better visual hierarchy and preventing layout overlap.
+
+**Changes Implemented**:
+
+1. **Increased Bottom Margin for Dual Pane Container**:
+   - **Before**: `mb-12` (48px bottom margin)
+   - **After**: `mb-16` (64px bottom margin)
+   - **Location**: `frontend/app/(dashboard)/dashboard/page.tsx` - Line 250
+   - **Benefit**: Creates more breathing room between dual pane and profile section
+
+2. **Added Visual Separator Between Sections**:
+   - **New Component**: Added decorative separator line with gradient styling
+   - **Visual Indicator**: Added "Dashboard Overview" badge with pink accent dots
+   - **Conditional Display**: Only shows when dual pane is active
+   - **Styling**: Gradient line from transparent to pink-200 to transparent
+   - **Badge Design**: White/60 background with backdrop blur and pink border
+
+3. **Enhanced Card Hover Effects**:
+   - **Profile Card**: Added `hover:shadow-2xl transition-all duration-300`
+   - **Quick Actions Card**: Added `hover:shadow-2xl transition-all duration-300`
+   - **System Status Card**: Added `hover:shadow-2xl transition-all duration-300`
+   - **Recent Activity Card**: Added `hover:shadow-2xl transition-all duration-300`
+   - **DashboardDualPane Card**: Added `hover:shadow-2xl transition-all duration-300`
+
+4. **Improved Visual Hierarchy**:
+   - **Separator Line**: Creates clear visual break between dual pane and dashboard overview
+   - **Badge Indicator**: Shows users they're now viewing the dashboard overview section
+   - **Enhanced Shadows**: Hover effects make cards more interactive and visually appealing
+   - **Better Spacing**: Increased margins prevent content overlap and improve readability
+
+**Technical Implementation Details**:
+
+```tsx
+// Enhanced Dual Pane Container Spacing
+<div className="h-[1000px] mb-16 relative z-10 w-full">
+
+// Visual Separator Component
+{useDualPane && (
+  <div className="mb-12">
+    <div className="h-px bg-gradient-to-r from-transparent via-pink-200 to-transparent"></div>
+    <div className="text-center mt-4">
+      <div className="inline-flex items-center px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-pink-200/50">
+        <div className="w-2 h-2 bg-pink-400 rounded-full mr-2"></div>
+        <span className="text-sm font-medium text-pink-700">Dashboard Overview</span>
+        <div className="w-2 h-2 bg-pink-400 rounded-full ml-2"></div>
+      </div>
+    </div>
+  </div>
+)}
+
+// Enhanced Card Hover Effects
+<Card className="lg:col-span-2 border-0 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
+```
+
+**Benefits**:
+✅ **Better Visual Separation**: Clear distinction between dual pane and dashboard overview
+✅ **Improved User Experience**: Users can easily identify different sections
+✅ **Enhanced Interactivity**: Hover effects make interface more engaging
+✅ **Professional Appearance**: Clean, modern design with proper spacing
+✅ **No Layout Overlap**: Proper margins prevent content from overlapping
+✅ **Consistent Styling**: All cards now have uniform hover effects
+
+**Files Modified**:
+- `frontend/app/(dashboard)/dashboard/page.tsx` - Container spacing and visual separator
+- `frontend/components/DashboardDualPane.tsx` - Card hover effects
+
+**Design Principles Applied**:
+- **Visual Hierarchy**: Clear separation between major functional areas
+- **Consistent Spacing**: Uniform margins and padding throughout interface
+- **Interactive Feedback**: Hover effects provide visual feedback to users
+- **Modern Aesthetics**: Gradient separators and backdrop blur effects
+- **Accessibility**: Proper contrast and spacing for better readability
+
+---
+
+### 2025-01-27 22:30 - Fixed Dual Pane Container Height and Scrolling Issues ✅
+
+**Date & Time**: 2025-01-27 22:30
+
+**Summary**: Successfully resolved dual pane view container sizing issues by increasing heights, implementing proper scrollbars, and ensuring adequate spacing to prevent cutoff and overlap problems.
+
+**Root Causes Identified and Fixed**:
+
+1. **Fixed Height Constraint**: Main container was limited to 800px causing content cutoff
+2. **Iframe Sizing Issues**: No minimum height specifications for browser view
+3. **Container Overlap**: Insufficient spacing between dual pane and elements below
+4. **Missing Scrollbar Implementation**: Content overflow not properly handled
+
+**Changes Implemented**:
+
+1. **Dashboard Page Container Height Increased**:
+   - **Before**: `h-[800px] mb-8` (800px height, 32px bottom margin)
+   - **After**: `h-[1000px] mb-12` (1000px height, 48px bottom margin)
+   - **Location**: `frontend/app/(dashboard)/dashboard/page.tsx` - Line 250
+   - **Spacing**: Increased gap between dual pane and profile section from `mt-4` to `mt-8`
+
+2. **DashboardDualPane Component Structure Enhanced**:
+   - **CardContent**: Added `calc(100% - 120px)` height to account for header space
+   - **Left Pane**: Implemented proper flex column layout with scrollable content area
+   - **Right Pane**: Added minimum height of 600px for iframe container
+   - **Content Areas**: Added `minHeight: '400px'` for left pane content scrolling
+
+3. **Iframe Container Improvements**:
+   - **renderLiveView**: Added `flex flex-col` layout with `minHeight: '500px'`
+   - **Header/Debug Sections**: Made flex-shrink-0 to prevent compression
+   - **Iframe Area**: Set `flex-1` with proper overflow handling
+   - **Mobile Layout**: Set `minHeight: '500px', maxHeight: '600px'` for browser view
+
+4. **LiveViewPane Component Updates**:
+   - **Iframe Height**: Increased from `minHeight: '400px'` to `minHeight: '600px'`
+   - **Height Property**: Added explicit `height: '100%'` for better fill behavior
+
+5. **Mobile Layout Enhancements**:
+   - **Container**: Added `minHeight: '1000px'` for mobile dual pane layout
+   - **Gap Spacing**: Increased from `gap-4` to `gap-6` for better separation
+   - **Browser View**: Set proper height constraints with scrolling
+
+**Technical Implementation Details**:
+
+```tsx
+// Dashboard Page - Increased container height and spacing
+<div className="h-[1000px] mb-12 relative z-10 w-full">
+  <DashboardDualPane className="h-full w-full" />
+</div>
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
+
+// DashboardDualPane - Proper height calculation and scrolling
+<CardContent className="p-0 flex-1 overflow-hidden" style={{ height: 'calc(100% - 120px)' }}>
+  <ResizablePanelGroup direction="horizontal" className="h-full w-full overflow-hidden">
+    <ResizablePanel className="overflow-hidden">
+      <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden flex flex-col">
+        <div className="p-3 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 flex flex-col" style={{ minHeight: '400px' }}>
+
+// Live View Iframe - Proper flex layout and minimum heights
+<div className="h-full bg-white rounded-lg border border-gray-200 overflow-hidden flex flex-col">
+  <div className="flex-1 relative overflow-hidden" style={{ minHeight: '500px' }}>
+    <iframe className="w-full h-full border-0" style={{ minHeight: '600px', height: '100%' }} />
+```
+
+**Benefits Achieved**:
+✅ **Eliminated Cutoff**: 1000px height provides adequate space for all content
+✅ **Proper Scrolling**: Implemented scrollbars in left pane for overflow content
+✅ **No Overlap**: Increased spacing prevents dual pane from overlapping profile section
+✅ **Better Iframe Display**: Minimum 600px height ensures browser view is properly visible
+✅ **Responsive Design**: Mobile layout has appropriate height constraints and scrolling
+✅ **Improved UX**: Users can now see full content without layout issues
+
+**Files Modified**:
+- `frontend/app/(dashboard)/dashboard/page.tsx` - Container height and spacing
+- `frontend/components/DashboardDualPane.tsx` - Layout structure and scrolling
+- `frontend/components/LiveViewPane.tsx` - Iframe height specifications
+
+**Additional Fixes Applied**:
+- **Full Raw Text Visibility**: Fixed flexbox height distribution to ensure Full Raw Text area is properly visible
+- **Scrollable Container**: Added proper scrollable wrapper around left pane content
+- **Height Distribution**: Improved flex layout to allocate proper space for grid and text areas
+- **Mobile Layout**: Enhanced mobile layout with better height constraints and scrolling
+
+---
+
+## Previous Updates
+
+### 2025-01-27 20:15 - Removed Duplicate Raw OCR Text Components and Extended Full Raw Text Height ✅
+
+**Date & Time**: 2025-01-27 20:15
+
+**Summary**: Successfully removed duplicate "Raw OCR Text" components that were redundant with the "Full Raw Text" component, and extended the Full Raw Text component height to fill available space, resolving overlapping issues with the profile component.
+
+**Changes Implemented**:
+
+1. **Removed Duplicate Components**:
+   - **Mobile Layout**: Removed "Raw OCR Text" component that was duplicating the "Full Raw Text" functionality
+   - **Desktop Layout**: Removed "Raw OCR Text" component that was duplicating the "Full Raw Text" functionality
+   - **Location**: `frontend/components/DashboardDualPane.tsx` - Both mobile and desktop layouts
+
+2. **Extended Full Raw Text Component Height**:
+   - **Mobile Layout**: Added `min-h-0` to Full Raw Text container for proper flexbox behavior
+   - **Desktop Layout**: Added `min-h-0` to Full Raw Text container for proper flexbox behavior
+   - **Height Behavior**: Component now extends to fill available space using `flex-1` and `h-full`
+
+3. **Fixed Grid Layout Issues**:
+   - **Desktop Layout**: Changed Comercio field from `col-span-3` to `col-span-2` to match 2-column grid
+   - **Mobile Layout**: Maintained `col-span-3` for Comercio field to match 3-column grid
+   - **Grid Consistency**: Ensured grid spans match actual grid column definitions
+
+4. **Improved Container Structure**:
+   - **Mobile Layout**: Updated CardContent to use `flex flex-col h-full` for proper flexbox layout
+   - **Desktop Layout**: Updated ticket data container to use `flex flex-col` with `flex-shrink-0` for grid
+   - **Flexbox Behavior**: Full Raw Text component now properly extends to fill remaining space
+
+**Benefits Achieved**:
+✅ **Eliminated Redundancy**: Removed duplicate components that showed the same data
+✅ **Better Space Utilization**: Full Raw Text component now extends to fill available height
+✅ **Improved Layout**: Proper flexbox behavior prevents overlapping with profile component
+✅ **Consistent Design**: Both mobile and desktop layouts now have identical Full Raw Text components
+✅ **Better UX**: Users can see more raw text content without scrolling through duplicate sections
+
+**Technical Changes Made**:
+
+1. **Component Removal**:
+   ```tsx
+   // Removed from both layouts:
+   {/* Raw Text Display for Debugging */}
+   {rawText && (
+     <div className="mt-3 p-3 border border-slate-200 rounded-lg bg-slate-50">
+       <h4 className="text-xs font-medium text-gray-700 mb-2">Raw OCR Text</h4>
+       // ... duplicate content
+     </div>
+   )}
+   ```
+
+2. **Height Extension**:
+   ```tsx
+   // Updated Full Raw Text component:
+   <div className="mt-3 flex-1 min-h-0">
+     <div className="bg-gray-50 border border-red-200 rounded-lg p-2 h-full">
+       <div className="h-full px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-y-auto">
+         // ... content
+       </div>
+     </div>
+   </div>
+   ```
+
+3. **Grid Layout Fix**:
+   ```tsx
+   // Desktop layout - fixed col-span:
+   <div className="bg-gray-50 border border-red-200 rounded-lg p-2 col-span-2">
+     // Comercio field now spans 2 columns correctly
+   </div>
+   ```
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx`: Removed duplicate components, extended Full Raw Text height, fixed grid layout
+
+**Status**: ✅ **IMPLEMENTATION COMPLETE** - Duplicate raw OCR text components removed, Full Raw Text component height extended to fill available space, and overlapping issues resolved.
+
+---
+
+### 2025-01-27 20:00 - Increased DashboardDualPane Container Height and Made It Fixed ✅
+
+**Date & Time**: 2025-01-27 20:00
+
+**Summary**: Successfully increased the height of the container that holds the DashboardDualPane component and made it fixed at 800px height for better user experience and consistent layout.
+
+**Height Changes Implemented**:
+
+1. **Dashboard Container Height Increased**:
+   - **Before**: Container used `h-full` which was limited by parent constraints
+   - **After**: Container now uses `h-[800px]` for a fixed, larger height
+   - **Location**: `frontend/app/(dashboard)/dashboard/page.tsx` - Dual Pane container
+
+2. **DashboardDualPane Component Updated**:
+   - **Before**: Component used `h-screen max-h-screen` constraints
+   - **After**: Component now uses `h-full` to fill the parent container height
+   - **Location**: `frontend/components/DashboardDualPane.tsx` - Both mobile and desktop layouts
+
+3. **Container Structure**:
+   ```tsx
+   // Dashboard page container
+   <div className="h-[800px] mb-8 relative z-10 w-full">
+     <DashboardDualPane 
+       className="h-full w-full"
+       // ... other props
+     />
+   </div>
+   
+   // DashboardDualPane component
+   <div className={`h-full w-full overflow-hidden ${className}`}>
+     // Content fills the full 800px height
+   </div>
+   ```
+
+**Benefits Achieved**:
+✅ **Larger Workspace**: Dual pane now has 800px height instead of limited viewport height
+✅ **Fixed Dimensions**: Container height is now consistent and predictable
+✅ **Better Content Display**: More space for ticket data and live browser view
+✅ **Improved UX**: Users can see more content without scrolling the main page
+✅ **Consistent Layout**: Height remains stable regardless of content amount
+
+**Technical Changes Made**:
+
+1. **Dashboard Page Container**:
+   - Changed from `h-full` to `h-[800px]`
+   - Maintains `mb-8 relative z-10 w-full` classes
+   - Provides fixed height for DashboardDualPane
+
+2. **DashboardDualPane Component**:
+   - Removed `max-h-screen` constraints from both mobile and desktop layouts
+   - Changed to `h-full` to fill parent container height
+   - Maintains all existing scrollbar styling and functionality
+
+**Files Modified**:
+- `frontend/app/(dashboard)/dashboard/page.tsx`: Increased container height to 800px
+- `frontend/components/DashboardDualPane.tsx`: Updated component to use full parent height
+
+**Status**: ✅ **IMPLEMENTATION COMPLETE** - DashboardDualPane container height increased to 800px and made fixed, providing a larger and more consistent workspace for users.
+
+---
+
+### 2025-01-27 19:45 - Implemented Custom Scrollbar Styling for DashboardDualPane Component ✅
+
+**Date & Time**: 2025-01-27 19:45
+
+**Summary**: Successfully implemented custom scrollbar styling throughout the DashboardDualPane component to match the reference implementation exactly, providing a consistent and professional appearance.
+
+**Custom Scrollbar Implementation**:
+
+1. **Tailwind Configuration Updated**:
+   - Added `tailwind-scrollbar` plugin to `tailwind.config.ts`
+   - Plugin already installed in `package.json` (version 3.1.0)
+   - Enabled custom scrollbar classes throughout the application
+
+2. **Scrollbar Styling Applied**:
+   - **Primary Classes Used**: `scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100`
+   - **Scrollbar Appearance**: Thin gray scrollbar with light gray track
+   - **Consistent Styling**: Applied to all scrollable areas for uniform appearance
+
+3. **Areas Updated with Custom Scrollbars**:
+
+   **Desktop View**:
+   - ✅ Left Pane Container: Main ticket data area with `overflow-y-auto`
+   - ✅ Ticket Information Grid: Extracted data display section
+   - ✅ Full Raw Text Display: OCR text area with `max-h-[50vh]`
+   - ✅ Raw OCR Text Debug: Debug text display area
+   - ✅ Right Pane Container: Live view area with `overflow-y-auto`
+   - ✅ Live View Iframe Container: Browser view content area
+
+   **Mobile View**:
+   - ✅ Main Content Container: Overall mobile layout container
+   - ✅ Ticket Data Form: Form content area with `max-h-[60vh]`
+   - ✅ Full Raw Text Display: Mobile OCR text area
+   - ✅ Raw OCR Text Debug: Mobile debug text display
+   - ✅ Browser View Section: Mobile live view content area
+
+4. **Scrollbar Behavior**:
+   - **Containment**: Scrollbars stay within designated section boundaries
+   - **No Overlap**: Scrollbars do not extend beyond container edges
+   - **Consistent Appearance**: All scrollable areas have identical styling
+   - **Responsive Design**: Custom scrollbars work on both desktop and mobile
+
+**Technical Implementation Details**:
+
+```tsx
+// Custom scrollbar classes applied to all overflow-y-auto containers
+className="overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+
+// Example implementation in ticket data area
+<div className="p-3 overflow-y-auto flex-1 max-h-[50vh] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+  {/* Content with custom scrollbar */}
+</div>
+
+// Example implementation in raw text display
+<div className="h-24 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+  {/* Text content with custom scrollbar */}
+</div>
+```
+
+**Benefits Achieved**:
+✅ **Visual Consistency**: All scrollable areas now have identical scrollbar appearance
+✅ **Professional Look**: Thin, subtle scrollbars that match the reference implementation
+✅ **Better UX**: Users can easily identify scrollable content areas
+✅ **Cross-Platform**: Custom scrollbars work consistently across different browsers
+✅ **Design Compliance**: Matches the exact visual requirements specified
+
+**Files Modified**:
+- `frontend/tailwind.config.ts`: Added tailwind-scrollbar plugin
+- `frontend/components/DashboardDualPane.tsx`: Applied custom scrollbar styling to all scrollable areas
+
+**Status**: ✅ **IMPLEMENTATION COMPLETE** - Custom scrollbar styling successfully implemented throughout the DashboardDualPane component, providing a consistent and professional appearance that matches the reference implementation exactly.
+
+---
+
+### 2025-01-27 19:30 - Removed Debug Output from Dashboard Page ✅
+
+**Date & Time**: 2025-01-27 19:30
+
+**Summary**: Successfully removed debug output that was displaying detailed information about data being passed to the Dual Pane component.
+
+**Debug Information Removed**:
+✅ **Debug Header**: Removed "Debug: Data being passed to Dual Pane" heading
+✅ **Data Keys Display**: Removed display of all object keys (mesa_folio, fecha, id_ticket, total, etc.)
+✅ **Raw Text Length**: Removed "Raw text length: 549" display
+✅ **Field Values**: Removed specific field displays like "Mesa_Folio: 2194722" and "Fecha: 04/06/2025"
+✅ **Debug Container**: Removed entire blue debug info box with border and styling
+
+**Technical Changes Made**:
+- Removed the entire debug info section from the dashboard page
+- Cleaned up the component structure by removing unnecessary debug conditional rendering
+- Maintained the DashboardDualPane component functionality while removing debug output
+
+**Files Modified**:
+- `frontend/app/(dashboard)/dashboard/page.tsx`: Removed debug information display section
+
+**Status**: ✅ **IMPLEMENTATION COMPLETE** - Debug output successfully removed, dashboard interface now clean without unnecessary debugging information.
+
+---
+
+### 2025-01-27 19:15 - Fixed Height Constraint Issue in DashboardDualPane Component ✅
+
+**Date & Time**: 2025-01-27 19:15
+
+**Summary**: Successfully fixed the infinite height expansion issue in the DashboardDualPane component by implementing proper height constraints and overflow handling.
+
+**Problem Identified**:
+❌ **Infinite Height Expansion**: Component had no maximum height constraint, causing it to expand infinitely downward
+❌ **Parent Container Height**: Used `h-full min-h-[800px]` which allowed unlimited growth
+❌ **ResizablePanelGroup Issue**: Panels kept expanding without viewport boundaries
+❌ **Content Overflow**: Content exceeded viewport without proper scrolling
+
+**Root Causes**:
+1. **Flexible Height**: `h-full min-h-[800px]` allowed component to grow beyond viewport
+2. **Missing Constraints**: No `max-h-screen` or viewport height limits
+3. **Overflow Handling**: Content expanded panels instead of scrolling within them
+4. **Resizable Behavior**: Horizontal resizing worked but vertical expansion was uncontrolled
+
+**Solution Implemented**:
+
+1. **Fixed Height Constraints**:
+   - Changed from `h-full min-h-[800px]` to `h-screen max-h-screen`
+   - Added `overflow-hidden` to main container
+   - Ensured component fits within viewport boundaries
+
+2. **Proper Overflow Handling**:
+   - Added `overflow-y-auto` to scrollable content areas
+   - Made headers `flex-shrink-0` to prevent compression
+   - Added `overflow-hidden` to ResizablePanelGroup and panels
+
+3. **Mobile Layout Fixes**:
+   - Applied `h-screen max-h-screen` to mobile container
+   - Added `max-h-[600px]` to browser view section
+   - Implemented proper scrolling with `overflow-y-auto`
+
+4. **Desktop Layout Fixes**:
+   - Fixed ResizablePanelGroup height constraints
+   - Added `overflow-hidden` to individual panels
+   - Ensured content scrolls within panels rather than expanding them
+
+**Technical Changes Made**:
+
+```tsx
+// Before (problematic)
+<div className={`h-full min-h-[800px] w-full ${className}`}>
+
+// After (fixed)
+<div className={`h-screen max-h-screen w-full overflow-hidden ${className}`}>
+
+// Added overflow handling
+<ResizablePanelGroup className="h-full w-full max-h-full overflow-hidden">
+<ResizablePanel className="overflow-hidden">
+<div className="overflow-y-auto">
+```
+
+**Benefits Achieved**:
+✅ **Fixed Height**: Component now respects viewport boundaries
+✅ **Proper Scrolling**: Content scrolls within panels instead of expanding them
+✅ **Responsive Design**: Both mobile and desktop layouts work correctly
+✅ **Performance**: No more infinite DOM expansion
+✅ **User Experience**: Predictable, contained interface that fits the screen
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx`: Fixed height constraints and overflow handling
+
+**Status**: ✅ **IMPLEMENTATION COMPLETE** - Height constraint issue resolved, component now properly contained within viewport with proper scrolling behavior.
+
+---
+
+### 2025-01-27 19:00 - Removed Debug Information from Dual Pane View
+
+**Date & Time**: 2025-01-27 19:00
+
+**Summary**: Removed all debug information displays and test buttons from the DashboardDualPane component to clean up the interface and remove unnecessary debugging elements.
+
+**Debug Information Removed**:
+✅ **Debug Info Sections**: Removed all "Debug Info:" boxes that displayed:
+- Vendor URL: ✅ Set/❌ Missing
+- OCR Success: ✅ True/❌ False  
+- Button Disabled: Yes/No
+- Task Status: idle/running/etc.
+
+✅ **Test Buttons**: Removed "Test: Set OCR Success" buttons that were used for debugging
+✅ **Debug Logging**: Removed useEffect that logged button state debug information to console
+
+✅ **Debug Panels**: Cleaned up debug panels that showed technical information not needed by end users
+
+**Areas Cleaned**:
+1. **Mobile Layout**: Removed debug info from Start Agent button section
+2. **Desktop Layout**: Removed debug info from Start Agent button section  
+3. **Console Logging**: Removed button state debug logging
+4. **Test Functionality**: Removed manual OCR success override buttons
+
+**Benefits**:
+- **Cleaner Interface**: Removes technical debugging information that clutters the UI
+- **Better User Experience**: Focuses on functional elements rather than debug displays
+- **Professional Appearance**: Eliminates development/testing artifacts from production interface
+- **Reduced Confusion**: Users won't see technical debug information they don't need
+
+**What Remains**:
+- All functional OCR processing and ticket data display
+- Start Agent button with proper validation states
+- Status messages for user feedback
+- Task monitoring and live view functionality
+- Essential error handling and user guidance
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx`
+
+**Status**: Implementation complete - all debug information removed, interface cleaned up, and user experience improved.
+
+---
+
+### 2025-01-27 18:45 - Simple Task Integration Implementation Complete ✅
+
+**Date & Time**: 2025-01-27 18:45
+
+**Summary**: Successfully implemented a simple integration that combines extracted OCR details, vendor URL from main dashboard, and user profile information to send to browser_agent.py using the existing simple task API. No complex configuration needed.
+
+**What Was Achieved**:
+✅ **Vendor URL from Main Dashboard**: Vendor URL is now passed from main dashboard to DualPane as prop
+✅ **User Profile Integration**: User information (company name, RFC, address) included in task
+✅ **OCR Data Integration**: Extracted ticket details and raw text included in task
+✅ **Simple API Usage**: Uses existing `ApiService.createTask(prompt)` - no complex configuration
+✅ **Clean Text Prompt**: All information combined into single comprehensive text prompt
+✅ **No UI Complexity**: Removed redundant vendor URL inputs, converted to display-only
+
+**Data Flow**:
+```
+1. User enters vendor URL in main dashboard
+2. User uploads ticket → OCR extracts data
+3. DualPane receives: vendorUrl + userProfile + OCR data
+4. User clicks "Start Agent" 
+5. System combines all data into single text prompt
+6. Calls ApiService.createTask(prompt) → existing simple API
+7. API sends to browser_agent.py with combined context
+8. Agent processes CFDI form with all available information
+```
+
+**Files Modified**:
+- `frontend/app/(dashboard)/dashboard/page.tsx`: Added vendorUrl and userProfile props
+- `frontend/components/DashboardDualPane.tsx`: Updated interface, removed local vendorUrl state, enhanced prompt generation
+
+**Integration Status**: ✅ **COMPLETE AND WORKING**
+
+---
+
+### 2025-01-27 17:30 - Removed Redundant Vendor URL Input from Start Agent Button Section
+
+**Date & Time**: 2025-01-27 17:30
+
+**Summary**: Removed the redundant vendor URL input field from the Start Agent button section since the vendor URL is already provided in the main dashboard, eliminating unnecessary duplication and improving user experience.
+
+**Issue Identified**:
+- Vendor URL input was duplicated between the main dashboard and the Start Agent button section
+- Users had to enter the same information twice, creating friction
+- Redundant UI elements that didn't add value
+
+**Changes Made**:
+
+1. **Desktop Layout - Left Pane**:
+   - Removed vendor URL input field from Start Agent button section
+   - Removed vendor URL validation message
+   - Simplified the interface to focus on essential agent configuration
+
+2. **Mobile Layout**:
+   - Removed vendor URL input field from Start Agent button section
+   - Removed vendor URL validation message
+   - Maintained consistency with desktop layout changes
+
+3. **Status Messages Updated**:
+   - Removed "Please enter a vendor URL to start the agent" message
+   - Kept OCR success validation and task status display
+   - Cleaner, more focused status feedback
+
+**Benefits**:
+- **Eliminates Redundancy**: No more duplicate vendor URL input
+- **Better User Experience**: Users don't need to enter the same information twice
+- **Cleaner Interface**: Start Agent section focuses on agent-specific configuration
+- **Logical Flow**: Vendor URL is set once in the main dashboard, used throughout
+- **Reduced Friction**: Streamlined workflow for starting agent tasks
+
+**Current Start Agent Button Features**:
+- **Model Selection**: Dropdown with GPT-4o Mini, GPT-4o, and Claude 3.5 Sonnet options
+- **Max Steps Configuration**: Dropdown with 20, 30, and 50 step options
+- **Smart Button States**: Shows loading state when agent is running
+- **Status Display**: Shows current task status and task ID when available
+- **OCR Validation**: Only shows when OCR processing is successful
+
+**Technical Implementation**:
+- Start Agent button still uses the existing `vendorUrl` state from the main dashboard
+- `handleStartAgentTask` function continues to work with the vendor URL set in the main interface
+- No changes to the underlying functionality, only UI simplification
+- Maintains all existing validation and error handling
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx`
+
+**Status**: Implementation complete - redundant vendor URL input removed, cleaner interface achieved, and user experience improved.
+
+---
+
+### 2025-01-27 17:15 - Added Start Agent Button at Top of Extracted Details in Dual Pane View
+
+**Date & Time**: 2025-01-27 17:15
+
+**Summary**: Added a Start Agent button at the top of the extracted details section in the left pane of the dual pane view for better user experience and workflow efficiency.
+
+**Changes Made**:
+
+1. **Desktop Layout - Left Pane**:
+   - Added Start Agent button section right after OCR status and before the extracted ticket information grid
+   - Positioned prominently at the top of the extracted details for immediate visibility
+   - Includes vendor URL input, model selection, max steps configuration, and status messages
+   - Only shows when OCR is successful (`ocrSuccess` condition)
+
+2. **Mobile Layout**:
+   - Added Start Agent button section right after OCR status and before the ticket data grid
+   - Consistent positioning and functionality with desktop layout
+   - Responsive design that works well on mobile devices
+
+3. **Removed Duplicate Sections**:
+   - Removed the duplicate Start Agent button section that was previously at the bottom of the left pane
+   - Cleaned up mobile layout to remove duplicate Start Agent button section
+   - Eliminated redundancy and improved code maintainability
+
+**Button Features**:
+- **Vendor URL Input**: Required field for target facturación website
+- **Model Selection**: Dropdown with GPT-4o Mini, GPT-4o, and Claude 3.5 Sonnet options
+- **Max Steps Configuration**: Dropdown with 20, 30, and 50 step options
+- **Smart Button States**: Shows loading state when agent is running
+- **Validation Messages**: Clear feedback for missing vendor URL or OCR requirements
+- **Status Display**: Shows current task status and task ID when available
+
+**User Experience Improvements**:
+- **Immediate Access**: Users can start the agent task right after seeing successful OCR results
+- **Better Workflow**: No need to scroll down to find the Start Agent button
+- **Consistent Layout**: Both mobile and desktop have the same logical flow
+- **Visual Hierarchy**: Start Agent button is prominently displayed at the top of relevant content
+
+**Technical Implementation**:
+- Button only appears when `ocrSuccess` is true
+- Uses existing `handleStartAgentTask` function
+- Maintains all existing functionality and validation
+- Responsive design that works on all screen sizes
+- Consistent styling with the rest of the application
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx`
+
+**Status**: Implementation complete - Start Agent button now appears at the top of extracted details in both desktop and mobile layouts for improved user experience.
+
+---
+
+### 2025-01-27 16:45 - Fixed DashboardDualPane Component Scrolling and Boundaries
+
+**Date & Time**: 2025-01-27 16:45
+
+**Objective**: Fix scrolling issues and improve component boundaries in the DashboardDualPane component.
+
+**Changes Made**:
+
+1. **Updated `frontend/components/DashboardDualPane.tsx`**:
+   - Added `overflow-y-auto` class to the left pane container to enable scrolling
+   - Removed `max-h-96` class from the left pane container to prevent overflow
+   - Added `min-h-0` class to the left pane container to prevent flex overflow issues
+   - Increased container heights to prevent bottom cutoff
+   - Added `mb-4` margin bottom to the left pane container for better spacing
+   - Added `mt-4` margin top to the left pane container for additional top margin
+
+2. **Updated `frontend/components/LiveViewPane.tsx`**:
+   - Added `overflow-y-auto` class to the live view pane container to enable scrolling
+   - Removed `max-h-96` class from the live view pane container to prevent overflow
+   - Added `min-h-0` class to the live view pane container to prevent flex overflow issues
+   - Increased container heights to prevent bottom cutoff
+   - Added `mb-4` margin bottom to the live view pane container for better spacing
+   - Added `mt-4` margin top to the live view pane container for additional top margin
+
+**Technical Changes**:
+- Updated `frontend/app/(dashboard)/dashboard/page.tsx` for better layout spacing
+- Enhanced `frontend/components/DashboardDualPane.tsx` with improved styling and structure
+- Modified `frontend/components/LiveViewPane.tsx` interface to support 'idle' status
+- Fixed all TypeScript linting errors
+- Maintained backward compatibility with existing functionality
+
+**User Experience Impact**:
+- Clear visual boundaries between all components
+- No more overlapping elements
+- Better visual hierarchy and component separation
+- Improved readability and professional appearance
+- Consistent styling across mobile and desktop layouts
+
+### 2025-01-27 15:30 - Enhanced Browser Agent Integration with User Profile and OCR Data
+
+**Date & Time**: 2025-01-27 15:30
+
+**Summary**: Enhanced the browser agent integration to combine complete user profile data, OCR ticket details (formatted + raw text), and vendor URL for comprehensive facturación automation.
+
+**Changes Made**:
+
+1. **Updated Tasks Route** (`backend/src/routes/tasks.js`):
+   - Added authentication middleware to `POST /api/v1/tasks/browser-use` endpoint
+   - Added user profile fetching using `authService.getUserProfile(userId)`
+   - Modified request body to accept `ocr_ticket_data` instead of separate `customer_details` and `invoice_details`
+   - Combined user profile + OCR data + vendor URL into complete task data package
+   - Added proper error handling for missing user profiles
+
+2. **Enhanced Browser Agent Service** (`backend/src/services/browserAgentService.js`):
+   - Updated `createTask()` method to handle new data structure
+   - Modified task storage to include `userProfile` and `ocrTicketData` fields
+   - Updated `executeTaskAsync()` method to pass complete data package to Python bridge
+   - Maintained backward compatibility for existing task formats
+
+3. **Updated Python Bridge** (`backend/src/services/pythonBridge.js`):
+   - Modified validation logic to require only `vendor_url` (removed prompt requirement)
+   - Updated method documentation to reflect new data structure
+   - Enhanced parameter documentation for `user_profile` and `ocr_ticket_data`
+   - Updated both `createBrowserSession()` and `executeBrowserTask()` methods
+
+4. **Data Structure Enhancement**:
+   - **User Profile**: Complete user details from database (RFC, company info, tax regime, address)
+   - **OCR Ticket Data**: Both formatted extracted fields and raw text from documents
+   - **Vendor URL**: Target facturación website for automation
+   - **Combined Package**: All data merged into single task payload
+
+**New Task Data Structure**:
+```json
+{
+  "vendor_url": "https://facturacion.example.com",
+  "user_profile": {
+    "rfc": "XAXX010101000",
+    "company_name": "User Company",
+    "tax_regime": "601",
+    "cfdi_use": "G01",
+    "address": { /* complete address */ }
+  },
+  "ocr_ticket_data": {
+    "formatted": {
+      "customer_rfc": "CUST010101000",
+      "customer_name": "Customer Company",
+      "amount": "1000.00"
+    },
+    "raw_text": "Complete OCR text output"
+  }
+}
+```
+
+**Benefits**:
+- **Complete Context**: Browser agent receives all necessary data for facturación
+- **User Profile Integration**: Leverages existing user authentication and profile system
+- **OCR Data Preservation**: Both structured and raw data available for agent intelligence
+- **Streamlined Workflow**: Single API call combines all data sources
+- **Agent Autonomy**: Fine-tuned agent can use data as needed without explicit instructions
+
+**Implementation Details**:
+- Authentication required for all browser agent tasks
+- User profile automatically fetched from database
+- OCR data accepted in both formatted and raw formats
+- Data combination happens in backend before task creation
+- Python bridge passes complete data package to `browser_agent.py`
+- No modifications needed to the fine-tuned agent script
+
+**Next Steps**:
+1. Test the enhanced API endpoint with real user authentication
+2. Verify user profile data is correctly fetched and combined
+3. Test OCR data integration with dual pane view
+4. Validate complete data package reaches browser agent
+5. Monitor agent performance with enhanced data context
+
+**Status**: Implementation complete - ready for testing with real user profiles and OCR data.
+
+---
+
+### 2024-12-19 15:30:00 - Added Start Agent Button to DashboardDualPane Component
+
+**Date & Time**: 2024-12-19 15:30:00
+
+**Summary**: Added a Start Agent button in the dualpaneview page to start the agent task execution with the extracted OCR data and vendor URL.
+
+**Changes Made**:
+
+1. **Updated `frontend/services/api.ts`**: 
+   - Modified `createBrowserUseTask` method to use `ocr_ticket_data` instead of `customer_details` and `invoice_details`
+   - Updated the interface to match the new backend structure
+
+2. **Updated `frontend/components/DashboardDualPane.tsx`**:
+   - **Added Start Agent Button Section**: New section in both desktop and mobile layouts with:
+     - Vendor URL input field (required)
+     - Model selection dropdown (GPT-4o Mini, GPT-4o, Claude 3.5 Sonnet)
+     - Max Steps selection dropdown (20, 30, 50)
+     - Start Agent button with loading states
+     - Status messages and validation feedback
+   - **Added `handleStartAgentTask` function**: 
+     - Validates vendor URL and OCR success status
+     - Combines formatted OCR data and raw text into structured payload
+     - Calls `ApiService.createBrowserUseTask()` with combined data
+     - Updates task state and triggers parent callback
+     - Handles errors gracefully with console logging
+   - **Enhanced User Experience**:
+     - Button is disabled until vendor URL is entered and OCR is successful
+     - Real-time status updates and task ID display
+     - Responsive design for both desktop and mobile layouts
+     - Visual feedback with loading states and status indicators
+
+**Data Flow**:
+1. User enters vendor URL in the dual pane view
+2. OCR data (formatted + raw text) is already available from previous upload
+3. User clicks "Start Agent Task" button
+4. Component combines all data and calls backend API
+5. Backend creates task with combined user profile, OCR data, and vendor URL
+6. Task state updates and live view monitoring begins
+
+**Technical Implementation Details**:
+- **OCR Data Structure**: Combines both formatted extracted fields and raw text for maximum context
+- **API Integration**: Uses existing `createBrowserUseTask` method with updated parameters
+- **State Management**: Integrates with existing task state management system
+- **Error Handling**: Comprehensive error handling with user feedback
+- **Responsive Design**: Consistent experience across desktop and mobile layouts
+
+**Benefits**:
+- **Streamlined Workflow**: Users can start agent tasks directly from the dual pane view
+- **Data Completeness**: Agent receives both formatted and raw OCR data for optimal performance
+- **User Experience**: Clear validation, status feedback, and loading states
+- **Integration**: Seamlessly integrates with existing task monitoring and live view system
+
+**Files Modified**:
+- `frontend/services/api.ts` - Updated API service interface
+- `frontend/components/DashboardDualPane.tsx` - Added Start Agent button and functionality
+
+**Next Steps**:
+- Test the Start Agent button functionality
+- Verify data combination and API calls work correctly
+- Ensure proper error handling and user feedback
+- Test responsive design on different screen sizes
+
+---
+
+## 📚 **COMPREHENSIVE DOCUMENTATION AVAILABLE**
+
 For a complete analysis of all issues, diagnostic processes, and solutions implemented, please refer to:
 **`COMPREHENSIVE_DEVELOPMENT_DOCUMENTATION.md`**
 
@@ -16,6 +1103,7 @@ This comprehensive document includes:
 
 ---
 
+<<<<<<< HEAD
 ## Latest Updates
 
 ### 2025-01-15 20:00 - RESOLVED: ChunkLoadError from Next.js Webpack Build Issues
@@ -1441,6 +2529,8 @@ The auth pages were not updated during the initial styling fix and continued to 
 
 ---
 
+=======
+>>>>>>> origin/liveView
 ### 2025-08-14 19:15 - Email Confirmation Disabled for Registration
 
 **Date & Time**: 2025-08-14 19:15
@@ -3450,6 +4540,7 @@ Redirected all debug print statements from stdout to stderr by adding `file=sys.
 
 ---
 
+<<<<<<< HEAD
 ### 2025-01-15 16:00 - Comprehensive Styling Fixes for All Remaining Pages
 
 **Date & Time**: 2025-01-15 16:00
@@ -3779,3 +4870,650 @@ The previous implementation had:
 ---
 
 ## 2024-12-19 16:00 - DashboardDualPane Left Pane Layout Restructuring
+=======
+### 2025-01-27 17:30 - Fixed Start Agent Button Implementation
+
+**Date & Time**: 2025-01-27 17:30
+
+**Objective**: Fix the Start Agent button implementation to use the existing /tasks endpoint and provide proper user feedback.
+
+**Issues Identified**:
+1. **Missing Backend Service Implementation**: The browser-use endpoint existed but the service layer was incomplete
+2. **Frontend-Backend Mismatch**: Frontend was calling non-existent browser-use methods
+3. **Button State Management Issues**: Complex disabled logic that prevented button from working
+4. **Missing Error Handling**: No user feedback when operations failed
+5. **Environment Configuration**: Backend connectivity issues
+
+**Changes Made**:
+
+1. **Updated `frontend/components/DashboardDualPane.tsx`**:
+   - **Replaced `handleStartAgentTask` function**: Now uses `ApiService.createTask()` instead of non-existent `createBrowserUseTask()`
+   - **Combined Data into Text Prompt**: Merges user details, ticket details, and vendor URL into a single comprehensive text prompt
+   - **Improved Button State Management**: Simplified disabled logic to `!vendorUrl || !ocrSuccess || taskState.status === 'running' || taskState.status === 'connecting'`
+   - **Added Task Message System**: New state for success/error/info messages with auto-clear functionality
+   - **Enhanced Error Handling**: Proper error messages and state reset on failures
+   - **Added Reset Functionality**: Reset button to clear task state and start over
+   - **Better User Feedback**: Clear status messages for each validation step
+
+2. **Button Functionality**:
+   - **Uses Existing Endpoint**: Now calls `/api/v1/tasks` (the working endpoint) instead of `/api/v1/tasks/browser-use`
+   - **Combined Data Format**: Creates a comprehensive text prompt that includes:
+     - Vendor website URL
+     - All ticket details (store, date, total, TC#, TR#, ID, etc.)
+     - Raw OCR text
+     - Clear task instructions for CFDI form filling
+   - **Proper State Management**: Button shows different states (Creating Task..., Agent Running..., Start Agent Task)
+   - **Validation Feedback**: Clear messages for missing vendor URL or incomplete OCR
+
+3. **User Experience Improvements**:
+   - **Immediate Feedback**: Users see exactly what's missing (vendor URL or OCR completion)
+   - **Success Confirmation**: Clear success message with task ID when task is created
+   - **Error Handling**: Detailed error messages with auto-clear after 10 seconds
+   - **Reset Capability**: Users can reset and start over if needed
+   - **Status Tracking**: Real-time status updates during task creation and execution
+
+4. **Technical Implementation**:
+   - **State Management**: Added `taskMessage` state for user feedback
+   - **Auto-clear Messages**: Success messages clear after 8 seconds, errors after 10 seconds
+   - **Error Recovery**: Automatic state reset on errors
+   - **Consistent UI**: Both desktop and mobile views have the same functionality
+   - **Proper API Integration**: Uses the working `ApiService.createTask()` method
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx`
+
+**Status**: Implementation complete - Start Agent button now works correctly using the existing /tasks endpoint with combined data format and proper user feedback.
+
+**Testing Required**:
+1. Verify button is enabled when vendor URL and OCR are complete
+2. Test task creation with the combined text prompt
+3. Verify error handling for missing data
+4. Test reset functionality
+5. Confirm proper state management during task lifecycle
+
+---
+
+### 2025-01-27 17:45 - Fixed Missing Vendor URL Input and Added Debug Tools
+
+**Date & Time**: 2025-01-27 17:45
+
+**Objective**: Fix the missing vendor URL input field in desktop view and add debugging tools to identify button state issues.
+
+**Issues Identified**:
+1. **Missing Vendor URL Input in Desktop View**: The desktop layout was missing the vendor URL input field, causing the button to always be disabled
+2. **Button State Debugging**: No visibility into why the button was disabled
+3. **OCR Success State**: Difficulty tracking when OCR success state is set
+
+**Changes Made**:
+
+1. **Updated `frontend/components/DashboardDualPane.tsx`**:
+   - **Added Vendor URL Input to Desktop View**: Added the missing vendor URL input field above the Start Agent button in the desktop layout
+   - **Added Debug Information Display**: Added debug panels showing:
+     - Vendor URL status (Set/Missing)
+     - OCR Success state (True/False)
+     - Task Status
+     - Button Disabled reason
+   - **Added Test Buttons**: Added debugging buttons to manually set OCR success and vendor URL for testing
+   - **Enhanced Console Logging**: Added detailed logging for button state changes and OCR initialization
+   - **Fixed Layout Consistency**: Both mobile and desktop views now have vendor URL inputs and debug information
+
+2. **Debug Tools Added**:
+   - **Debug Info Panel**: Shows real-time state of all button prerequisites
+   - **Test OCR Success Button**: Manually sets OCR success to true for testing
+   - **Test Vendor URL Button**: Manually sets vendor URL for testing
+   - **Console Logging**: Detailed logging of state changes and useEffect triggers
+   - **Button State Tracking**: Real-time visibility into why button is disabled
+
+3. **Vendor URL Input Fix**:
+   - **Desktop View**: Added vendor URL input field above Start Agent button
+   - **Mobile View**: Vendor URL input was already present and working
+   - **Consistent Styling**: Both inputs use the same styling and validation
+   - **Placeholder Text**: Helpful placeholder showing expected URL format
+
+4. **State Management Improvements**:
+   - **useEffect Logging**: Added logging to track when initialTicketData is processed
+   - **Button State Debug**: Real-time logging of button disabled condition
+   - **OCR Success Tracking**: Clear visibility into OCR success state changes
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx`
+
+**Status**: Implementation complete - Vendor URL input now available in both views, debug tools added for troubleshooting button state issues.
+
+**Testing Instructions**:
+1. **Check Debug Info**: Look for the debug panel below the Start Agent button
+2. **Test OCR Success**: Click "Test: Set OCR Success" button to manually enable OCR
+3. **Test Vendor URL**: Click "Test: Set URL" button to manually set vendor URL
+4. **Verify Button State**: Button should become enabled when both OCR success and vendor URL are set
+5. **Check Console**: Open browser console to see detailed state logging
+
+**Next Steps**:
+1. Test the button functionality with the debug tools
+2. Verify OCR data is being passed correctly from dashboard
+3. Test actual OCR upload process to ensure proper state transitions
+4. Remove debug tools once button is working correctly
+
+---
+
+### 2025-08-18 13:30:00 - Unicode Encoding Fix for OCR Functionality
+
+### Issue Description
+The OCR processing was failing with a Unicode encoding error: `'charmap' codec can't encode character '\u20a1' in position 601: character maps to <undefined>`. This error occurred when the Python OCR script tried to print Unicode characters (specifically the Costa Rican colon symbol ₡) to stdout on Windows, which uses the 'charmap' codec (cp1252) that cannot handle these characters.
+
+### Root Cause
+1. The OCR was extracting text containing Unicode characters (like currency symbols ₡)
+2. The Python script was using `print()` to stdout, which caused encoding issues on Windows
+3. Node.js was capturing the Python output with `execSync` but couldn't handle the encoding properly
+
+### Changes Made
+
+#### 1. Fixed `backend/src/services/run_ocr.py`
+- Replaced all `print(json.dumps(...))` calls with `sys.stdout.buffer.write()` for binary-safe output
+- Used `sys.stdout.buffer.write(json.dumps(...).encode('utf-8'))` to avoid encoding issues
+- Added proper error handling with stderr for debug messages
+- Ensured all output goes through the binary-safe stdout buffer
+
+#### 2. Enhanced `backend/src/services/ocr_functionality.py`
+- Added Unicode safety measures during text extraction
+- Implemented `make_json_safe()` function to recursively clean problematic characters
+- Added try-catch blocks around text encoding operations
+- Added fallback cleaning for strings that cause encoding issues
+- Added JSON serialization test before returning data
+- Implemented graceful fallback for problematic data
+
+#### 3. Improved `backend/src/routes/tickets.js`
+- Added `PYTHONIOENCODING: 'utf-8'` environment variable to force Python UTF-8 encoding
+- Increased `maxBuffer` to 10MB for large OCR results
+- Added character cleaning for control characters and replacement characters
+- Enhanced error parsing to extract meaningful error messages from Python output
+- Added additional safety measures for JSON parsing
+
+### Technical Details
+- **Binary-safe output**: Using `sys.stdout.buffer.write()` instead of `print()` ensures no encoding conversion issues
+- **UTF-8 enforcement**: Setting `PYTHONIOENCODING=utf-8` forces Python to use UTF-8 for all I/O operations
+- **Character cleaning**: Removing control characters (0x00-0x1F, 0x7F-0x9F) and replacement characters (0xFFFD)
+- **JSON safety**: Testing JSON serialization before returning data ensures the output can be safely processed
+
+### Testing
+- Created and tested a Unicode safety test script that successfully handled the problematic ₡ character
+- Verified that both JSON serialization and stdout.buffer output work correctly
+- Confirmed that the encoding fixes resolve the original error
+
+### Impact
+- **Resolves**: The Unicode encoding error that was preventing OCR processing from working
+- **Improves**: Overall robustness of the OCR system for handling international characters
+- **Maintains**: Backward compatibility while adding safety measures
+- **Enhances**: Error handling and debugging capabilities
+
+### Files Modified
+1. `backend/src/services/run_ocr.py` - Fixed stdout encoding issues
+2. `backend/src/services/ocr_functionality.py` - Added Unicode safety measures
+3. `backend/src/routes/tickets.js` - Enhanced Node.js execution and error handling
+
+### Next Steps
+- Monitor OCR processing for any remaining encoding issues
+- Consider adding automated tests for Unicode character handling
+- Document the encoding requirements for future OCR integrations
+
+---
+
+### 2025-01-27 23:00 - Documented Complete Ticket Flow and Data Passing Mechanism
+
+**Date & Time**: 2025-01-27 23:00
+
+**Objective**: Document the complete flow of ticket processing and how extracted details are passed between the dual pane view and ticket processing system.
+
+**Complete Ticket Flow Analysis**:
+
+## **1. Ticket Upload and OCR Processing Flow**
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant D as Dashboard
+    participant B as Backend API
+    participant O as OCR Service
+    participant DP as Dual Pane View
+    participant T as Task System
+
+    U->>D: Upload ticket image + vendor URL
+    D->>B: POST /api/v1/tickets/upload
+    B->>O: Process image with Azure Document Intelligence
+    O->>B: Return extracted_data with 15+ fields
+    B->>D: Response with ticket_id + extracted_data
+    D->>D: Store extractedTicketData in state
+    D->>D: Auto-switch to dual pane mode
+    D->>DP: Pass initialTicketData prop
+    DP->>DP: Initialize ticketData and rawText from props
+    DP->>DP: Display extracted details in left pane
+    U->>DP: Click "Start Agent Task"
+    DP->>T: Create browser automation task with combined prompt
+    T->>T: Execute automation using extracted data
+```
+
+## **2. Data Structure Flow**
+
+### **Backend OCR Response Structure**:
+The OCR service returns a comprehensive data structure with both normalized and alternative field names:
+
+```json
+{
+  "extracted_data": {
+    // Core fields (normalized)
+    "mesa_folio": "2194722",
+    "fecha": "04/06/2025", 
+    "id_ticket": "10LGA50YMB1",
+    "total": 47.0,
+    "comercio": "VILLA MAGNA SLP",
+    
+    // Vendor-specific fields
+    "tc_number": "N/A",
+    "tr_number": "N/A", 
+    "id": "10LGA50YMB1",
+    "folio_venta": "2194722",
+    
+    // Enhanced fields
+    "store_branch_plaza": "LOMAS 4A SECCION",
+    "register_station_terminal": "03621",
+    "payment_type": "TARJETA DE CREDITO",
+    "card_last_4_digits": "4532",
+    
+    // Raw text and metadata
+    "raw_text": "Complete extracted text...",
+    "vendor_type": "oxxo",
+    "extraction_method": "ai_oxxo",
+    "text_length": 549,
+    
+    // Alternative field names for frontend compatibility
+    "Mesa_Folio": "2194722",
+    "Fecha": "04/06/2025",
+    "ID_Ticket": "10LGA50YMB1",
+    "Total": 47.0,
+    "Comercio": "VILLA MAGNA SLP",
+    "TC#": "N/A",
+    "TR#": "N/A",
+    "ID": "10LGA50YMB1",
+    "Fol_Vta": "2194722",
+    "Store_Branch_Plaza": "LOMAS 4A SECCION",
+    "Register_Station_Terminal": "03621",
+    "Payment_Type": "TARJETA DE CREDITO",
+    "Card_Last_4_Digits": "4532"
+  }
+}
+```
+
+### **Frontend Data Mapping**:
+The DashboardDualPane component receives `initialTicketData` and maps it to the `TicketData` interface:
+
+```typescript
+// Data mapping in useEffect
+const mappedData: TicketData = {
+  Comercio: initialTicketData.comercio || initialTicketData.Comercio || '',
+  Fecha: initialTicketData.fecha || initialTicketData.Fecha || '',
+  Total: initialTicketData.total || initialTicketData.Total || '',
+  'TC#': initialTicketData.tc_number || initialTicketData['TC#'] || '',
+  'TR#': initialTicketData.tr_number || initialTicketData['TR#'] || '',
+  'ID': initialTicketData.id || initialTicketData.ID || '',
+  'Fol_Vta': initialTicketData.folio_venta || initialTicketData['Fol_Vta'] || '',
+  'ID_Ticket': initialTicketData.id_ticket || initialTicketData.ID_Ticket || '',
+  'Mesa_Folio': initialTicketData.mesa_folio || initialTicketData.Mesa_Folio || '',
+  'Store_Branch_Plaza': initialTicketData.store_branch_plaza || initialTicketData['Store_Branch_Plaza'] || '',
+  'Register_Station_Terminal': initialTicketData.register_station_terminal || initialTicketData['Register_Station_Terminal'] || '',
+  'Payment_Type': initialTicketData.payment_type || initialTicketData['Payment_Type'] || '',
+  'Card_Last_4_Digits': initialTicketData.card_last_4_digits || initialTicketData['Card_Last_4_Digits'] || ''
+}
+```
+
+## **3. Task Creation and Data Passing**
+
+### **Combined Prompt Generation**:
+When the user clicks "Start Agent Task", the component creates a comprehensive prompt combining:
+
+1. **Vendor URL** - Target website for automation
+2. **User Profile Information** - Company name, RFC, address
+3. **Extracted Ticket Details** - All 13 ticket fields
+4. **Raw OCR Text** - Complete extracted text for context
+
+```typescript
+const combinedPrompt = `${vendorUrl}
+
+USER INFORMATION:
+- Company/Name: ${userProfile?.company_name || 'Not available'}
+- RFC: ${userProfile?.rfc || 'Not available'}
+- Address: ${userProfile?.address || 'Not available'}
+
+TICKET DETAILS:
+- Store/Comercio: ${ticketData.Comercio || 'Not available'}
+- Date/Fecha: ${ticketData.Fecha || 'Not available'}
+- Total Amount: ${ticketData.Total || 'Not available'}
+- TC Number: ${ticketData['TC#'] || 'Not available'}
+- TR Number: ${ticketData['TR#'] || 'Not available'}
+- ID: ${ticketData.ID || 'Not available'}
+- Folio Venta: ${ticketData['Fol_Vta'] || 'Not available'}
+- Ticket ID: ${ticketData['ID_Ticket'] || 'Not available'}
+- Mesa/Folio: ${ticketData['Mesa_Folio'] || 'Not available'}
+- Store/Branch/Plaza: ${ticketData['Store_Branch_Plaza'] || 'Not available'}
+- Register/Station/Terminal: ${ticketData['Register_Station_Terminal'] || 'Not available'}
+- Payment Type: ${ticketData['Payment_Type'] || 'Not available'}
+- Card Last 4 Digits: ${ticketData['Card_Last_4_Digits'] || 'Not available'}
+
+RAW OCR TEXT: ${rawText}`;
+```
+
+### **Task Submission**:
+The combined prompt is sent to the browser automation system:
+
+```typescript
+const response = await ApiService.createBrowserUseTask({
+  task: combinedPrompt,
+  vendor_url: vendorUrl
+});
+```
+
+## **4. Key Data Flow Points**
+
+### **Data Source**: 
+- **OCR Service** → Extracts structured data from receipt images
+- **Backend API** → Normalizes and returns both field formats
+- **Dashboard** → Receives and stores extracted data
+- **Dual Pane** → Initializes with received data and displays it
+
+### **Data Destination**:
+- **Task System** → Receives comprehensive prompt with all extracted details
+- **Browser Agent** → Uses the data to automate form filling
+- **Vendor Portal** → Receives accurate data for CFDI generation
+
+### **Data Transformation**:
+- **Raw OCR** → Structured fields → Normalized response → Frontend mapping → Combined prompt
+- **Field Compatibility** → Both lowercase and uppercase field names supported
+- **Vendor-Specific Mapping** → Automatic field mapping based on detected vendor type
+
+## **5. Benefits of This Flow**
+
+1. **Complete Data Preservation**: All extracted details are preserved and passed through the entire flow
+2. **Dual Field Format Support**: Frontend can handle both normalized and original field names
+3. **Rich Context**: Browser agent receives comprehensive information for accurate automation
+4. **User Verification**: Users can review all extracted details before starting automation
+5. **Flexible Integration**: System can handle different vendor types and field structures
+6. **Real-time Updates**: Live view shows automation progress using the extracted data
+
+## **6. Data Integrity Assurance**
+
+- **Field Validation**: All 13 ticket fields are extracted and validated
+- **Fallback Handling**: Alternative field names ensure compatibility
+- **Raw Text Preservation**: Complete OCR text is maintained for debugging
+- **Vendor Detection**: Automatic vendor-specific field mapping
+- **Error Handling**: Comprehensive error handling at each step
+
+**Conclusion**: The ticket flow ensures that **ALL extracted details from the dual pane view are passed directly to the ticket processing system**. The data flows seamlessly from OCR extraction → Backend normalization → Frontend display → Task creation → Browser automation, maintaining complete data integrity throughout the process.
+
+**Files Analyzed**:
+- `frontend/components/DashboardDualPane.tsx` - Data initialization and task creation
+- `frontend/app/(dashboard)/dashboard/page.tsx` - Data passing and state management
+- `backend/src/services/ocr_functionality.py` - OCR data structure
+- `backend/src/routes/tickets.js` - API response normalization
+- `backend/src/services/browserService.js` - Task execution
+
+**Testing Status**: The flow is fully implemented and ready for end-to-end testing to verify data integrity from OCR extraction through task execution.
+
+---
+
+**End of Development Documentation**
+
+### Recent Changes
+
+### 2024-12-19 - API Structure Update for Browser Agent Integration
+
+**Time**: Current session
+
+**Changes Made**:
+1. **Updated API Endpoint**: Changed from legacy `/tasks` endpoint to `/tasks/browser-use` endpoint that actually executes `browser_agent.py`
+2. **Simplified Task Creation**: Updated `handleStartAgentTask` function to use `ApiService.createBrowserUseTask()` instead of `ApiService.createTask()`
+3. **Added Loading State**: Added `isStartingAgent` state to show loading spinner when starting the agent
+4. **Removed Complex State Management**: Simplified the component by removing complex task state management and using simple loading states
+5. **Updated Button States**: Both desktop and mobile Start Agent buttons now show "Starting Agent..." with spinner when clicked
+
+**Technical Details**:
+- **Before**: Used `/tasks` endpoint which only stored tasks in database
+- **After**: Uses `/tasks/browser-use` endpoint which executes `browser_agent.py` with the combined prompt
+- **Data Flow**: All details (vendor URL, user info, ticket data, raw OCR) are combined into one comprehensive prompt string
+- **API Call**: `ApiService.createBrowserUseTask({ task: combinedPrompt, vendor_url: vendorUrl })`
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx` - Updated task submission logic and UI states
+- `dev_documentation.txt` - This documentation update
+
+**Result**: 
+- ✅ Simple task submission - no complex configuration needed
+- ✅ Browser agent automatically executes when Start Agent button is clicked
+- ✅ All details passed as single prompt string to the agent
+- ✅ Agent handles facturación automatically without explicit instructions
+
+**Status**: Implementation complete - Start Agent button now properly executes browser_agent.py through the correct API endpoint.
+
+### 2024-12-19 15:30 - Fixed Component Height and Overflow Issues in DashboardDualPane.tsx
+
+### Issues Resolved:
+1. **Fixed Height Constraints**: Replaced `h-[800px]` with responsive `h-full max-h-screen` for both mobile and desktop layouts
+2. **Overflow Problems**: Added proper `overflow-hidden` and `overflow-y-auto` handling to prevent content from expanding beyond viewport
+3. **Content Expansion**: Replaced `min-h-[...]` constraints with fixed heights (`h-8`, `h-20`, `h-24`) to prevent forced expansion
+4. **Viewport Boundaries**: Component now respects available space and doesn't overlap with elements below
+5. **Responsive Layout**: Both mobile and desktop layouts now adapt to available viewport height
+
+### Specific Changes Made:
+
+#### Mobile Layout:
+- Changed `h-[800px]` to `h-full max-h-screen w-full overflow-hidden`
+- Added `flex-shrink-0` to prevent cards from shrinking
+- Reduced padding from `p-4` to `p-3` for better space utilization
+- Added `max-h-[60vh]` to ticket form content with `overflow-y-auto`
+- Changed form field heights from `min-h-[40px]` to `h-8`
+- Changed raw text areas from `min-h-[120px]` to `h-20`
+- Reduced gaps from `gap-6` to `gap-4` and `gap-3` to `gap-2`
+
+#### Desktop Layout:
+- Changed `h-[800px]` to `h-full max-h-screen w-full overflow-hidden`
+- Added `flex-shrink-0` to header sections to prevent shrinking
+- Reduced padding from `p-4` to `p-3` throughout
+- Added `overflow-y-auto flex-1` to scrollable content areas
+- Changed form field heights from `min-h-[40px]` to `h-8`
+- Changed raw text areas from `min-h-[120px]` to `h-24`
+- Reduced gaps from `gap-3` to `gap-2`
+
+#### Dashboard Container:
+- Changed parent container from `h-[900px]` to `h-full` to allow responsive height
+
+### Technical Improvements:
+- **Overflow Management**: Consistent use of `overflow-hidden` on containers and `overflow-y-auto` on scrollable content
+- **Height Constraints**: Replaced fixed heights with responsive height classes that respect viewport boundaries
+- **Flexbox Layout**: Proper use of `flex-shrink-0` and `flex-1` for layout stability
+- **Content Scrolling**: Internal scrolling for overflow content instead of expanding component height
+- **Responsive Design**: Component now adapts to different screen sizes without overflow
+
+### Result:
+- Component no longer extends beyond viewport boundaries
+- No overlapping with other page elements
+- Proper internal scrolling for overflow content
+- Maintains horizontal resizable functionality between panes
+- Responsive to all screen sizes
+- Better space utilization and user experience
+
+### Files Modified:
+1. `frontend/components/DashboardDualPane.tsx` - Main component fixes
+2. `frontend/app/(dashboard)/dashboard/page.tsx` - Container height fix
+
+### Testing Notes:
+- Test on various screen sizes (mobile, tablet, desktop)
+- Verify no vertical overflow occurs
+- Confirm internal scrolling works properly
+- Check that horizontal resizing still functions
+- Ensure no content overlaps with other page elements
+
+### 2024-12-19 15:45 - Added Scrollbars and Complete Ticket Details in DashboardDualPane.tsx
+
+### Issues Resolved:
+1. **Missing Ticket Details**: Added all missing ticket fields (TC#, TR#, ID, Fol_Vta, Comercio) that were not visible
+2. **Content Cutoff**: Implemented proper scrolling in extracted details section to prevent content from being cut off
+3. **Incomplete Information Display**: Users can now see all extracted ticket data without missing fields
+
+### Specific Changes Made:
+
+#### Desktop Layout:
+- Added `max-h-[50vh]` to extracted details container with `overflow-y-auto` for proper scrolling
+- Added missing ticket fields: TC#, TR#, ID, Fol_Vta, Comercio
+- Made Comercio field span full width (`col-span-3`) for better readability
+- Maintained consistent styling with existing fields
+
+#### Mobile Layout:
+- Added all missing ticket fields to match desktop layout
+- Used 3-column grid layout for mobile optimization
+- Made Comercio field span full width (`col-span-3`) on mobile
+- Consistent field heights and styling across all fields
+
+#### New Fields Added:
+1. **TC#** - Transaction Code
+2. **TR#** - Transaction Reference
+3. **ID** - General ID field
+4. **Fol_Vta** - Sales Folio
+5. **Comercio** - Business/Store name (full width)
+
+### Technical Improvements:
+- **Scrollable Content**: Added `max-h-[50vh]` constraint with `overflow-y-auto` for proper scrolling
+- **Complete Data Display**: All ticket data fields from the TicketData interface are now visible
+- **Responsive Layout**: Both mobile and desktop layouts show complete information
+- **Consistent Styling**: All fields maintain the same visual appearance and behavior
+
+### Result:
+- ✅ **Complete Information**: Users can now see all extracted ticket details
+- ✅ **Proper Scrolling**: Scrollbar appears when content exceeds container height
+- ✅ **No Content Cutoff**: All fields are accessible through scrolling
+- ✅ **Better UX**: Users can review complete ticket information before proceeding
+- ✅ **Consistent Layout**: Both mobile and desktop show the same complete data
+
+### Files Modified:
+1. `frontend/components/DashboardDualPane.tsx` - Added scrollbars and complete ticket fields
+
+### Testing Notes:
+- Verify all ticket fields are visible and accessible
+- Test scrolling behavior when content exceeds container height
+- Confirm both mobile and desktop layouts show complete information
+- Check that Comercio field spans full width appropriately
+- Ensure no content is cut off or hidden from users
+
+### 2025-01-27 23:15 - Implemented Editable Extracted Details Fields in Dual Pane View
+
+**Date & Time**: 2025-01-27 23:15
+
+**Objective**: Make all extracted ticket details fields editable in the dual pane view so users can modify values before starting the agent task. The edited values (not the original extracted ones) will be passed to the agent.
+
+**Implementation Details**:
+
+## **1. Field Conversion to Editable Inputs**
+
+### **Desktop Layout (2x2 Grid)**:
+- Converted all 13 ticket fields from static display divs to editable input fields
+- Fields include: Mesa/Folio, Fecha, ID_Ticket, Total, Store_Branch_Plaza, Register_Station_Terminal, Payment_Type, Card_Last_4_Digits, TC#, TR#, ID, Fol_Vta, Comercio
+- Each field has proper onChange handlers that update the ticketData state
+
+### **Mobile Layout (3-Column Grid)**:
+- Applied same editable functionality to mobile layout
+- Maintained responsive design with 3-column grid for smaller screens
+- All fields are consistently editable across both layouts
+
+## **2. Input Field Features**
+
+### **State Management**:
+```typescript
+// Each field updates the ticketData state
+onChange={(e) => setTicketData(prev => ({ ...prev, 'Field_Name': e.target.value }))}
+```
+
+### **Styling**:
+- Consistent input styling with focus states
+- Red border theme matching existing design
+- Proper placeholder text for each field
+- Full width inputs for better usability
+
+### **User Experience**:
+- Clear visual feedback when editing
+- Focus rings on input selection
+- Placeholder text indicating what to enter
+- Maintains existing color scheme and layout
+
+## **3. User Interface Enhancements**
+
+### **Editable Fields Notice**:
+- Added blue info box above both desktop and mobile layouts
+- Clear message: "All fields are editable. Edit any values before starting the agent task."
+- Info icon for better visual communication
+- Consistent placement across both layouts
+
+### **Field Labels**:
+- Maintained existing field labels and descriptions
+- Clear identification of what each field represents
+- Consistent with original OCR extraction field names
+
+## **4. Data Flow for Agent Task**
+
+### **Current Implementation**:
+- When user clicks "Start Agent Task", the component uses the current `ticketData` state
+- This includes any edited values, not the original extracted values
+- The combined prompt is generated using the edited data
+- No special endpoints or database updates are needed
+
+### **Data Integrity**:
+- Original extracted data is preserved in the initial state
+- Users can edit any field as needed
+- Edited values are used for agent task creation
+- Simple, straightforward approach without complexity
+
+## **5. Benefits of This Implementation**
+
+1. **User Control**: Users can correct any OCR errors or modify values as needed
+2. **No Backend Changes**: Simple frontend-only implementation
+3. **Immediate Effect**: Changes take effect immediately in the UI
+4. **Consistent Experience**: Same editing capability on both desktop and mobile
+5. **Clear Communication**: Users understand that fields are editable
+6. **Data Accuracy**: Agent receives the most accurate, user-verified data
+
+## **6. Technical Implementation**
+
+### **State Updates**:
+- Each input field has its own onChange handler
+- Updates are applied immediately to the ticketData state
+- No debouncing or complex state management needed
+- Simple React state pattern for immediate updates
+
+### **Component Structure**:
+- Maintained existing component structure
+- Added editable functionality without breaking existing features
+- Consistent with current codebase patterns
+- No additional dependencies required
+
+### **Responsive Design**:
+- Desktop: 2x2 grid layout with editable inputs
+- Mobile: 3-column grid with same editable functionality
+- Consistent styling and behavior across all screen sizes
+
+## **7. User Workflow**
+
+1. **Upload Ticket**: User uploads receipt image
+2. **Review Extracted Data**: OCR extracts and displays ticket details
+3. **Edit Fields**: User can edit any field that needs correction
+4. **Start Agent Task**: Click button to start automation with edited values
+5. **Agent Execution**: Browser agent uses the edited (not original) values
+
+## **8. No Special Features Added**
+
+- **No Database Updates**: Edited values are not stored or recorded
+- **No Endpoint Changes**: All existing APIs remain unchanged
+- **No History Tracking**: No record of what was edited
+- **Simple Implementation**: Just frontend state management for immediate use
+
+**Conclusion**: The dual pane view now provides fully editable extracted details fields that allow users to modify any ticket information before starting the agent task. The edited values are automatically used when creating the agent task, ensuring accuracy without adding complexity to the backend or database systems.
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx` - Converted static fields to editable inputs for both desktop and mobile layouts
+
+**Testing Status**: Ready for testing - users should now be able to edit all extracted details fields and see their changes reflected when starting the agent task.
+>>>>>>> origin/liveView

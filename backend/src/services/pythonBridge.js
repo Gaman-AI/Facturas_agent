@@ -121,6 +121,9 @@ class PythonBridge {
    * Create a Browserbase session only and return live view URL immediately
    * 
    * @param {Object} taskData - Task configuration object
+   * @param {string} taskData.vendor_url - Vendor URL for CFDI
+   * @param {Object} [taskData.user_profile] - Complete user profile data
+   * @param {Object} [taskData.ocr_ticket_data] - OCR extracted ticket data (formatted + raw)
    * @returns {Promise<Object>} Session creation result with live view URL
    */
   async createBrowserSession(taskData) {
@@ -129,8 +132,8 @@ class PythonBridge {
       throw new Error('Task data must be a valid object')
     }
 
-    if (!taskData.prompt && !taskData.vendor_url) {
-      throw new Error('Either prompt or vendor_url must be provided')
+    if (!taskData.vendor_url) {
+      throw new Error('vendor_url is required')
     }
 
     // Check if Python script exists
@@ -240,13 +243,13 @@ class PythonBridge {
    * Execute a browser automation task using the Python browser-use agent
    * 
    * @param {Object} taskData - Task configuration object
-   * @param {string} taskData.prompt - The task description/prompt
+   * @param {string} [taskData.prompt] - The task description/prompt
    * @param {string} [taskData.model] - LLM model to use
    * @param {number} [taskData.temperature] - LLM temperature
    * @param {number} [taskData.max_steps] - Maximum steps for the agent
-   * @param {string} [taskData.vendor_url] - Vendor URL for CFDI
-   * @param {Object} [taskData.customer_details] - Customer information
-   * @param {Object} [taskData.invoice_details] - Invoice information
+   * @param {string} taskData.vendor_url - Vendor URL for CFDI
+   * @param {Object} [taskData.user_profile] - Complete user profile data
+   * @param {Object} [taskData.ocr_ticket_data] - OCR extracted ticket data (formatted + raw)
    * @returns {Promise<Object>} Execution result
    */
   async executeBrowserTask(taskData) {
@@ -255,8 +258,8 @@ class PythonBridge {
       throw new Error('Task data must be a valid object')
     }
 
-    if (!taskData.prompt && !taskData.vendor_url) {
-      throw new Error('Either prompt or vendor_url must be provided')
+    if (!taskData.vendor_url) {
+      throw new Error('vendor_url is required')
     }
 
     // Check if Python script exists
