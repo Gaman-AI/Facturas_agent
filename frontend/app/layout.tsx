@@ -1,10 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
-<<<<<<< HEAD
 import './liquid-glass.css'
-=======
 import 'react-toastify/dist/ReactToastify.css'
->>>>>>> origin/liveView
 import { AuthProvider } from '@/contexts/AuthContext'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import { ToastContainer } from 'react-toastify'

@@ -266,10 +266,6 @@ function DashboardContent() {
                 vendorUrl={vendorUrl}
                 userProfile={profile}
               />
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/liveView
             </div>
           ) : (
               <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm mb-6">

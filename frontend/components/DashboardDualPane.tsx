@@ -492,11 +492,6 @@ RAW OCR TEXT: ${rawText}`;
       return (
         <div className="h-full flex items-center justify-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 p-1">
           <div className="text-center text-gray-500">
-<<<<<<< HEAD
-            <Monitor className="w-20 h-20 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-xl font-medium mb-3">No Live View Available</h3>
-            <p className="text-base">Waiting for task to start and generate live view URL...</p>
-=======
             <Monitor className="w-12 h-12 mx-auto mb-3 text-gray-400" />
             <h3 className="text-lg font-medium mb-2">No Live View Available</h3>
             <p className="text-sm mb-3">Waiting for task to start and generate live view URL...</p>
@@ -507,7 +502,6 @@ RAW OCR TEXT: ${rawText}`;
               <p className="text-xs text-blue-600">Session ID: {taskState.sessionId || 'None'}</p>
               <p className="text-xs text-blue-600">Live View URL: {currentLiveViewUrl || 'Not set'}</p>
             </div>
->>>>>>> origin/liveView
           </div>
         </div>
       )
@@ -529,13 +523,8 @@ RAW OCR TEXT: ${rawText}`;
     }
 
     return (
-<<<<<<< HEAD
-      <div className="h-full bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="p-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-=======
       <div className="h-full bg-white rounded-lg border border-gray-200 overflow-hidden flex flex-col">
         <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
->>>>>>> origin/liveView
           <div className="flex items-center gap-2">
             <Monitor className="w-3 h-3 text-gray-600" />
             <span className="text-xs font-medium text-gray-700">Live Browser View</span>
@@ -550,9 +539,6 @@ RAW OCR TEXT: ${rawText}`;
           </div>
         </div>
         
-<<<<<<< HEAD
-        <div className="h-full relative">
-=======
         {/* URL Debug Info */}
         <div className="p-2 bg-blue-50 border-b border-blue-200 flex-shrink-0">
           <div className="text-xs text-blue-700">
@@ -562,7 +548,6 @@ RAW OCR TEXT: ${rawText}`;
         </div>
         
         <div className="flex-1 relative overflow-hidden" style={{ minHeight: '500px' }}>
->>>>>>> origin/liveView
           <iframe
             src={currentLiveViewUrl}
             sandbox="allow-same-origin allow-scripts"
@@ -594,13 +579,8 @@ RAW OCR TEXT: ${rawText}`;
                 </div>
                 <span>Ticket Data</span>
               </CardTitle>
-<<<<<<< HEAD
-              <CardDescription className="text-slate-600">
-                Enter the ticket data in the corresponding fields.
-=======
               <CardDescription className="text-slate-600 text-sm">
                 Ingrese los datos del ticket en los campos correspondientes.
->>>>>>> origin/liveView
               </CardDescription>
             </CardHeader>
             <CardContent className="p-3 flex flex-col h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
@@ -1102,9 +1082,7 @@ RAW OCR TEXT: ${rawText}`;
                   </div>
                 )}
                 
-<<<<<<< HEAD
 
-=======
                 {/* Debug Panel for Mobile */}
                 <div className="mb-3 p-2 bg-gray-50 rounded-lg border border-gray-200">
                   <h4 className="text-xs font-medium text-gray-700 mb-2 flex items-center gap-2">
@@ -1157,8 +1135,7 @@ RAW OCR TEXT: ${rawText}`;
                       </div>
                     </div>
                   </div>
-                </div>
->>>>>>> origin/liveView
+                                  </div>
                 
                 {renderLiveView()}
               </CardContent>
@@ -1210,12 +1187,6 @@ RAW OCR TEXT: ${rawText}`;
           <ResizablePanelGroup direction="horizontal" className="h-full w-full overflow-hidden">
             {/* Left Pane - Ticket Data Form (35% default) */}
 <<<<<<< HEAD
-            <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
-              <div className="h-full p-3 border-r-2 border-slate-200/40 bg-gradient-to-b from-white to-slate-50/30 min-h-0">
-                <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden flex flex-col">
-                  {/* Header with icon and title - Fixed height */}
-                  <div className="flex-shrink-0 p-4 border-b border-slate-200/50 bg-gradient-to-r from-red-50 to-red-100">
-=======
             <ResizablePanel defaultSize={35} minSize={25} maxSize={50} className="overflow-hidden">
               <div className="h-full p-3 border-r-2 border-slate-200/40 bg-gradient-to-b from-white to-slate-50/30 overflow-hidden">
                 <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden flex flex-col">
@@ -1223,25 +1194,12 @@ RAW OCR TEXT: ${rawText}`;
                   <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                   {/* Header with icon and title */}
                   <div className="p-3 border-b border-slate-200/50 bg-gradient-to-r from-red-50 to-red-100 flex-shrink-0">
->>>>>>> origin/liveView
                     <div className="flex items-center space-x-3">
                       <div className="w-7 h-7 bg-red-500 rounded-lg flex items-center justify-center">
                         <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                       </div>
-<<<<<<< HEAD
-                      <h3 className="text-lg font-semibold text-gray-800">Ticket Data</h3>
-                    </div>
-                  </div>
-                  
-                  {/* Scrollable Content Area - Takes remaining height */}
-                  <div className="flex-1 overflow-y-auto p-6 pb-12 space-y-6 min-h-0 min-h-[600px]">
-                    {/* OCR Status and Success Indicator */}
-                    {ocrStatus && (
-                      <div className="p-3 rounded-lg border border-slate-200/50 mb-6">
-                        <div className={`flex items-center gap-3 p-3 rounded-lg ${
-=======
                       <h3 className="text-base font-semibold text-gray-800">Datos del Ticket</h3>
                     </div>
                   </div>
@@ -1257,7 +1215,6 @@ RAW OCR TEXT: ${rawText}`;
                             : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
                       }`}>
                         <div className={`w-3 h-3 rounded-full ${
->>>>>>> origin/liveView
                           ocrSuccess 
                             ? 'bg-green-50 border border-green-200 text-green-700' 
                             : isProcessing 
@@ -1419,44 +1376,6 @@ RAW OCR TEXT: ${rawText}`;
                       </h4>
                       <div className="bg-white border border-green-200 rounded-xl p-4">
                         <div className="max-h-[200px] overflow-y-auto pr-2 pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-=======
-                  )}
-                  
-                  {/* Start Agent Button Section - Top of Extracted Details */}
-                  {ocrSuccess && (
-                    <div className="p-3 border-b border-slate-200/50 flex-shrink-0">
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
-                        <div className="text-center">
-                          <h4 className="text-base font-semibold text-gray-800 mb-2 flex items-center justify-center gap-2">
-                            <Zap className="w-4 h-4 text-blue-600" />
-                            Start Agent Task
-                          </h4>
-                          <p className="text-xs text-gray-600 mb-3">
-                            Execute the browser automation agent with the extracted ticket data and vendor URL
-                          </p>
-                          
-                          {/* Vendor URL Display - Desktop */}
-                          <div className="mb-3">
-                            <label className="block text-xs font-medium text-gray-700 mb-1 text-left">
-                              Vendor Website URL
-                            </label>
-                            <div className="block w-full px-2 py-1 border border-gray-200 rounded-md text-xs bg-gray-50 text-gray-700">
-                              {vendorUrl || 'No vendor URL provided'}
-                            </div>
-                          </div>
-                          
-                          {/* Agent Configuration */}
-                          <div className="grid grid-cols-2 gap-2 mb-3">
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1 text-left">
-                                Model
-                              </label>
-                              <select 
-                                className="w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                defaultValue="gpt-4o-mini"
-                              >
-                                <option value="gpt-4o-mini">GPT-4o Mini</option>
-                                <option value="gpt-4o">GPT-4o</option>
                                 <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
                               </select>
                             </div>
@@ -1752,19 +1671,6 @@ RAW OCR TEXT: ${rawText}`;
 
             <ResizableHandle withHandle className="w-2 bg-gradient-to-b from-pink-100 to-rose-100 hover:bg-gradient-to-b hover:from-pink-200 hover:to-rose-200 transition-all duration-200" />
 
-<<<<<<< HEAD
-            {/* Right Pane - Live Browser View (65% default) */}
-            <ResizablePanel defaultSize={65} minSize={50} maxSize={75}>
-              <div className="h-full p-3 bg-gradient-to-b from-white to-slate-50/30 min-h-0">
-                <div className="h-full bg-white rounded-xl border border-slate-200/50 shadow-sm overflow-hidden">
-                  <div className="h-full flex flex-col">
-                    {/* Live View URL Input Header - Ultra Compact */}
-                    <div className="flex-shrink-0 p-2 border-b border-gray-200 bg-gray-50 mb-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="text-sm font-semibold flex items-center gap-2">
-                          <ExternalLink className="w-4 h-4" />
-                          Live Browser View
-=======
             {/* Right Pane - Live View with URL Input (65% default) */}
             <ResizablePanel defaultSize={65} minSize={50} maxSize={75} className="overflow-hidden">
               <div className="h-full p-3 bg-gradient-to-b from-white to-slate-50/30 overflow-hidden">
@@ -1776,18 +1682,13 @@ RAW OCR TEXT: ${rawText}`;
                         <h3 className="text-base font-semibold flex items-center gap-2">
                           <ExternalLink className="w-4 h-4" />
                           Live View URL
->>>>>>> origin/liveView
                         </h3>
                         <Button 
                           size="sm" 
                           variant="outline" 
                           onClick={handleRefreshLiveView}
                           disabled={!currentLiveViewUrl}
-<<<<<<< HEAD
-                          className="h-6 px-2 text-xs"
-=======
                           className="h-7 px-2 text-xs"
->>>>>>> origin/liveView
                         >
                           <RefreshCw className="w-3 h-3 mr-1" />
                           Refresh
@@ -1800,21 +1701,14 @@ RAW OCR TEXT: ${rawText}`;
                           value={currentLiveViewUrl || ''}
                           onChange={(e) => setCurrentLiveViewUrl(e.target.value)}
 <<<<<<< HEAD
-                          className="flex-1 h-7 text-xs"
-=======
                           className="flex-1 text-xs h-8"
->>>>>>> origin/liveView
                         />
                         <Button 
                           size="sm" 
                           variant="default"
                           onClick={handleUpdateLiveViewUrl}
                           disabled={!currentLiveViewUrl}
-<<<<<<< HEAD
-                          className="h-7 px-2 text-xs"
-=======
                           className="h-8 px-2 text-xs"
->>>>>>> origin/liveView
                         >
                           Update
                         </Button>
@@ -1825,11 +1719,7 @@ RAW OCR TEXT: ${rawText}`;
                             setCurrentLiveViewUrl('')
                             console.log('Live view URL cleared')
                           }}
-<<<<<<< HEAD
-                          className="h-7 px-2 text-xs"
-=======
                           className="h-8 px-2 text-xs"
->>>>>>> origin/liveView
                         >
                           Clear
                         </Button>

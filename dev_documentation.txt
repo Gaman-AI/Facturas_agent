@@ -1103,7 +1103,6 @@ This comprehensive document includes:
 
 ---
 
-<<<<<<< HEAD
 ## Latest Updates
 
 ### 2025-01-15 20:00 - RESOLVED: ChunkLoadError from Next.js Webpack Build Issues
@@ -4540,7 +4539,6 @@ Redirected all debug print statements from stdout to stderr by adding `file=sys.
 
 ---
 
-<<<<<<< HEAD
 ### 2025-01-15 16:00 - Comprehensive Styling Fixes for All Remaining Pages
 
 **Date & Time**: 2025-01-15 16:00
