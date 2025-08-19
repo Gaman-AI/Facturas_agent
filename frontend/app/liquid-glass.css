@@ -1,0 +1,274 @@
+/* Liquid Glass Theme - Inspired by expo-liquid-glass-view */
+:root {
+  /* Blur levels */
+  --glass-blur-sm: 4px;
+  --glass-blur-md: 8px;
+  --glass-blur-lg: 12px;
+  --glass-blur-xl: 16px;
+  --glass-blur-2xl: 24px;
+  --glass-blur-3xl: 32px;
+  
+  /* Opacity levels */
+  --glass-opacity-10: 0.1;
+  --glass-opacity-20: 0.2;
+  --glass-opacity-30: 0.3;
+  --glass-opacity-40: 0.4;
+  --glass-opacity-50: 0.5;
+  --glass-opacity-60: 0.6;
+  --glass-opacity-70: 0.7;
+  --glass-opacity-80: 0.8;
+  --glass-opacity-90: 0.9;
+  
+  /* Corner radius */
+  --glass-radius-sm: 4px;
+  --glass-radius-md: 8px;
+  --glass-radius-lg: 12px;
+  --glass-radius-xl: 16px;
+  --glass-radius-2xl: 24px;
+  --glass-radius-3xl: 32px;
+  --glass-radius-full: 9999px;
+  
+  /* Background colors - Much higher opacity for better visibility */
+  --glass-bg-white: rgba(255, 255, 255, 0.6);
+  --glass-bg-black: rgba(0, 0, 0, 0.6);
+  --glass-bg-gray: rgba(128, 128, 128, 0.6);
+  
+  /* Border colors - Much higher opacity for better visibility */
+  --glass-border-white: rgba(255, 255, 255, 0.8);
+  --glass-border-black: rgba(0, 0, 0, 0.8);
+  --glass-border-gray: rgba(128, 128, 128, 0.8);
+  
+  /* Tint colors - Much higher opacity for better visibility */
+  --glass-tint-blue: rgba(59, 130, 246, 0.7);
+  --glass-tint-green: rgba(34, 197, 94, 0.7);
+  --glass-tint-purple: rgba(147, 51, 234, 0.7);
+  --glass-tint-pink: rgba(236, 72, 153, 0.7);
+  --glass-tint-orange: rgba(249, 115, 22, 0.7);
+  --glass-tint-red: rgba(239, 68, 68, 0.7);
+}
+
+/* Base liquid glass class - Force higher specificity */
+.liquid-glass {
+  backdrop-filter: blur(var(--glass-blur-md)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur-md)) !important;
+  background: var(--glass-bg-white) !important;
+  border: 1px solid var(--glass-border-white) !important;
+  border-radius: var(--glass-radius-md) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+  transition: all 0.3s ease !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* Enhanced glass effect with inner glow */
+.liquid-glass::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Fallback for browsers without backdrop-filter support */
+@supports not (backdrop-filter: blur(1px)) {
+  .liquid-glass {
+    background: rgba(255, 255, 255, 0.8) !important;
+    border: 2px solid rgba(255, 255, 255, 0.9) !important;
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.2) !important,
+      inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  }
+}
+
+/* Debug styles - make it very visible */
+.liquid-glass {
+  /* Force visibility */
+  background: rgba(255, 255, 255, 0.8) !important;
+  border: 3px solid rgba(59, 130, 246, 0.9) !important;
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.4) !important,
+    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important,
+    0 0 0 1px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Add a pulsing animation to make it obvious */
+.liquid-glass {
+  animation: liquidGlassPulse 2s ease-in-out infinite !important;
+}
+
+@keyframes liquidGlassPulse {
+  0%, 100% { 
+    transform: scale(1);
+    box-shadow: 
+      0 12px 40px rgba(0, 0, 0, 0.4) !important,
+      inset 0 1px 0 rgba(255, 255, 255, 0.6) !important,
+      0 0 0 1px rgba(59, 130, 246, 0.3) !important;
+  }
+  50% { 
+    transform: scale(1.02);
+    box-shadow: 
+      0 16px 50px rgba(0, 0, 0, 0.5) !important,
+      inset 0 1px 0 rgba(255, 255, 255, 0.8) !important,
+      0 0 0 2px rgba(59, 130, 246, 0.5) !important;
+  }
+}
+
+/* Type variants */
+.liquid-glass--clear {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.liquid-glass--tint {
+  background: var(--glass-tint-blue);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* Corner styles */
+.liquid-glass--rounded {
+  border-radius: var(--glass-radius-lg);
+}
+
+.liquid-glass--pill {
+  border-radius: var(--glass-radius-full);
+}
+
+/* Radius variants */
+.liquid-glass--radius-sm { border-radius: var(--glass-radius-sm); }
+.liquid-glass--radius-md { border-radius: var(--glass-radius-md); }
+.liquid-glass--radius-lg { border-radius: var(--glass-radius-lg); }
+.liquid-glass--radius-xl { border-radius: var(--glass-radius-xl); }
+.liquid-glass--radius-2xl { border-radius: var(--glass-radius-2xl); }
+.liquid-glass--radius-3xl { border-radius: var(--glass-radius-3xl); }
+
+/* Tint variants */
+.liquid-glass--tint-blue { background: var(--glass-tint-blue); border-color: rgba(59, 130, 246, 0.2); }
+.liquid-glass--tint-green { background: var(--glass-tint-green); border-color: rgba(34, 197, 94, 0.2); }
+.liquid-glass--tint-purple { background: var(--glass-tint-purple); border-color: rgba(147, 51, 234, 0.2); }
+.liquid-glass--tint-pink { background: var(--glass-tint-pink); border-color: rgba(236, 72, 153, 0.2); }
+.liquid-glass--tint-orange { background: var(--glass-tint-orange); border-color: rgba(249, 115, 22, 0.2); }
+.liquid-glass--tint-red { background: var(--glass-tint-red); border-color: rgba(239, 68, 68, 0.2); }
+
+/* Hover effects */
+.liquid-glass:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Focus states */
+.liquid-glass:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .liquid-glass {
+    background: rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .liquid-glass {
+    backdrop-filter: blur(var(--glass-blur-sm));
+    -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+  }
+}
+
+/* Animation classes */
+.liquid-glass--animate {
+  animation: liquidGlassFloat 6s ease-in-out infinite;
+}
+
+@keyframes liquidGlassFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Enhanced background patterns for better glass effect */
+.liquid-glass--pattern {
+  background-image: 
+    radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+}
+
+/* Stronger glass effect for hero sections */
+.liquid-glass--hero {
+  background: rgba(255, 255, 255, 0.6) !important;
+  border: 2px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.3) !important,
+    inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+
+/* Enhanced button styles */
+.liquid-glass--button {
+  background: rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.liquid-glass--button:hover {
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Utility classes */
+.liquid-glass-card {
+  @apply liquid-glass liquid-glass--rounded p-6;
+}
+
+.liquid-glass-button {
+  @apply liquid-glass liquid-glass--pill px-6 py-3 font-medium text-white hover:bg-white/20;
+}
+
+.liquid-glass-input {
+  @apply liquid-glass liquid-glass--rounded px-4 py-2 w-full bg-transparent border-0 focus:ring-2 focus:ring-blue-500/50;
+}
+
+.liquid-glass-nav {
+  @apply liquid-glass liquid-glass--rounded p-4;
+}
+
+.liquid-glass-sidebar {
+  @apply liquid-glass liquid-glass--rounded h-full p-6;
+}
+
+.liquid-glass-modal {
+  @apply liquid-glass liquid-glass--rounded p-8 max-w-md mx-auto;
+}
+
+.liquid-glass-backdrop {
+  @apply fixed inset-0 bg-black/50 backdrop-blur-sm;
+}
+
+/* Glass blur utilities */
+.glass-blur-sm { backdrop-filter: blur(var(--glass-blur-sm)); -webkit-backdrop-filter: blur(var(--glass-blur-sm)); }
+.glass-blur-md { backdrop-filter: blur(var(--glass-blur-md)); -webkit-backdrop-filter: blur(var(--glass-blur-md)); }
+.glass-blur-lg { backdrop-filter: blur(var(--glass-blur-lg)); -webkit-backdrop-filter: blur(var(--glass-blur-lg)); }
+.glass-blur-xl { backdrop-filter: blur(var(--glass-blur-xl)); -webkit-backdrop-filter: blur(var(--glass-blur-xl)); }
+.glass-blur-2xl { backdrop-filter: blur(var(--glass-blur-2xl)); -webkit-backdrop-filter: blur(var(--glass-blur-2xl)); }
+.glass-blur-3xl { backdrop-filter: blur(var(--glass-blur-3xl)); -webkit-backdrop-filter: blur(var(--glass-blur-3xl)); }
+
+/* Gradient classes */
+.glass-gradient-blue {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
+}
+
+.glass-gradient-green {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(16, 185, 129, 0.1));
+}
+
+.glass-gradient-purple {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.1), rgba(236, 72, 153, 0.1));
+}

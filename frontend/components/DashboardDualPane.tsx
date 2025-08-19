@@ -399,18 +399,11 @@ export function DashboardDualPane({
   const renderLiveView = () => {
     if (!currentLiveViewUrl) {
       return (
-        <div className="h-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+        <div className="h-full flex items-center justify-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 p-1">
           <div className="text-center text-gray-500">
-            <Monitor className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-medium mb-2">No Live View Available</h3>
-            <p className="text-sm">Waiting for task to start and generate live view URL...</p>
-            <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
-              <p className="text-xs text-blue-700 font-medium">Debug Info:</p>
-              <p className="text-xs text-blue-600">Task ID: {taskState.taskId || 'None'}</p>
-              <p className="text-xs text-blue-600">Status: {taskState.status}</p>
-              <p className="text-xs text-blue-600">Session ID: {taskState.sessionId || 'None'}</p>
-              <p className="text-xs text-blue-600">Live View URL: {currentLiveViewUrl || 'Not set'}</p>
-            </div>
+            <Monitor className="w-20 h-20 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-xl font-medium mb-3">No Live View Available</h3>
+            <p className="text-base">Waiting for task to start and generate live view URL...</p>
           </div>
         </div>
       )
@@ -421,43 +414,30 @@ export function DashboardDualPane({
     
     if (!isValidBrowserbaseUrl) {
       return (
-        <div className="h-full flex items-center justify-center bg-yellow-50 rounded-lg border-2 border-dashed border-yellow-300">
+        <div className="h-full flex items-center justify-center bg-yellow-50 rounded-xl border-2 border-dashed border-yellow-300 p-1">
           <div className="text-center text-yellow-600">
-            <Monitor className="w-16 h-16 mx-auto mb-4 text-yellow-400" />
-            <h3 className="text-lg font-medium mb-2">Invalid Live View URL Format</h3>
-            <p className="text-sm">Expected Browserbase devtools URL format</p>
-            <div className="mt-4 p-3 bg-yellow-100 rounded border border-yellow-200">
-              <p className="text-xs text-yellow-700 font-medium">Received URL:</p>
-              <p className="text-xs text-yellow-600 break-all">{currentLiveViewUrl}</p>
-              <p className="text-xs text-yellow-600 mt-2">Expected format: https://www.browserbase.com/devtools/inspector.html?wss=...</p>
-            </div>
+            <Monitor className="w-20 h-20 mx-auto mb-4 text-yellow-400" />
+            <h3 className="text-xl font-medium mb-3">Invalid Live View URL Format</h3>
+            <p className="text-base">Expected Browserbase devtools URL format</p>
           </div>
         </div>
       )
     }
 
     return (
-      <div className="h-full bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+      <div className="h-full bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="p-2 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Monitor className="w-4 h-4 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">Live Browser View</span>
+            <Monitor className="w-3 h-3 text-gray-600" />
+            <span className="text-xs font-medium text-gray-700">Live Browser View</span>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs px-1 py-0">
               {taskState.status}
             </Badge>
-            <Button size="sm" variant="outline" onClick={handleRefreshView}>
+            <Button size="sm" variant="outline" onClick={handleRefreshView} className="h-6 px-2 text-xs">
               🔄 Refresh
             </Button>
-          </div>
-        </div>
-        
-        {/* URL Debug Info */}
-        <div className="p-2 bg-blue-50 border-b border-blue-200">
-          <div className="text-xs text-blue-700">
-            <strong>Live View URL:</strong> 
-            <span className="ml-2 break-all">{currentLiveViewUrl}</span>
           </div>
         </div>
         
@@ -491,10 +471,10 @@ export function DashboardDualPane({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <span>Datos del Ticket</span>
+                <span>Ticket Data</span>
               </CardTitle>
               <CardDescription className="text-slate-600">
-                Ingrese los datos del ticket en los campos correspondientes.
+                Enter the ticket data in the corresponding fields.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4">
@@ -794,59 +774,7 @@ export function DashboardDualPane({
                   </div>
                 )}
                 
-                {/* Debug Panel for Mobile */}
-                <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <Activity className="w-4 h-4" />
-                    Debug Info
-                  </h4>
-                  <div className="space-y-2 text-xs">
-                    <div>
-                      <span className="font-medium text-gray-600">Task ID:</span>
-                      <span className="ml-2 text-gray-800 font-mono">{taskState.taskId || 'None'}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Status:</span>
-                      <span className="ml-2 text-gray-800">{taskState.status}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Session ID:</span>
-                      <span className="ml-2 text-gray-800 font-mono">{taskState.sessionId || 'None'}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Live View URL:</span>
-                      <span className="ml-2 text-gray-800 font-mono break-all">
-                        {currentLiveViewUrl || 'Not set'}
-                      </span>
-                    </div>
-                  </div>
-                  {currentLiveViewUrl && (
-                    <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
-                      <div className="text-xs text-blue-700">
-                        <strong>URL Analysis:</strong>
-                        <div className="mt-1 space-y-1">
-                          <div>✅ Protocol: {currentLiveViewUrl.startsWith('https://') ? 'HTTPS' : 'Other'}</div>
-                          <div>✅ Domain: {currentLiveViewUrl.includes('browserbase.com') ? 'Browserbase' : 'Other'}</div>
-                          <div>✅ Path: {currentLiveViewUrl.includes('/devtools/inspector.html') ? 'DevTools Inspector' : 'Other'}</div>
-                          <div>✅ WebSocket: {currentLiveViewUrl.includes('wss=') ? 'Present' : 'Missing'}</div>
-                          <div>✅ Debug Flag: {currentLiveViewUrl.includes('debug=true') ? 'Present' : 'Missing'}</div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* WebSocket Status for Mobile */}
-                  <div className="mt-3 p-2 bg-green-50 rounded border border-green-200">
-                    <div className="text-xs text-green-700">
-                      <strong>WebSocket Status:</strong>
-                      <div className="mt-1 space-y-1">
-                        <div>✅ Connection: Active for task {taskState.taskId || 'None'}</div>
-                        <div>✅ Updates: Listening for live view URL</div>
-                        <div>✅ Fallback: API fetch after 30s if needed</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+
                 
                 {renderLiveView()}
               </CardContent>
@@ -898,117 +826,188 @@ export function DashboardDualPane({
           <ResizablePanelGroup direction="horizontal" className="h-full w-full">
             {/* Left Pane - Ticket Data Form (35% default) */}
             <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
-              <div className="h-full p-4 border-r-2 border-slate-200/40 bg-gradient-to-b from-white to-slate-50/30 min-h-0">
-                <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden">
-                  {/* Header with icon and title */}
-                  <div className="p-4 border-b border-slate-200/50 bg-gradient-to-r from-red-50 to-red-100">
+              <div className="h-full p-3 border-r-2 border-slate-200/40 bg-gradient-to-b from-white to-slate-50/30 min-h-0">
+                <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden flex flex-col">
+                  {/* Header with icon and title - Fixed height */}
+                  <div className="flex-shrink-0 p-4 border-b border-slate-200/50 bg-gradient-to-r from-red-50 to-red-100">
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                       </div>
-                      <h3 className="text-lg font-semibold text-gray-800">Datos del Ticket</h3>
+                      <h3 className="text-lg font-semibold text-gray-800">Ticket Data</h3>
                     </div>
                   </div>
                   
-                  {/* OCR Status and Success Indicator */}
-                  {ocrStatus && (
-                    <div className="p-4 border-b border-slate-200/50">
-                      <div className={`flex items-center gap-3 p-3 rounded-lg ${
-                        ocrSuccess 
-                          ? 'bg-green-50 border border-green-200 text-green-700' 
-                          : isProcessing 
-                            ? 'bg-blue-50 border border-blue-200 text-blue-700'
-                            : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
-                      }`}>
-                        <div className={`w-4 h-4 rounded-full ${
+                  {/* Scrollable Content Area - Takes remaining height */}
+                  <div className="flex-1 overflow-y-auto p-6 pb-12 space-y-6 min-h-0 min-h-[600px]">
+                    {/* OCR Status and Success Indicator */}
+                    {ocrStatus && (
+                      <div className="p-3 rounded-lg border border-slate-200/50 mb-6">
+                        <div className={`flex items-center gap-3 p-3 rounded-lg ${
                           ocrSuccess 
-                            ? 'bg-green-500' 
+                            ? 'bg-green-50 border border-green-200 text-green-700' 
                             : isProcessing 
-                              ? 'bg-blue-500 animate-pulse'
-                              : 'bg-yellow-500'
-                        }`}></div>
-                        <span className="text-sm font-medium">{ocrStatus}</span>
+                              ? 'bg-blue-50 border border-blue-200 text-blue-700'
+                              : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
+                        }`}>
+                          <div className={`w-4 h-4 rounded-full ${
+                            ocrSuccess 
+                              ? 'bg-green-500' 
+                              : isProcessing 
+                                ? 'bg-blue-500 animate-pulse'
+                                : 'bg-yellow-500'
+                          }`}></div>
+                          <span className="text-sm font-medium">{ocrStatus}</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* File Upload Section */}
+                    <div className="p-5 border border-slate-200 rounded-lg bg-slate-50 mb-6">
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Upload Ticket Image
+                          </label>
+                          <input
+                            type="file"
+                            accept="image/*,.pdf"
+                            onChange={handleFileChange}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Vendor URL (Optional)
+                          </label>
+                          <input
+                            type="url"
+                            placeholder="https://facturacion.walmartmexico.com.mx/"
+                            value={vendorUrl}
+                            onChange={(e) => setVendorUrl(e.target.value)}
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                          />
+                        </div>
+                        
+                        {selectedFile && (
+                          <div className="text-sm text-gray-600">
+                            Selected: {selectedFile.name}
+                          </div>
+                        )}
+                        
+                        <Button
+                          onClick={handleImageUpload}
+                          disabled={!selectedFile || isUploading}
+                          className="w-full bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          {isUploading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Processing...
+                            </>
+                          ) : (
+                            'Process Ticket with OCR'
+                          )}
+                        </Button>
+                        
+                        {uploadError && (
+                          <div className="text-sm text-red-600 bg-red-50 p-2 rounded border border-red-200">
+                            {uploadError}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  )}
-                  
-                  {/* Extracted Ticket Information Display - 2x2 Grid */}
-                  <div className="p-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Mesa/Folio */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Mesa/Folio</label>
-                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
-                          {ticketData['Mesa_Folio'] || 'No disponible'}
+                    
+                    {/* User Details Section (40-50% of content) */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-5 mb-6">
+                      <h4 className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        User Details
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Mesa/Folio */}
+                        <div className="bg-white border border-blue-200 rounded-lg p-3">
+                          <label className="block text-xs font-medium text-blue-700 mb-1">Mesa/Folio</label>
+                          <div className="min-h-[32px] px-3 py-2 bg-white border border-blue-200 rounded text-sm text-gray-800 break-all">
+                            {ticketData['Mesa_Folio'] || 'No disponible'}
+                          </div>
                         </div>
-                      </div>
-                      
-                      {/* Fecha */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Fecha</label>
-                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
-                          {ticketData['Fecha'] || 'No disponible'}
+                        
+                        {/* Fecha */}
+                        <div className="bg-white border border-blue-200 rounded-lg p-3">
+                          <label className="block text-xs font-medium text-blue-700 mb-1">Fecha</label>
+                          <div className="min-h-[32px] px-3 py-2 bg-white border border-blue-200 rounded text-sm text-gray-800 break-all">
+                            {ticketData['Fecha'] || 'No disponible'}
+                          </div>
                         </div>
-                      </div>
-                      
-                      {/* ID Ticket */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">ID Ticket</label>
-                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
-                          {ticketData['ID_Ticket'] || 'No disponible'}
+                        
+                        {/* ID Ticket */}
+                        <div className="bg-white border border-blue-200 rounded-lg p-3">
+                          <label className="block text-xs font-medium text-blue-700 mb-1">ID Ticket</label>
+                          <div className="min-h-[32px] px-3 py-2 bg-white border border-blue-200 rounded text-sm text-gray-800 break-all">
+                            {ticketData['ID_Ticket'] || 'No disponible'}
+                          </div>
                         </div>
-                      </div>
-                      
-                      {/* Total */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Total</label>
-                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
-                          {ticketData['Total'] || 'No disponible'}
+                        
+                        {/* Total */}
+                        <div className="bg-white border border-blue-200 rounded-lg p-3">
+                          <label className="block text-xs font-medium text-blue-700 mb-1">Total</label>
+                          <div className="min-h-[32px] px-3 py-2 bg-white border border-blue-200 rounded text-sm text-gray-800 break-all">
+                            {ticketData['Total'] || 'No disponible'}
+                          </div>
                         </div>
-                      </div>
-                      
-                      {/* Store/Branch/Plaza */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Store/Branch/Plaza</label>
-                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
-                          {ticketData['Store_Branch_Plaza'] || 'No disponible'}
+                        
+                        {/* Store/Branch/Plaza */}
+                        <div className="bg-white border border-blue-200 rounded-lg p-3">
+                          <label className="block text-xs font-medium text-blue-700 mb-1">Store/Branch/Plaza</label>
+                          <div className="min-h-[32px] px-3 py-2 bg-white border border-blue-200 rounded text-sm text-gray-800 break-all">
+                            {ticketData['Store_Branch_Plaza'] || 'No disponible'}
+                          </div>
                         </div>
-                      </div>
-                      
-                      {/* Register/Station/Terminal */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Register/Station/Terminal</label>
-                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
-                          {ticketData['Register_Station_Terminal'] || 'No disponible'}
+                        
+                        {/* Register/Station/Terminal */}
+                        <div className="bg-white border border-blue-200 rounded-lg p-3">
+                          <label className="block text-xs font-medium text-blue-700 mb-1">Register/Station/Terminal</label>
+                          <div className="min-h-[32px] px-3 py-2 bg-white border border-blue-200 rounded text-sm text-gray-800 break-all">
+                            {ticketData['Register_Station_Terminal'] || 'No disponible'}
+                          </div>
                         </div>
-                      </div>
-                      
-                      {/* Payment Type */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Payment Type</label>
-                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
-                          {ticketData['Payment_Type'] || 'No disponible'}
+                        
+                        {/* Payment Type */}
+                        <div className="bg-white border border-blue-200 rounded-lg p-3">
+                          <label className="block text-xs font-medium text-blue-700 mb-1">Payment Type</label>
+                          <div className="min-h-[32px] px-3 py-2 bg-white border border-blue-200 rounded text-sm text-gray-800 break-all">
+                            {ticketData['Payment_Type'] || 'No disponible'}
+                          </div>
                         </div>
-                      </div>
-                      
-                      {/* Last 4 digits of card */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Card Last 4 Digits</label>
-                        <div className="min-h-[40px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800">
-                          {ticketData['Card_Last_4_Digits'] || 'No disponible'}
+                        
+                        {/* Last 4 digits of card */}
+                        <div className="bg-white border border-blue-200 rounded-lg p-3">
+                          <label className="block text-xs font-medium text-blue-700 mb-1">Card Last 4 Digits</label>
+                          <div className="min-h-[32px] px-3 py-2 bg-white border border-blue-200 rounded text-sm text-gray-800 break-all">
+                            {ticketData['Card_Last_4_Digits'] || 'No disponible'}
+                          </div>
                         </div>
                       </div>
                     </div>
                     
-                    {/* Full Raw Text Display - New Component */}
-                    <div className="mt-4">
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Full Raw Text</label>
-                        <div className="min-h-[120px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800 overflow-y-auto">
+                    {/* Raw OCR Text Section (30-35% of content) */}
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-4">
+                      <h4 className="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Raw OCR Text
+                      </h4>
+                      <div className="bg-white border border-green-200 rounded-xl p-4">
+                        <div className="max-h-[200px] overflow-y-auto pr-2 pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                           {rawText ? (
-                            <pre className="whitespace-pre-wrap text-xs leading-relaxed">
+                            <pre className="whitespace-pre-wrap text-xs leading-relaxed text-gray-800 break-all">
                               {rawText}
                             </pre>
                           ) : (
@@ -1018,17 +1017,8 @@ export function DashboardDualPane({
                       </div>
                     </div>
                     
-                    {/* Raw Text Display for Debugging */}
-                    {rawText && (
-                      <div className="mt-4 p-4 border border-slate-200 rounded-lg bg-slate-50">
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Raw OCR Text</h4>
-                        <div className="max-h-32 overflow-y-auto">
-                          <pre className="text-xs text-gray-600 whitespace-pre-wrap bg-white p-2 rounded border">
-                            {rawText}
-                          </pre>
-                        </div>
-                      </div>
-                    )}
+                    {/* Bottom Spacer - Reduced for better spacing */}
+                    <div className="h-8"></div>
                   </div>
                 </div>
               </div>
@@ -1036,41 +1026,43 @@ export function DashboardDualPane({
 
             <ResizableHandle withHandle className="w-2 bg-gradient-to-b from-pink-100 to-rose-100 hover:bg-gradient-to-b hover:from-pink-200 hover:to-rose-200 transition-all duration-200" />
 
-            {/* Right Pane - Live View with URL Input (65% default) */}
+            {/* Right Pane - Live Browser View (65% default) */}
             <ResizablePanel defaultSize={65} minSize={50} maxSize={75}>
-              <div className="h-full p-4 bg-gradient-to-b from-white to-slate-50/30 min-h-0">
-                <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden">
+              <div className="h-full p-3 bg-gradient-to-b from-white to-slate-50/30 min-h-0">
+                <div className="h-full bg-white rounded-xl border border-slate-200/50 shadow-sm overflow-hidden">
                   <div className="h-full flex flex-col">
-                    {/* Live View URL Input Header */}
-                    <div className="p-4 border-b border-gray-200 bg-gray-50">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-lg font-semibold flex items-center gap-2">
-                          <ExternalLink className="w-5 h-5" />
-                          Live View URL
+                    {/* Live View URL Input Header - Ultra Compact */}
+                    <div className="flex-shrink-0 p-2 border-b border-gray-200 bg-gray-50 mb-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-sm font-semibold flex items-center gap-2">
+                          <ExternalLink className="w-4 h-4" />
+                          Live Browser View
                         </h3>
                         <Button 
                           size="sm" 
                           variant="outline" 
                           onClick={handleRefreshLiveView}
                           disabled={!currentLiveViewUrl}
+                          className="h-6 px-2 text-xs"
                         >
-                          <RefreshCw className="w-4 h-4 mr-1" />
+                          <RefreshCw className="w-3 h-3 mr-1" />
                           Refresh
                         </Button>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 mb-1">
                         <Input
                           type="url"
-                          placeholder="Enter live view URL (e.g., https://browserbase.com/devtools/inspector.html?wss=...)"
+                          placeholder="Enter live view URL..."
                           value={currentLiveViewUrl || ''}
                           onChange={(e) => setCurrentLiveViewUrl(e.target.value)}
-                          className="flex-1"
+                          className="flex-1 h-7 text-xs"
                         />
                         <Button 
                           size="sm" 
                           variant="default"
                           onClick={handleUpdateLiveViewUrl}
                           disabled={!currentLiveViewUrl}
+                          className="h-7 px-2 text-xs"
                         >
                           Update
                         </Button>
@@ -1081,100 +1073,49 @@ export function DashboardDualPane({
                             setCurrentLiveViewUrl('')
                             console.log('Live view URL cleared')
                           }}
+                          className="h-7 px-2 text-xs"
                         >
                           Clear
                         </Button>
                       </div>
                       {currentLiveViewUrl && (
-                        <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded mt-2">
+                        <div className="text-xs text-gray-600 bg-gray-50 p-1 rounded border border-gray-200">
                           <strong>Current URL:</strong> {currentLiveViewUrl}
                         </div>
                       )}
                     </div>
                     
-                    {/* Live View Iframe */}
-                    <div className="flex-1 p-4">
-                       {/* Status Indicator */}
-                       {taskState.status === 'connecting' && (
-                         <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                           <div className="flex items-center gap-2 text-blue-700">
-                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700"></div>
-                             <span className="text-sm font-medium">Connecting to Browserbase...</span>
-                           </div>
-                           <p className="text-xs text-blue-600 mt-1">
-                             Creating session and generating live view URL. Waiting for WebSocket updates...
-                           </p>
-                         </div>
-                       )}
-                       
-                       {taskState.status === 'running' && !currentLiveViewUrl && (
-                         <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                           <div className="flex items-center gap-2 text-yellow-700">
-                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-700"></div>
-                             <span className="text-sm font-medium">Task Running - Waiting for Live View URL</span>
-                           </div>
-                           <p className="text-xs text-yellow-600 mt-1">
-                             The task is executing. Live view URL will be received via WebSocket shortly...
-                           </p>
-                         </div>
-                       )}
+                    {/* Live View Content - Takes maximum height with minimal padding */}
+                    <div className="flex-1 p-1 overflow-hidden min-h-0">
+                      {/* Status Indicators - Ultra Compact */}
+                      {taskState.status === 'connecting' && (
+                        <div className="mb-2 p-2 bg-blue-50 rounded border border-blue-200">
+                          <div className="flex items-center gap-2 text-blue-700 mb-1">
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700"></div>
+                            <span className="text-xs font-medium">Connecting to Browserbase...</span>
+                          </div>
+                          <p className="text-xs text-blue-600">
+                            Creating session and generating live view URL...
+                          </p>
+                        </div>
+                      )}
                       
-                      {/* Debug Panel */}
-                      <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                        <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                          <Activity className="w-4 h-4" />
-                          Live View Debug Information
-                        </h4>
-                        <div className="grid grid-cols-2 gap-3 text-xs">
-                          <div>
-                            <span className="font-medium text-gray-600">Task ID:</span>
-                            <span className="ml-2 text-gray-800 font-mono">{taskState.taskId || 'None'}</span>
+                      {taskState.status === 'running' && !currentLiveViewUrl && (
+                        <div className="mb-2 p-2 bg-yellow-50 rounded border border-yellow-200">
+                          <div className="flex items-center gap-2 text-yellow-700 mb-1">
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-700"></div>
+                            <span className="text-xs font-medium">Task Running - Waiting for Live View URL</span>
                           </div>
-                          <div>
-                            <span className="font-medium text-gray-600">Status:</span>
-                            <span className="ml-2 text-gray-800">{taskState.status}</span>
-                          </div>
-                          <div>
-                            <span className="font-medium text-gray-600">Session ID:</span>
-                            <span className="ml-2 text-gray-800 font-mono">{taskState.sessionId || 'None'}</span>
-                          </div>
-                          <div>
-                            <span className="font-medium text-gray-600">Live View URL:</span>
-                            <span className="ml-2 text-gray-800 font-mono break-all">
-                              {currentLiveViewUrl || 'Not set'}
-                            </span>
-                          </div>
+                          <p className="text-xs text-blue-600">
+                            The task is executing. Live view URL will be received shortly...
+                          </p>
                         </div>
-                        
-                        {/* WebSocket Status */}
-                        <div className="mt-3 p-2 bg-green-50 rounded border border-green-200">
-                          <div className="text-xs text-green-700">
-                            <strong>WebSocket Status:</strong>
-                            <div className="mt-1">
-                              <div>✅ Connection: Active for task {taskState.taskId || 'None'}</div>
-                              <div>✅ Updates: Listening for live view URL</div>
-                              <div>✅ Fallback: API fetch after 30s if needed</div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {currentLiveViewUrl && (
-                          <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
-                            <div className="text-xs text-blue-700">
-                              <strong>URL Analysis:</strong>
-                              <div className="mt-1">
-                                <div>✅ Protocol: {currentLiveViewUrl.startsWith('https://') ? 'HTTPS' : 'Other'}</div>
-                                <div>✅ Domain: {currentLiveViewUrl.includes('browserbase.com') ? 'Browserbase' : 'Other'}</div>
-                                <div>✅ Path: {currentLiveViewUrl.includes('/devtools/inspector.html') ? 'DevTools Inspector' : 'Other'}</div>
-                                <div>✅ WebSocket: {currentLiveViewUrl.includes('wss=') ? 'Present' : 'Missing'}</div>
-                                <div>✅ Debug Flag: {currentLiveViewUrl.includes('debug=true') ? 'Present' : 'Missing'}</div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                      )}
+                      
+                      {/* Live View Iframe - Takes maximum available height */}
+                      <div className="flex-1 min-h-0">
+                        {renderLiveView()}
                       </div>
-                      
-                      {renderLiveView()}
                     </div>
                   </div>
                 </div>

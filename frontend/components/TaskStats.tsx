@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -124,10 +125,10 @@ export function TaskStats({ refreshTrigger = 0 }: TaskStatsProps) {
   if (loading) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-8">
+        <div className="flex items-center justify-center py-8">
           <LoadingSpinner size="lg" />
           <span className="ml-2">{t('common.loading')}</span>
-        </CardContent>
+        </div>
       </Card>
     );
   }
@@ -135,12 +136,12 @@ export function TaskStats({ refreshTrigger = 0 }: TaskStatsProps) {
   if (error) {
     return (
       <Card className="border-red-200">
-        <CardContent className="pt-6">
+        <div className="pt-6">
           <div className="flex items-center gap-2 text-red-600">
             <AlertCircle className="w-4 h-4" />
             <span>{error}</span>
           </div>
-        </CardContent>
+        </div>
       </Card>
     );
   }
@@ -149,20 +150,20 @@ export function TaskStats({ refreshTrigger = 0 }: TaskStatsProps) {
     return (
       <div className="space-y-4">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <div className="pb-4">
+            <h3 className="flex items-center gap-2 text-lg font-semibold">
               <BarChart3 className="w-5 h-5" />
               {t('dashboard.statistics')}
-            </CardTitle>
-            <CardDescription>
+            </h3>
+            <p className="text-slate-600">
               {t('dashboard.statsDescription')}
-            </CardDescription>
-          </CardHeader>
+            </p>
+          </div>
         </Card>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, index) => (
             <Card key={index} className="hover:shadow-sm transition-shadow">
-              <CardContent className="pt-6">
+              <div className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Loading...</p>
@@ -172,7 +173,7 @@ export function TaskStats({ refreshTrigger = 0 }: TaskStatsProps) {
                     <div className="w-5 h-5 bg-gray-300 rounded"></div>
                   </div>
                 </div>
-              </CardContent>
+              </div>
             </Card>
           ))}
         </div>
@@ -228,15 +229,15 @@ export function TaskStats({ refreshTrigger = 0 }: TaskStatsProps) {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <div className="pb-4">
+          <h3 className="flex items-center gap-2 text-lg font-semibold">
             <BarChart3 className="w-5 h-5" />
             {t('dashboard.statistics')}
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-slate-600">
             {t('dashboard.statsDescription')}
-          </CardDescription>
-        </CardHeader>
+          </p>
+        </div>
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -244,17 +245,17 @@ export function TaskStats({ refreshTrigger = 0 }: TaskStatsProps) {
           const Icon = stat.icon;
           return (
             <Card key={index} className="hover:shadow-sm transition-shadow">
-              <CardContent className="pt-6">
+              <div className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">{stat.title}</p>
                     <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
                   </div>
-                  <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                  <div className="p-2 rounded-lg bg-gray-50">
                     <Icon className={`w-5 h-5 ${stat.color}`} />
                   </div>
                 </div>
-              </CardContent>
+              </div>
             </Card>
           );
         })}
@@ -262,7 +263,7 @@ export function TaskStats({ refreshTrigger = 0 }: TaskStatsProps) {
 
       {stats.total > 0 && (
         <Card>
-          <CardContent className="pt-6">
+          <div className="pt-6">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>{t('dashboard.stats.breakdown')}</span>
@@ -336,7 +337,7 @@ export function TaskStats({ refreshTrigger = 0 }: TaskStatsProps) {
                 )}
               </div>
             </div>
-          </CardContent>
+          </div>
         </Card>
       )}
     </div>

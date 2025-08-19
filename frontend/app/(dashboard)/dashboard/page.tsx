@@ -180,13 +180,13 @@ function DashboardContent() {
   const hasProfile = !!profile
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-slate-200/50">
         <div className="w-full mx-auto px-2 sm:px-4 lg:px-6">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg">
                 <FileText className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -199,7 +199,7 @@ function DashboardContent() {
             
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2 bg-white/60 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-200/50">
-                <div className="w-8 h-8 bg-gradient-to-r from-pink-400 to-rose-400 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full flex items-center justify-center">
                   <User className="w-4 h-4 text-white" />
                 </div>
                 <span className="text-sm font-medium text-slate-700">
@@ -225,13 +225,13 @@ function DashboardContent() {
       <main className="w-full mx-auto px-2 sm:px-4 lg:px-6 py-8">
         {/* Welcome Section */}
         <div className="mb-6">
-          <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-xl p-6 text-white shadow-lg">
+          <div className="bg-gradient-to-r from-blue-400 to-indigo-400 rounded-xl p-6 text-white shadow-lg">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold mb-2">
                   {t('dashboard.welcome')}, {displayName}! 👋
                 </h2>
-                <p className="text-pink-100 text-base">
+                                  <p className="text-blue-100 text-base">
                   {t('dashboard.subtitle')}
                 </p>
               </div>
@@ -264,18 +264,7 @@ function DashboardContent() {
                 className="h-full w-full"
                 initialTicketData={extractedTicketData}
               />
-              {/* Debug info */}
-              {extractedTicketData && (
-                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <h4 className="text-sm font-medium text-blue-700 mb-2">Debug: Data being passed to Dual Pane</h4>
-                  <div className="text-xs text-blue-600">
-                    <div>Keys: {Object.keys(extractedTicketData).join(', ')}</div>
-                    <div>Raw text length: {extractedTicketData.raw_text?.length || extractedTicketData.Full_Raw_Text?.length || 'N/A'}</div>
-                    <div>Mesa_Folio: {extractedTicketData.Mesa_Folio || extractedTicketData.mesa_folio || 'N/A'}</div>
-                    <div>Fecha: {extractedTicketData.Fecha || extractedTicketData.fecha || 'N/A'}</div>
-                  </div>
-                </div>
-              )}
+
             </div>
           ) : (
               <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm mb-6">
