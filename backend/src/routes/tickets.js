@@ -48,7 +48,7 @@ function generateTicketId() {
 async function runPythonOCR(imagePath) {
   try {
     // Use the standalone Python script
-    const pythonExec = process.env.PYTHON_EXECUTABLE || 'python'
+    const pythonExec = process.env.PYTHON_EXECUTABLE || 'python3'
     const ocrScriptPath = path.resolve(__dirname, '..', 'services', 'run_ocr.py')
     const backendDir = path.resolve(__dirname, '..')
     
@@ -56,11 +56,12 @@ async function runPythonOCR(imagePath) {
     console.log(`[OCR] Backend directory: ${backendDir}`)
     console.log(`[OCR] Image path: ${imagePath}`)
     console.log(`[OCR] Current working directory: ${process.cwd()}`)
+    console.log(`[OCR] Python executable: ${pythonExec}`)
     
     console.log(`[OCR] Executing Python script...`)
     
     // Execute the standalone Python script
-    const result = execSync(`${pythonExec} "${ocrScriptPath}" "${imagePath}"`, { 
+    const result = execSync(`"${pythonExec}" "${ocrScriptPath}" "${imagePath}"`, { 
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: true,
@@ -93,9 +94,17 @@ async function runPythonOCR(imagePath) {
     return ocrResult
     
   } catch (error) {
-    console.error(`[OCR] Execution error: ${error.message}`)
-    console.error(`[OCR] Error details:`, error)
-    throw new Error(`OCR processing failed: ${error.message}`)
+    console.error(`[OCR] Azure OCR failed: ${error.message}`)
+    
+    // Return error information instead of demo data
+    const errorData = {
+      error: error.message,
+      success: false,
+      note: "OCR processing failed - please check Azure credentials and try again"
+    }
+    
+    console.log(`[OCR] Error occurred for: ${imagePath}`)
+    return errorData
   }
 }
 
@@ -113,6 +122,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     let ocrData = null
     try {
       ocrData = await runPythonOCR(imagePath)
+      
+      // Check if OCR returned an error
+      if (ocrData && ocrData.error) {
+        throw new Error(ocrData.error)
+      }
+      
     } catch (e) {
       // If OCR fails, still return minimal info with status FAILED
       console.error('OCR invocation failed:', e)
@@ -142,7 +157,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           },
           vendor_url: vendorUrl,
           extracted_data: null,
-          message: 'OCR processing failed'
+          message: 'OCR processing failed: ' + e.message
         }
       })
     }

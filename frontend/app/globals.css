@@ -2,8 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom scrollbar styles for better UX */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Ensure proper text wrapping in pre elements */
+pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Ensure proper page scrolling */
+html, body {
+  height: 100%;
+  overflow-x: hidden;
+}
+
+/* Main container scrolling */
+main {
+  min-height: 100vh;
+  overflow-y: auto;
+}
+
 body {
   font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  overflow-y: auto;
 }
 
 @layer utilities {

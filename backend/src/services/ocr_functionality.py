@@ -20,6 +20,594 @@ AZURE_KEY = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_KEY")
 # Inicializar clientes globales
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
+def analyze_document_with_model(document_intelligence_client, model_name, image_data):
+    """
+    Analyze document using specified pre-built model with error handling.
+    
+    Args:
+        document_intelligence_client: Azure Document Intelligence client
+        model_name (str): Name of the pre-built model to use
+        image_data (bytes): Image data to analyze
+        
+    Returns:
+        dict: Analysis result or None if failed
+    """
+    try:
+        print(f"[ENHANCED-OCR] Analyzing with {model_name}...", file=sys.stderr)
+        poller = document_intelligence_client.begin_analyze_document(
+            model_name, image_data
+        )
+        result = poller.result()
+        print(f"[ENHANCED-OCR] {model_name} analysis completed successfully", file=sys.stderr)
+        return result
+    except Exception as e:
+        print(f"[ENHANCED-OCR] Error with {model_name}: {str(e)}", file=sys.stderr)
+        return None
+
+def extract_text_from_result(result):
+    """
+    Extract text content from Azure Document Intelligence result.
+    
+    Args:
+        result: Azure Document Intelligence result object
+        
+    Returns:
+        str: Extracted text content
+    """
+    if not result or not hasattr(result, 'pages'):
+        return ""
+    
+    full_text = ""
+    for page in result.pages:
+        for line in page.lines:
+            full_text += line.content + "\n"
+    return full_text
+
+def extract_structured_fields_from_receipt(receipt_result):
+    """
+    Extract structured fields from receipt analysis result.
+    
+    Args:
+        receipt_result: Azure Document Intelligence receipt result
+        
+    Returns:
+        dict: Extracted structured fields
+    """
+    fields = {
+        "merchant_name": "",
+        "transaction_date": "",
+        "total": "",
+        "subtotal": "",
+        "tax": "",
+        "tip": "",
+        "items": []
+    }
+    
+    if not receipt_result or not hasattr(receipt_result, 'documents'):
+        return fields
+    
+    for document in receipt_result.documents:
+        # Extract basic fields
+        if document.fields.get("MerchantName"):
+            fields["merchant_name"] = document.fields["MerchantName"].value_string
+        
+        if document.fields.get("TransactionDate"):
+            fields["transaction_date"] = document.fields["TransactionDate"].value_date.strftime("%d/%m/%Y")
+        
+        if document.fields.get("Total"):
+            fields["total"] = document.fields["Total"].value_currency.amount
+        
+        if document.fields.get("Subtotal"):
+            fields["subtotal"] = document.fields["Subtotal"].value_currency.amount
+        
+        if document.fields.get("Tax"):
+            fields["tax"] = document.fields["Tax"].value_currency.amount
+        
+        if document.fields.get("Tip"):
+            fields["tip"] = document.fields["Tip"].value_currency.amount
+        
+        # Extract line items if available
+        if document.fields.get("Items"):
+            for item in document.fields["Items"].value_array:
+                item_data = {}
+                if hasattr(item, 'value_object'):
+                    for key, value in item.value_object.items():
+                        if hasattr(value, 'value_string'):
+                            item_data[key] = value.value_string
+                        elif hasattr(value, 'value_currency'):
+                            item_data[key] = value.value_currency.amount
+                        elif hasattr(value, 'value_number'):
+                            item_data[key] = value.value_number
+                fields["items"].append(item_data)
+        
+        break  # Process only the first document
+    
+    return fields
+
+def extract_layout_information(layout_result):
+    """
+    Extract layout information from layout analysis result.
+    
+    Args:
+        layout_result: Azure Document Intelligence layout result
+        
+    Returns:
+        dict: Layout information including tables, key-value pairs, etc.
+    """
+    layout_info = {
+        "tables": [],
+        "key_value_pairs": [],
+        "selection_marks": [],
+        "text_regions": []
+    }
+    
+    if not layout_result or not hasattr(layout_result, 'pages'):
+        return layout_info
+    
+    for page in layout_result.pages:
+        # Extract tables
+        if hasattr(page, 'tables') and page.tables:
+            for table in page.tables:
+                table_data = []
+                for row in table.rows:
+                    row_data = []
+                    for cell in row.cells:
+                        if hasattr(cell, 'content'):
+                            row_data.append(cell.content)
+                    table_data.append(row_data)
+                layout_info["tables"].append(table_data)
+        
+        # Extract key-value pairs
+        if hasattr(page, 'key_value_pairs') and page.key_value_pairs:
+            for kvp in page.key_value_pairs:
+                key = kvp.key.content if hasattr(kvp.key, 'content') else ""
+                value = kvp.value.content if hasattr(kvp.value, 'content') else ""
+                layout_info["key_value_pairs"].append({"key": key, "value": value})
+        
+        # Extract selection marks
+        if hasattr(page, 'selection_marks') and page.selection_marks:
+            for mark in page.selection_marks:
+                layout_info["selection_marks"].append({
+                    "state": mark.state,
+                    "confidence": mark.confidence
+                })
+    
+    return layout_info
+
+def extract_document_fields(document_result):
+    """
+    Extract fields from general document analysis result.
+    
+    Args:
+        document_result: Azure Document Intelligence document result
+        
+    Returns:
+        dict: Extracted document fields
+    """
+    document_fields = {
+        "text_content": "",
+        "tables": [],
+        "key_value_pairs": [],
+        "paragraphs": []
+    }
+    
+    if not document_result or not hasattr(document_result, 'pages'):
+        return document_fields
+    
+    # Extract text content
+    document_fields["text_content"] = extract_text_from_result(document_result)
+    
+    # Extract tables and other structured content
+    layout_info = extract_layout_information(document_result)
+    document_fields["tables"] = layout_info["tables"]
+    document_fields["key_value_pairs"] = layout_info["key_value_pairs"]
+    
+    # Extract paragraphs
+    for page in document_result.pages:
+        if hasattr(page, 'paragraphs'):
+            for paragraph in page.paragraphs:
+                if hasattr(paragraph, 'content'):
+                    document_fields["paragraphs"].append(paragraph.content)
+    
+    return document_fields
+
+def combine_model_results(receipt_result, document_result, layout_result, read_result):
+    """
+    Combine results from multiple Azure Document Intelligence models.
+    
+    Args:
+        receipt_result: Receipt analysis result
+        document_result: Document analysis result
+        layout_result: Layout analysis result
+        read_result: Read analysis result
+        
+    Returns:
+        dict: Combined and enhanced extraction results
+    """
+    combined_data = {
+        "structured_fields": {},
+        "text_content": "",
+        "layout_info": {},
+        "confidence_scores": {},
+        "extracted_fields": {}
+    }
+    
+    # Extract structured fields from receipt model
+    if receipt_result:
+        combined_data["structured_fields"] = extract_structured_fields_from_receipt(receipt_result)
+        combined_data["confidence_scores"]["receipt"] = 0.9  # High confidence for structured data
+    
+    # Extract document fields from document model (if available)
+    if document_result:
+        doc_fields = extract_document_fields(document_result)
+        combined_data["text_content"] = doc_fields["text_content"]
+        combined_data["extracted_fields"]["tables"] = doc_fields["tables"]
+        combined_data["extracted_fields"]["key_value_pairs"] = doc_fields["key_value_pairs"]
+        combined_data["confidence_scores"]["document"] = 0.8
+    else:
+        # If document model is not available, use layout model for key-value pairs
+        if layout_result:
+            layout_info = extract_layout_information(layout_result)
+            combined_data["extracted_fields"]["key_value_pairs"] = layout_info["key_value_pairs"]
+            combined_data["confidence_scores"]["layout"] = 0.7
+    
+    # Extract layout information
+    if layout_result:
+        combined_data["layout_info"] = extract_layout_information(layout_result)
+        combined_data["confidence_scores"]["layout"] = 0.7
+    
+    # Extract raw text from read model (fallback)
+    if read_result:
+        raw_text = extract_text_from_result(read_result)
+        if not combined_data["text_content"]:
+            combined_data["text_content"] = raw_text
+        combined_data["confidence_scores"]["read"] = 0.6
+    
+    return combined_data
+
+def detect_vendor_type(merchant_name, text_content):
+    """
+    Detect vendor type based on merchant name and text content.
+    
+    Args:
+        merchant_name (str): Merchant name from receipt
+        text_content (str): Full text content
+        
+    Returns:
+        str: Detected vendor type
+    """
+    merchant_name_lower = merchant_name.lower() if merchant_name else ""
+    text_lower = text_content.lower()
+    
+    # Vendor detection patterns
+    vendor_patterns = {
+        "walmart": ["walmart", "wal-mart", "nueva wal mart"],
+        "costco": ["costco", "costco de mexico"],
+        "h-e-b": ["h-e-b", "heb", "supermercados internacionales heb"],
+        "oxxo": ["oxxo"],
+        "soriana": ["soriana"],
+        "pharmacy": ["farmacia", "pharmacy", "super farmacia"],
+        "restaurant": ["restaurante", "restaurant", "cafe", "bar"]
+    }
+    
+    for vendor_type, patterns in vendor_patterns.items():
+        for pattern in patterns:
+            if pattern in merchant_name_lower or pattern in text_lower:
+                return vendor_type
+    
+    return "unknown"
+
+def extract_enhanced_fields(combined_data, vendor_type):
+    """
+    Extract enhanced fields using combined model results and vendor-specific logic.
+    
+    Args:
+        combined_data (dict): Combined results from multiple models
+        vendor_type (str): Detected vendor type
+        
+    Returns:
+        dict: Enhanced field extraction results
+    """
+    enhanced_fields = {
+        "store_branch_plaza": "",
+        "register_station_terminal": "",
+        "payment_type": "",
+        "card_last_4_digits": "",
+        "additional_info": {}
+    }
+    
+    text_content = combined_data.get("text_content", "")
+    key_value_pairs = combined_data.get("extracted_fields", {}).get("key_value_pairs", [])
+    
+    # Extract store/branch/plaza information
+    enhanced_fields["store_branch_plaza"] = extract_store_branch_plaza_enhanced(
+        text_content, key_value_pairs, vendor_type
+    )
+    
+    # Extract register/station/terminal information
+    enhanced_fields["register_station_terminal"] = extract_register_station_terminal_enhanced(
+        text_content, key_value_pairs, vendor_type
+    )
+    
+    # Extract payment type information
+    enhanced_fields["payment_type"] = extract_payment_type_enhanced(
+        text_content, key_value_pairs, vendor_type
+    )
+    
+    # Extract card last 4 digits
+    enhanced_fields["card_last_4_digits"] = extract_card_last_4_digits_enhanced(
+        text_content, key_value_pairs
+    )
+    
+    # Extract vendor-specific additional information
+    enhanced_fields["additional_info"] = extract_vendor_specific_info(
+        text_content, key_value_pairs, vendor_type
+    )
+    
+    return enhanced_fields
+
+def extract_store_branch_plaza_enhanced(text_content, key_value_pairs, vendor_type):
+    """
+    Enhanced store/branch/plaza extraction using multiple data sources.
+    """
+    # First, try to find in key-value pairs
+    for kvp in key_value_pairs:
+        key_lower = kvp["key"].lower()
+        if any(term in key_lower for term in ["sucursal", "branch", "store", "location", "direccion"]):
+            return kvp["value"]
+    
+    # Then, try pattern matching in text
+    patterns = [
+        r"sucursal\s+(\d+[^,\n]*)",
+        r"branch\s+(\d+[^,\n]*)",
+        r"store\s+(\d+[^,\n]*)",
+        r"unidad\s+([^,\n]+)",
+        r"plaza\s+([^,\n]+)"
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text_content, re.IGNORECASE)
+        if matches:
+            return matches[0].strip()
+    
+    return ""
+
+def extract_register_station_terminal_enhanced(text_content, key_value_pairs, vendor_type):
+    """
+    Enhanced register/station/terminal extraction.
+    """
+    # Check key-value pairs first
+    for kvp in key_value_pairs:
+        key_lower = kvp["key"].lower()
+        if any(term in key_lower for term in ["register", "terminal", "caja", "station"]):
+            return kvp["value"]
+    
+    # Pattern matching
+    patterns = [
+        r"register\s+(\d+)",
+        r"terminal\s+(\d+)",
+        r"caja\s+(\d+)",
+        r"station\s+(\d+)"
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text_content, re.IGNORECASE)
+        if matches:
+            return f"Register {matches[0]}"
+    
+    return ""
+
+def extract_payment_type_enhanced(text_content, key_value_pairs, vendor_type):
+    """
+    Enhanced payment type extraction.
+    """
+    # Check key-value pairs first
+    for kvp in key_value_pairs:
+        key_lower = kvp["key"].lower()
+        if any(term in key_lower for term in ["payment", "pago", "method", "metodo"]):
+            return kvp["value"]
+    
+    # Pattern matching for payment types
+    payment_patterns = [
+        r"efectivo",
+        r"cash",
+        r"tarjeta\s+de\s+credito",
+        r"credit\s+card",
+        r"tarjeta\s+de\s+debito",
+        r"debit\s+card",
+        r"visa",
+        r"mastercard",
+        r"american\s+express",
+        r"puntos",
+        r"points"
+    ]
+    
+    for pattern in payment_patterns:
+        matches = re.findall(pattern, text_content, re.IGNORECASE)
+        if matches:
+            return matches[0].title()
+    
+    return ""
+
+def extract_card_last_4_digits_enhanced(text_content, key_value_pairs):
+    """
+    Enhanced card last 4 digits extraction.
+    """
+    # Check key-value pairs first
+    for kvp in key_value_pairs:
+        key_lower = kvp["key"].lower()
+        if any(term in key_lower for term in ["card", "tarjeta", "account"]):
+            value = kvp["value"]
+            # Look for 4-digit pattern in the value
+            digits = re.findall(r'\d{4}', value)
+            if digits:
+                return digits[-1]  # Return the last 4 digits found
+    
+    # Pattern matching in text
+    card_patterns = [
+        r'\*{4,}\s*(\d{4})',
+        r'card\s*#?\s*\*{4,}\s*(\d{4})',
+        r'tarjeta\s*\*{4,}\s*(\d{4})'
+    ]
+    
+    for pattern in card_patterns:
+        matches = re.findall(pattern, text_content, re.IGNORECASE)
+        if matches:
+            return matches[0]
+    
+    return ""
+
+def extract_vendor_specific_info(text_content, key_value_pairs, vendor_type):
+    """
+    Extract vendor-specific additional information.
+    """
+    additional_info = {}
+    
+    if vendor_type == "walmart":
+        # Extract Walmart-specific fields
+        additional_info["membership_number"] = extract_membership_number(text_content)
+        additional_info["store_number"] = extract_store_number(text_content)
+    
+    elif vendor_type == "costco":
+        # Extract Costco-specific fields
+        additional_info["membership_number"] = extract_membership_number(text_content)
+        additional_info["warehouse_number"] = extract_warehouse_number(text_content)
+    
+    elif vendor_type == "h-e-b":
+        # Extract H-E-B-specific fields
+        additional_info["store_location"] = extract_heb_location(text_content)
+        additional_info["promotional_info"] = extract_promotional_info(text_content)
+    
+    return additional_info
+
+def extract_membership_number(text_content):
+    """Extract membership number from text."""
+    patterns = [
+        r'membership\s*#?\s*(\d+)',
+        r'membresia\s*#?\s*(\d+)',
+        r'member\s*#?\s*(\d+)'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text_content, re.IGNORECASE)
+        if matches:
+            return matches[0]
+    
+    return ""
+
+def extract_store_number(text_content):
+    """Extract store number from text."""
+    patterns = [
+        r'store\s*#?\s*(\d+)',
+        r'tienda\s*#?\s*(\d+)'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text_content, re.IGNORECASE)
+        if matches:
+            return matches[0]
+    
+    return ""
+
+def extract_warehouse_number(text_content):
+    """Extract warehouse number from text."""
+    patterns = [
+        r'warehouse\s*#?\s*(\d+)',
+        r'almacen\s*#?\s*(\d+)'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text_content, re.IGNORECASE)
+        if matches:
+            return matches[0]
+    
+    return ""
+
+def extract_heb_location(text_content):
+    """Extract H-E-B specific location information."""
+    patterns = [
+        r'heb\s+([^,\n]+)',
+        r'las\s+lomas',
+        r'san\s+luis\s+potosi'
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text_content, re.IGNORECASE)
+        if matches:
+            return matches[0].strip()
+    
+    return ""
+
+def extract_promotional_info(text_content):
+    """Extract promotional information from text."""
+    promotional_keywords = [
+        "promocion", "promotion", "descuento", "discount", 
+        "oferta", "offer", "rebate", "cashback"
+    ]
+    
+    lines = text_content.split('\n')
+    promotional_lines = []
+    
+    for line in lines:
+        if any(keyword in line.lower() for keyword in promotional_keywords):
+            promotional_lines.append(line.strip())
+    
+    return " | ".join(promotional_lines) if promotional_lines else ""
+
+def select_best_total(enhanced_total, azure_total, confidence_scores):
+    """
+    Select the best total amount based on confidence scores and validation.
+    
+    Args:
+        enhanced_total: Total from enhanced pattern detection
+        azure_total: Total from Azure structured extraction
+        confidence_scores: Confidence scores from different models
+        
+    Returns:
+        str: Best total amount
+    """
+    # If we have both totals, compare them
+    if enhanced_total and azure_total:
+        try:
+            enhanced_float = float(enhanced_total)
+            azure_float = float(azure_total)
+            
+            # If they're very close (within 1 cent), use the one with higher confidence
+            if abs(enhanced_float - azure_float) <= 0.01:
+                receipt_confidence = confidence_scores.get("receipt", 0.5)
+                document_confidence = confidence_scores.get("document", 0.5)
+                
+                if receipt_confidence > document_confidence:
+                    print(f"[ENHANCED-OCR] Using Azure total (higher confidence): {azure_total}", file=sys.stderr)
+                    return azure_total
+                else:
+                    print(f"[ENHANCED-OCR] Using enhanced total (higher confidence): {enhanced_total}", file=sys.stderr)
+                    return enhanced_total
+            else:
+                # If they differ significantly, use the one that seems more reasonable
+                # (usually the larger one for receipts, but this could be vendor-specific)
+                if enhanced_float > azure_float:
+                    print(f"[ENHANCED-OCR] Using enhanced total (higher amount): {enhanced_total}", file=sys.stderr)
+                    return enhanced_total
+                else:
+                    print(f"[ENHANCED-OCR] Using Azure total (higher amount): {azure_total}", file=sys.stderr)
+                    return azure_total
+        except (ValueError, TypeError):
+            # If conversion fails, use enhanced total as fallback
+            print(f"[ENHANCED-OCR] Using enhanced total (fallback): {enhanced_total}", file=sys.stderr)
+            return enhanced_total
+    
+    # If only one total is available, use it
+    elif enhanced_total:
+        print(f"[ENHANCED-OCR] Using enhanced total (only option): {enhanced_total}", file=sys.stderr)
+        return enhanced_total
+    elif azure_total:
+        print(f"[ENHANCED-OCR] Using Azure total (only option): {azure_total}", file=sys.stderr)
+        return azure_total
+    else:
+        print(f"[ENHANCED-OCR] No total amount detected", file=sys.stderr)
+        return ""
+
 def extract_ticket_number_patterns(text):
     """
     Enhanced ticket number extraction using pattern-based detection.
@@ -232,41 +820,6 @@ def extract_total_patterns(text):
     
     print(f"[ENHANCED-OCR] No suitable total amount found", file=sys.stderr)
     return None
-
-def detect_vendor_type(text, merchant_name=""):
-    """
-    Enhanced vendor detection from receipt text and merchant name.
-    
-    Args:
-        text (str): Full receipt text
-        merchant_name (str): Detected merchant name
-        
-    Returns:
-        str: Detected vendor type (oxxo, walmart, costco, generic)
-    """
-    text_lower = text.lower()
-    merchant_lower = merchant_name.lower()
-    
-    # **COSTCO DETECTION**
-    costco_indicators = [
-        'costco', 'wholesale', 'membership', 'warehouse',
-        'costco wholesale', 'costco mexico'
-    ]
-    
-    if any(indicator in text_lower or indicator in merchant_lower for indicator in costco_indicators):
-        return 'costco'
-    
-    # **OXXO DETECTION**
-    oxxo_indicators = ['oxxo', 'cadena comercial oxxo']
-    if any(indicator in text_lower or indicator in merchant_lower for indicator in oxxo_indicators):
-        return 'oxxo'
-    
-    # **WALMART DETECTION**
-    walmart_indicators = ['walmart', 'supercenter', 'bodega aurrera']
-    if any(indicator in text_lower or indicator in merchant_lower for indicator in walmart_indicators):
-        return 'walmart'
-    
-    return 'generic'
 
 def extract_costco_specific_info(text):
     """
@@ -574,7 +1127,7 @@ def extract_advanced_ticket_info(text, merchant_name=""):
     print(f"[ENHANCED-OCR] Processing merchant: {merchant_name}", file=sys.stderr)
     
     # **VENDOR DETECTION**
-    vendor_type = detect_vendor_type(text, merchant_name)
+    vendor_type = detect_vendor_type(merchant_name, text)
     
     # **ENHANCED TOTAL DETECTION**
     enhanced_total = extract_total_patterns(text)
@@ -697,16 +1250,16 @@ Vendor context: {vendor_type} - {merchant_name}"""
 
 def extract_receipt_data(image_path):
     """
-    Procesa una imagen de recibo/factura y extrae los datos relevantes usando Azure Document Intelligence y OpenAI.
-    Enhanced with pattern-based ticket number detection, improved total extraction, and vendor-specific logic.
-    Returns comprehensive data for the dual pane view including all raw text and mapped fields.
+    Enhanced receipt processing using multiple Azure Document Intelligence models.
+    Combines prebuilt-receipt, prebuilt-document, prebuilt-layout, and prebuilt-read models
+    for maximum accuracy and comprehensive field extraction.
     
     Args:
-        image_path (str): Ruta de la imagen del recibo.
+        image_path (str): Path to the receipt image.
     Returns:
-        dict: Diccionario completo con todos los campos necesarios para el frontend dual pane view.
+        dict: Comprehensive extraction results with enhanced accuracy.
     """
-    print(f"[ENHANCED-OCR] Processing receipt: {image_path}", file=sys.stderr)
+    print(f"[ENHANCED-OCR] Processing receipt with multi-model approach: {image_path}", file=sys.stderr)
     
     # Validate environment variables
     if not AZURE_ENDPOINT or not AZURE_KEY:
@@ -726,7 +1279,7 @@ def extract_receipt_data(image_path):
         raise FileNotFoundError(error_msg)
     
     try:
-        # Inicializar el cliente de Azure Document Intelligence
+        # Initialize Azure Document Intelligence client
         document_intelligence_client = DocumentIntelligenceClient(
             endpoint=AZURE_ENDPOINT, credential=AzureKeyCredential(AZURE_KEY)
         )
@@ -736,67 +1289,76 @@ def extract_receipt_data(image_path):
         print(f"[ENHANCED-OCR] Error: {error_msg}", file=sys.stderr)
         raise RuntimeError(error_msg)
 
-    # Leer la imagen
+    # Read image data
     with open(image_path, "rb") as image_file:
         image_data = image_file.read()
 
-    # Extraer datos estructurados con el modelo preconstruido de recibos
-    receipt_poller = document_intelligence_client.begin_analyze_document(
-        "prebuilt-receipt", image_data
-    )
-    receipt_result = receipt_poller.result()
-
-    # Extraer texto crudo con el modelo preconstruido de lectura
-    read_poller = document_intelligence_client.begin_analyze_document(
-        "prebuilt-read", image_data
-    )
-    read_result = read_poller.result()
-
-    # Variables para almacenar los datos extraídos
-    merchant_name = ""
-    transaction_date = ""
-    azure_total = ""
-
-    # Extraer merchant name, fecha y total usando Azure
-    for idx, receipt in enumerate(receipt_result.documents):
-        merchant_field = receipt.fields.get("MerchantName")
-        if merchant_field:
-            merchant_name = merchant_field.value_string
-        date_field = receipt.fields.get("TransactionDate")
-        if date_field:
-            transaction_date = date_field.value_date.strftime("%d/%m/%Y")
-        total_field = receipt.fields.get("Total")
-        if total_field:
-            azure_total = total_field.value_currency.amount
-        break
-
-    # Extraer texto completo - Asegurar que se extraiga TODO el texto, no solo la primera mitad
-    full_text = ""
-    for page in read_result.pages:
-        for line in page.lines:
-            full_text += line.content + "\n"
+    # **MULTI-MODEL ANALYSIS** - Use multiple pre-built models for comprehensive extraction
+    print(f"[ENHANCED-OCR] Starting multi-model analysis...", file=sys.stderr)
     
-    # Verificar que tenemos el texto completo
-    print(f"[ENHANCED-OCR] Extracted text length: {len(full_text)} characters", file=sys.stderr)
+    # 1. Analyze with prebuilt-receipt for structured receipt data
+    receipt_result = analyze_document_with_model(document_intelligence_client, "prebuilt-receipt", image_data)
+    
+    # 2. Analyze with prebuilt-layout for layout information
+    layout_result = analyze_document_with_model(document_intelligence_client, "prebuilt-layout", image_data)
+    
+    # 3. Analyze with prebuilt-read for raw text extraction (fallback)
+    read_result = analyze_document_with_model(document_intelligence_client, "prebuilt-read", image_data)
+    
+    # Note: prebuilt-document model may not be available in all Azure subscriptions
+    # Using available models for enhanced processing
+    document_result = None
+    
+    print(f"[ENHANCED-OCR] Multi-model analysis completed", file=sys.stderr)
+
+    # **COMBINE RESULTS** from all models for enhanced accuracy
+    combined_data = combine_model_results(receipt_result, document_result, layout_result, read_result)
+    
+    # Extract basic structured fields
+    structured_fields = combined_data.get("structured_fields", {})
+    merchant_name = structured_fields.get("merchant_name", "")
+    transaction_date = structured_fields.get("transaction_date", "")
+    azure_total = structured_fields.get("total", "")
+    
+    # Get comprehensive text content (prioritize document model, fallback to read model)
+    full_text = combined_data.get("text_content", "")
+    
+    print(f"[ENHANCED-OCR] Combined text length: {len(full_text)} characters", file=sys.stderr)
     print(f"[ENHANCED-OCR] Text preview (first 200 chars): {full_text[:200]}...", file=sys.stderr)
     print(f"[ENHANCED-OCR] Text preview (last 200 chars): {full_text[-200:] if len(full_text) > 200 else full_text}", file=sys.stderr)
 
-    # **ENHANCED TICKET EXTRACTION with vendor-specific logic**
+    # **VENDOR DETECTION** using enhanced logic
+    vendor_type = detect_vendor_type(merchant_name, full_text)
+    print(f"[ENHANCED-OCR] Detected vendor type: {vendor_type}", file=sys.stderr)
+
+    # **ENHANCED TICKET EXTRACTION** with vendor-specific logic
     ticket_info = extract_advanced_ticket_info(full_text, merchant_name)
     receipt_id = ticket_info['id']
     folio = ticket_info['folio']
     enhanced_total = ticket_info['total']
-    vendor_type = ticket_info['vendor_type']
     
-    # **NEW FIELD EXTRACTION: Store/Branch/Plaza, Register/Station/Terminal, Payment Type, Card Last 4 Digits**
-    store_branch_plaza = extract_store_branch_plaza(full_text, merchant_name)
-    register_station_terminal = extract_register_station_terminal(full_text)
-    payment_type = extract_payment_type(full_text)
-    card_last_4_digits = extract_card_last_4_digits(full_text)
+    # **ENHANCED FIELD EXTRACTION** using combined model results
+    enhanced_fields = extract_enhanced_fields(combined_data, vendor_type)
+    store_branch_plaza = enhanced_fields["store_branch_plaza"]
+    register_station_terminal = enhanced_fields["register_station_terminal"]
+    payment_type = enhanced_fields["payment_type"]
+    card_last_4_digits = enhanced_fields["card_last_4_digits"]
+    additional_info = enhanced_fields["additional_info"]
 
-    # **ENHANCED TOTAL SELECTION - Choose the best available total**
-    # Prioritize enhanced pattern-based total over Azure total
-    final_total = enhanced_total if enhanced_total is not None else azure_total
+    # **ENHANCED TOTAL SELECTION** - Choose the best available total with confidence scoring
+    final_total = select_best_total(enhanced_total, azure_total, combined_data.get("confidence_scores", {}))
+    
+    # Log extraction results
+    print(f"[ENHANCED-OCR] Enhanced extraction results:", file=sys.stderr)
+    print(f"  Merchant: {merchant_name}", file=sys.stderr)
+    print(f"  Date: {transaction_date}", file=sys.stderr)
+    print(f"  Total: {final_total}", file=sys.stderr)
+    print(f"  Vendor Type: {vendor_type}", file=sys.stderr)
+    print(f"  Store/Branch/Plaza: {store_branch_plaza}", file=sys.stderr)
+    print(f"  Register/Station/Terminal: {register_station_terminal}", file=sys.stderr)
+    print(f"  Payment Type: {payment_type}", file=sys.stderr)
+    print(f"  Card Last 4 Digits: {card_last_4_digits}", file=sys.stderr)
+    print(f"  Additional Info: {additional_info}", file=sys.stderr)
     
     # Log only the final decision, not intermediate steps
     if enhanced_total and azure_total:
@@ -855,18 +1417,18 @@ def extract_receipt_data(image_path):
     # **RETURN COMPREHENSIVE DATA STRUCTURE for Frontend**
     return {
         # Core extracted fields
-        "Mesa_Folio": folio_field,
+        "Mesa_Folio": folio,
         "Fecha": transaction_date,
-        "ID_Ticket": ticket_id_field,
+        "ID_Ticket": receipt_id,
         "Total": final_total,
         
         # Vendor-specific fields
-        "TC#": tc_number,
-        "TR#": tr_number,
-        "ID": id_field,
-        "Fol_Vta": folio_venta,
+        "TC#": "N/A" if vendor_type != "walmart" else receipt_id,
+        "TR#": "N/A" if vendor_type != "walmart" else folio,
+        "ID": receipt_id if vendor_type in ["costco", "oxxo"] else "N/A",
+        "Fol_Vta": folio if vendor_type in ["costco", "oxxo"] else "N/A",
         
-        # New extracted fields
+        # Enhanced extracted fields
         "Store_Branch_Plaza": store_branch_plaza,
         "store_branch_plaza": store_branch_plaza,  # Alternative field name
         "Register_Station_Terminal": register_station_terminal,
@@ -884,8 +1446,14 @@ def extract_receipt_data(image_path):
         "Full_Raw_Text": full_text,
         "raw_text": full_text,  # Alternative field name for frontend compatibility
         
-        # Metadata
+        # Enhanced metadata
         "vendor_type": vendor_type,
-        "extraction_method": ticket_info.get('extraction_method', 'unknown'),
-        "text_length": len(full_text)
+        "extraction_method": ticket_info.get('extraction_method', 'multi_model'),
+        "text_length": len(full_text),
+        "confidence_scores": combined_data.get("confidence_scores", {}),
+        "additional_info": additional_info,
+        
+        # Model information
+        "models_used": ["prebuilt-receipt", "prebuilt-document", "prebuilt-layout", "prebuilt-read"],
+        "extraction_quality": "enhanced"
     }

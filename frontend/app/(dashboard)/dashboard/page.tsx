@@ -180,31 +180,39 @@ function DashboardContent() {
   const hasProfile = !!profile
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100 overflow-y-auto">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-slate-200/50">
         <div className="w-full mx-auto px-2 sm:px-4 lg:px-6">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl flex items-center justify-center shadow-lg">
-                <FileText className="w-6 h-6 text-white" />
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl flex items-center justify-center shadow-lg">
+                <FileText className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div>
+              <div className="hidden sm:block">
                 <h1 className="text-xl font-bold text-slate-900">
                   {t('dashboard.title')}
                 </h1>
                 <p className="text-sm text-slate-500">AI-Powered Task Management</p>
               </div>
+              <div className="sm:hidden">
+                <h1 className="text-lg font-bold text-slate-900">
+                  {t('dashboard.title')}
+                </h1>
+              </div>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 bg-white/60 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-200/50">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="hidden sm:flex items-center space-x-2 bg-white/60 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-200/50">
                 <div className="w-8 h-8 bg-gradient-to-r from-pink-400 to-rose-400 rounded-full flex items-center justify-center">
                   <User className="w-4 h-4 text-white" />
                 </div>
                 <span className="text-sm font-medium text-slate-700">
                   {displayName}
                 </span>
+              </div>
+              <div className="sm:hidden w-8 h-8 bg-gradient-to-r from-pink-400 to-rose-400 rounded-full flex items-center justify-center">
+                <User className="w-4 h-4 text-white" />
               </div>
               <Button
                 variant="outline"
@@ -213,8 +221,9 @@ function DashboardContent() {
                 disabled={loading}
                 className="border-slate-200 hover:bg-slate-50"
               >
-                <LogOut className="w-4 h-4 mr-2" />
-                {t('auth.logout')}
+                <LogOut className="w-4 h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">{t('auth.logout')}</span>
+                <span className="sm:hidden">Logout</span>
               </Button>
             </div>
           </div>
@@ -222,22 +231,22 @@ function DashboardContent() {
       </header>
 
       {/* Main Content */}
-      <main className="w-full mx-auto px-2 sm:px-4 lg:px-6 py-8">
+      <main className="w-full mx-auto px-2 sm:px-4 lg:px-6 py-4 sm:py-8 overflow-y-auto">
         {/* Welcome Section */}
         <div className="mb-6">
-          <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-xl p-6 text-white shadow-lg">
+          <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-xl p-4 sm:p-6 text-white shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold mb-2">
+                <h2 className="text-xl sm:text-2xl font-bold mb-2">
                   {t('dashboard.welcome')}, {displayName}! 👋
                 </h2>
-                <p className="text-pink-100 text-base">
+                <p className="text-pink-100 text-sm sm:text-base">
                   {t('dashboard.subtitle')}
                 </p>
               </div>
-              <div className="hidden md:block">
-                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
-                  <Zap className="w-10 h-10 text-white" />
+              <div className="hidden sm:block">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/20 rounded-full flex items-center justify-center">
+                  <Zap className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                 </div>
               </div>
             </div>
@@ -247,7 +256,7 @@ function DashboardContent() {
         {/* Ticket Upload / Dual Pane Section */}
         <div className="mb-12">
           {useDualPane ? (
-            <div className="h-[900px] mb-8 relative z-10 w-full">
+            <div className="min-h-[600px] lg:min-h-[900px] mb-8 pb-8 relative z-10 w-full">
               {/* Reset Button */}
               <div className="mb-4 flex justify-end">
                 <Button 
@@ -318,7 +327,7 @@ function DashboardContent() {
                         ref={fileInputRef}
                         onChange={handleFileChange}
                       />
-                      <div className="mt-4 flex items-center justify-center gap-3">
+                      <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
                         <Button
                           variant="outline"
                           className="cursor-pointer"
