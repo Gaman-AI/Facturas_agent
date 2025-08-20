@@ -164,6 +164,34 @@
 
 ---
 
+## 2025-01-27 15:30 - DashboardDualPane Location Field Fix
+
+### Changes Made:
+1. **Fixed Missing Location Field**: Added the missing `Location` field to the `TicketData` interface and initial state
+2. **Renamed Location to Address**: Changed the field name from `Location` to `Address` for better clarity and semantic meaning
+3. **Updated Display**: Modified the UI to show "Address" instead of "Location" in the dual pane interface
+4. **Fixed Linter Errors**: Resolved TypeScript errors related to missing field in interface and state initialization
+
+### Files Modified:
+- `frontend/components/DashboardDualPane.tsx`
+
+### Technical Details:
+- Updated `TicketData` interface to use `Address: string` instead of `Location: string`
+- Added `Address: ''` to the initial state object
+- Updated the display field to use `ticketData['Address']` and label "Address"
+- This ensures the component properly captures store address information from invoices
+
+### Impact:
+- The dual pane screen will now properly display and capture store address information from OCR processed invoices
+- Better semantic naming with "Address" instead of "Location" for clarity
+- Resolved all TypeScript compilation errors
+
+### Related Issues:
+- Based on accuracy analysis in WALMART_ACCURACY.md showing address extraction issues
+- Address field is critical for proper invoice data capture and display
+
+---
+
 ## Project Status Summary
 
 ### ✅ **WORKING COMPONENTS**

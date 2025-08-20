@@ -29,7 +29,7 @@ interface TaskState {
 
 // Add interface for ticket data
 interface TicketData {
-  Location: string
+  Address: string
   Comercio: string
   Fecha: string
   Total: string
@@ -68,6 +68,7 @@ export function DashboardDualPane({
   
   // Add new state for ticket data and raw text
   const [ticketData, setTicketData] = useState<TicketData>({
+    Address: '',
     Comercio: '',
     Fecha: '',
     Total: '',
@@ -387,11 +388,11 @@ export function DashboardDualPane({
                         />
                       </div>
                       
-                      {/* Location */}
+                      {/* Address */}
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-3 min-w-0">
                         <CopyField 
-                          value={ticketData['Location'] || ''}
-                          label="Location"
+                          value={ticketData['Address'] || ''}
+                          label="Address"
                         />
                       </div>
                       {/* Register/Station/Terminal */}
