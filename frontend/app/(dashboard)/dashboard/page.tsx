@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, User, Building2, FileText, BarChart3, Zap, Plus, Monitor, Globe, Activity, TrendingUp, CheckCircle, Clock, AlertCircle, CloudUpload, Link as LinkIcon } from 'lucide-react';
+import { LogOut, User, FileText, Zap, Monitor, BarChart3, CloudUpload, Link as LinkIcon, Activity, ChevronDown } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,8 +12,6 @@ import { useAuth, useUserProfile } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
 import { DashboardDualPane } from '@/components/DashboardDualPane';
-import { TaskStats } from '@/components/TaskStats';
-import { TaskList } from '@/components/TaskList';
 import { TaskProgressList } from '@/components/TaskProgressIndicator';
 import { ApiService } from '@/services/api';
 import { Input } from '@/components/ui/input';
@@ -42,10 +41,12 @@ function DashboardContent() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadedTicketId, setUploadedTicketId] = useState<string | null>(null);
   const [extractedTicketData, setExtractedTicketData] = useState<any>(null);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
     try {
@@ -66,10 +67,6 @@ function DashboardContent() {
     setSelectedFile(null);
     setVendorUrl('');
     setUploadError(null);
-  };
-
-  const handleSimpleTask = () => {
-    router.push('/task/submit');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -171,6 +168,18 @@ function DashboardContent() {
     }
   };
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setProfileDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   useEffect(() => {
     fetchActiveTasks();
   }, []);
@@ -179,10 +188,20 @@ function DashboardContent() {
   const displayName = profile ? getDisplayName() : 'User'
   const hasProfile = !!profile
 
+  // Get first name for display
+  const getFirstName = () => {
+    if (profile?.first_name) return profile.first_name;
+    if (profile?.company_name) return profile.company_name.split(' ')[0];
+    if (user?.email) return user.email.split('@')[0];
+    return 'User';
+  };
+
+  const firstName = getFirstName();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-slate-200/50">
+      <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-slate-200/50 relative">
         <div className="w-full mx-auto px-2 sm:px-4 lg:px-6">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
@@ -198,73 +217,129 @@ function DashboardContent() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 bg-white/60 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-200/50">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-                <span className="text-sm font-medium text-slate-700">
-                  {displayName}
-                </span>
+              {/* User Profile Button with Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <Button
+                  variant="ghost"
+                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  className="flex items-center space-x-2 bg-white/60 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-200/50 hover:bg-white/80 transition-all duration-200"
+                >
+                  <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-700">
+                    {firstName}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-slate-600 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+                </Button>
+
+                {/* Dropdown Menu */}
+                {profileDropdownOpen && createPortal(
+                  <div 
+                    className="fixed w-64 bg-white rounded-lg shadow-xl border border-slate-200 py-2 z-[9999] min-w-max"
+                    style={{ 
+                      top: '5rem', 
+                      right: '1.5rem',
+                      maxHeight: 'calc(100vh - 6rem)',
+                      overflowY: 'auto'
+                    }}
+                  >
+                    <div className="px-4 py-3 border-b border-slate-100 bg-white">
+                      <p className="text-sm font-medium text-slate-900">{firstName}</p>
+                      <p className="text-xs text-slate-500">{user?.email}</p>
+                    </div>
+                    
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          handleUpdateProfile();
+                          setProfileDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors duration-150"
+                      >
+                        <User className="w-4 h-4" />
+                        Edit Profile
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          handleViewHistory();
+                          setProfileDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors duration-150"
+                      >
+                        <BarChart3 className="w-4 h-4" />
+                        View History
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          handleNewTask();
+                          setProfileDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors duration-150"
+                      >
+                        <Monitor className="w-4 h-4" />
+                        Active Tasks
+                      </button>
+                    </div>
+                    
+                    <div className="border-t border-slate-100 pt-1">
+                      <button
+                        onClick={() => {
+                          handleLogout();
+                          setProfileDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors duration-150"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Logout
+                      </button>
+                    </div>
+                  </div>,
+                  document.body
+                )}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                disabled={loading}
-                className="border-slate-200 hover:bg-slate-50"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                {t('auth.logout')}
-              </Button>
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="w-full mx-auto px-2 sm:px-4 lg:px-6 py-8">
-        {/* Welcome Section */}
-        <div className="mb-6">
-          <div className="bg-gradient-to-r from-blue-400 to-indigo-400 rounded-xl p-6 text-white shadow-lg">
+      <main className="w-full mx-auto px-2 sm:px-4 lg:px-6 py-6">
+        {/* Welcome Section - Made Smaller */}
+        <div className="mb-4">
+          <div className="bg-gradient-to-r from-blue-400 to-indigo-400 rounded-xl p-4 text-white shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold mb-2">
+                <h2 className="text-lg font-bold mb-1">
                   {t('dashboard.welcome')}, {displayName}! 👋
                 </h2>
-                                  <p className="text-blue-100 text-base">
+                <p className="text-blue-100 text-sm">
                   {t('dashboard.subtitle')}
                 </p>
               </div>
               <div className="hidden md:block">
-                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
-                  <Zap className="w-10 h-10 text-white" />
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                  <Zap className="w-8 h-8 text-white" />
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Ticket Upload / Dual Pane Section */}
-        <div className="mb-12">
+        {/* Ticket Upload / Dual Pane Section - Made Bigger */}
+        <div className="mb-8">
           {useDualPane ? (
-            <div className="h-[750px] mb-4 relative z-10 w-full">
-              {/* Reset Button */}
-              <div className="mb-4 flex justify-end">
-                <Button 
-                  onClick={handleResetToUpload}
-                  variant="outline"
-                  className="border-pink-300 text-pink-700 hover:bg-pink-50"
-                >
-                  ← Back to Upload
-                </Button>
-              </div>
-              
+            <div className="h-[800px] mb-4 relative z-10 w-full">
               <DashboardDualPane 
                 onTaskSubmit={handleTaskSubmit}
                 className="h-full w-full"
                 initialTicketData={extractedTicketData}
                 vendorUrl={vendorUrl}
                 userProfile={profile}
+                showBackButton={true}
+                onBackToUpload={handleResetToUpload}
               />
             </div>
           ) : (
@@ -275,7 +350,7 @@ function DashboardContent() {
                     <span>Upload Ticket for OCR</span>
                   </CardTitle>
                   <CardDescription className="text-slate-600">
-                    Choose a receipt image or PDF and optionally provide the vendor URL. We’ll extract details and open the dual pane.
+                    Choose a receipt image or PDF and optionally provide the vendor URL. We'll extract details and open the dual pane.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -348,273 +423,6 @@ function DashboardContent() {
                 </CardContent>
               </Card>
           )}
-        </div>
-
-        {/* Visual Separator */}
-        {useDualPane && (
-          <div className="mb-4">
-            <div className="h-px bg-gradient-to-r from-transparent via-pink-200 to-transparent"></div>
-            <div className="text-center mt-4">
-              <div className="inline-flex items-center px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-pink-200/50">
-                <div className="w-2 h-2 bg-pink-400 rounded-full mr-2"></div>
-                <span className="text-sm font-medium text-pink-700">Dashboard Overview</span>
-                <div className="w-2 h-2 bg-pink-400 rounded-full ml-2"></div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-          {/* User Profile Card */}
-          <Card className="lg:col-span-2 border-0 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
-            <CardHeader className="pb-4">
-                              <CardTitle className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-                    <User className="w-5 h-5 text-white" />
-                  </div>
-                  <span>{t('profile.title')}</span>
-                </CardTitle>
-                <CardDescription>
-                  {hasProfile ? t('profile.companyInfo') : 'Complete your profile to unlock advanced features'}
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {hasProfile ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                                        <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">{t('auth.email')}</label>
-                      <p className="text-slate-900 font-medium">{user?.email || 'Not provided'}</p>
-                    </div>
-                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">RFC</label>
-                      <div className="flex items-center space-x-2">
-                        <p className="text-slate-900 font-medium">{getRFCMasked()}</p>
-                        <Badge variant={isPersonaFisica() ? "default" : "secondary"} className="bg-gradient-to-r from-pink-500 to-rose-500">
-                          {isPersonaFisica() ? t('common.personaFisica') : t('common.personaMoral')}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                                        <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">{t('register.companyName.label')}</label>
-                      <p className="text-slate-900 font-medium">{profile.company_name}</p>
-                    </div>
-                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">{t('register.addressInfo')}</label>
-                      <p className="text-slate-900 font-medium">{getFullAddress()}</p>
-                    </div>
-                  </div>
-                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">{t('register.taxRegime.label')}</label>
-                      <p className="text-slate-900 font-medium">{profile.tax_regime}</p>
-                    </div>
-                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">{t('register.cfdiUse.label')}</label>
-                      <p className="text-slate-900 font-medium">{profile.cfdi_use}</p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-20 h-20 bg-gradient-to-r from-slate-200 to-slate-300 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <User className="w-10 h-10 text-slate-400" />
-                  </div>
-                                    <h3 className="text-lg font-semibold text-slate-900 mb-2">{t('profile.noProfile')}</h3>
-                  <p className="text-slate-600 mb-6 max-w-md mx-auto">
-                    {t('profile.basicFunctions')}
-                  </p>
-                  <Button onClick={handleUpdateProfile} className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600">
-                    <User className="w-4 h-4 mr-2" />
-                    {t('profile.edit')}
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions & Stats */}
-          <div className="space-y-6">
-            {/* Quick Actions */}
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
-              <CardHeader className="pb-4">
-                                                 <CardTitle className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-                    <Zap className="w-5 h-5 text-white" />
-                  </div>
-                  <span>{t('dashboard.quickActions')}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                                                 <Button 
-                  className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg" 
-                  onClick={handleSimpleTask}
-                >
-                  <Zap className="w-4 h-4 mr-2" />
-                  {t('tasks.create')}
-                </Button>
-                <Button 
-                  className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg" 
-                  onClick={handleNewTask}
-                >
-                  <Monitor className="w-4 h-4 mr-2" />
-                  Advanced Task
-                </Button>
-                <Button 
-                  className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg" 
-                  onClick={handleViewHistory}
-                >
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  {t('dashboard.viewHistory')}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full border-slate-200 hover:bg-slate-50" 
-                  onClick={handleUpdateProfile}
-                >
-                  <User className="w-4 h-4 mr-2" />
-                  {t('profile.edit')}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* System Status */}
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
-              <CardHeader className="pb-4">
-                                                 <CardTitle className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-                    <CheckCircle className="w-5 h-5 text-white" />
-                  </div>
-                  <span>{t('dashboard.systemStatus')}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                                 <div className="flex items-center justify-between p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
-                   <div className="flex items-center space-x-3">
-                     <div className="w-3 h-3 bg-pink-500 rounded-full animate-pulse"></div>
-                     <span className="text-sm font-medium text-slate-700">AI Agent</span>
-                   </div>
-                   <Badge variant="default" className="bg-pink-500">Online</Badge>
-                 </div>
-                 <div className="flex items-center justify-between p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
-                   <div className="flex items-center space-x-3">
-                     <div className="w-3 h-3 bg-pink-500 rounded-full animate-pulse"></div>
-                     <span className="text-sm font-medium text-slate-700">Browser Automation</span>
-                   </div>
-                   <Badge variant="default" className="bg-pink-500">Ready</Badge>
-                 </div>
-                 <div className="flex items-center justify-between p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
-                   <div className="flex items-center space-x-3">
-                     <div className="w-3 h-3 bg-pink-500 rounded-full animate-pulse"></div>
-                     <span className="text-sm font-medium text-slate-700">WebSocket</span>
-                   </div>
-                   <Badge variant="default" className="bg-pink-500">Connected</Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Recent Activity */}
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
-              <CardHeader className="pb-4">
-                                 <CardTitle className="flex items-center space-x-2">
-                   <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-                     <Activity className="w-5 h-5 text-white" />
-                   </div>
-                   <span>Recent Activity</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                                 <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
-                   <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center">
-                     <CheckCircle className="w-4 h-4 text-white" />
-                   </div>
-                   <div className="flex-1">
-                     <p className="text-sm font-medium text-slate-900">Task completed</p>
-                     <p className="text-xs text-slate-500">Google search automation</p>
-                   </div>
-                   <span className="text-xs text-slate-400">2m ago</span>
-                 </div>
-                 <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
-                   <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center">
-                     <Clock className="w-4 h-4 text-white" />
-                   </div>
-                   <div className="flex-1">
-                     <p className="text-sm font-medium text-slate-900">Task started</p>
-                     <p className="text-xs text-slate-500">Weather check automation</p>
-                   </div>
-                   <span className="text-xs text-slate-400">5m ago</span>
-                 </div>
-                 <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
-                   <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center">
-                     <TrendingUp className="w-4 h-4 text-white" />
-                   </div>
-                   <div className="flex-1">
-                     <p className="text-sm font-medium text-slate-900">System updated</p>
-                     <p className="text-xs text-slate-500">New features available</p>
-                   </div>
-                   <span className="text-xs text-slate-400">1h ago</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Active Tasks Progress - Mobile Only */}
-            <div className="lg:hidden">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Active Tasks</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!loadingTasks && tasks.length > 0 ? (
-                    <TaskProgressList 
-                      tasks={tasks}
-                      maxTasks={3}
-                      variant="compact"
-                    />
-                  ) : (
-                    <p className="text-sm text-gray-600">No active tasks</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* Right Column - Task Management */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Task Statistics */}
-            <TaskStats refreshTrigger={refreshTrigger} />
-
-            {/* Active Tasks Progress - Desktop Only */}
-            <div className="hidden lg:block">
-              {!loadingTasks && tasks.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Tasks in Progress</CardTitle>
-                    <CardDescription>
-                      Real-time monitoring of active tasks
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <TaskProgressList 
-                      tasks={tasks}
-                      maxTasks={5}
-                      variant="compact"
-                    />
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            {/* Recent Tasks */}
-            <TaskList 
-              maxTasks={6}
-              showHeader={true}
-              showFilters={true}
-              showPagination={false}
-              showProgress={true}
-            />
-          </div>
         </div>
       </main>
     </div>

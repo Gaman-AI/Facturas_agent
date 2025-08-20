@@ -1406,7 +1406,7 @@ This comprehensive document includes:
 **Summary**: Reverted the main container scrolling functionality that was completely removed, and implemented a better solution that maintains main scrolling while fixing the nested scrolling conflict through proper height constraints.
 
 **Issues Identified**:
-1. **Main Scrolling Removed**: Previous fix completely eliminated main container scrolling, making content inaccessible
+1. **Main Scrolling Removed**: Previous fix completely eliminated `overflow-y-auto` from main container
 2. **User Experience Degraded**: Users could no longer scroll through the main content area
 3. **Content Cutoff**: Content below the visible area was completely inaccessible
 4. **Overly Aggressive Fix**: The solution was too extreme and broke essential functionality
@@ -3240,109 +3240,6 @@ The DualPaneMonitor was using complex LiveViewPane components instead of a simpl
   - **NEW**: Added URL validation and iframe refresh functionality
 
 **Technical Implementation Details**:
-- **Iframe Integration**: Uses standard HTML iframe with proper sandbox attributes
-- **Live View URL Management**: Automatically updates from both props and task response data
-- **Manual URL Input**: Users can manually enter live view URLs in the dashboard
-- **URL Controls**: Update, refresh, and clear functionality for live view management
-- **Responsive Design**: Maintains resizable dual-pane layout with status on left, live view on right
-- **Placeholder State**: Shows informative placeholder when no live view URL is available
-- **Session Controls**: Integrated pause, resume, stop, and restart functionality
-- **Real-time Updates**: Maintains WebSocket/polling integration for live status updates
-
-**Live View URL Input Features**:
-- **Input Field**: URL input with placeholder and validation
-- **Update Button**: Applies the entered URL and refreshes iframe
-- **Refresh Button**: Forces iframe refresh without changing URL
-- **Clear Button**: Removes current live view URL
-- **Current URL Display**: Shows the currently active live view URL
-- **Help Text**: Instructions for users on how to use the feature
-
-**Iframe Configuration**:
-```tsx
-<iframe
-  src={currentLiveViewUrl}
-  sandbox="allow-same-origin allow-scripts"
-  allow="clipboard-read; clipboard-write"
-  style={{ pointerEvents: 'none' }}
-  className="w-full h-full border-0"
-  title="Live Browser View"
-/>
-```
-
-**Benefits**:
-- **Simplified Integration**: Direct iframe display without complex component dependencies
-- **Frontend Control**: Frontend can now pass live view URLs when sessions start
-- **Manual Control**: Users can manually enter and manage live view URLs
-- **Real-time Updates**: Live view URL updates automatically from task responses
-- **Better UX**: Clear placeholder state when no live view is available
-- **Session Management**: Integrated controls for managing browser automation tasks
-- **Flexible URL Management**: Support for both automatic and manual URL updates
-
-**Usage**:
-```tsx
-// When you have a live view URL from your session
-<DualPaneMonitor
-  taskId="your-task-id"
-  sessionId="your-session-id"
-  liveViewUrl="https://browserbase.com/sessions/abc123"
-  initialStatus="running"
-/>
-
-// Users can also manually enter URLs in the dashboard
-```
-
-**Files Modified**:
-- `frontend/components/DualPaneMonitor.tsx`
-
-**Migration Notes**:
-- LiveViewPane component dependency removed
-- Iframe automatically displays when liveViewUrl prop is provided
-- New live view URL input field added for manual URL entry
-- Task status and controls moved to left pane for better organization
-- Activity logs integrated for real-time monitoring
-- URL management controls (Update, Refresh, Clear) added
-
-### 2025-01-27 18:30 - Converted WebSocket Service to Polling Service
-
-**Date & Time**: 2025-01-27 18:30
-
-**Objective**: Eliminate WebSocket connection failures and complexity by converting to a simple polling-based service that provides the same real-time updates without connection issues.
-
-**Issue Identified**:
-The frontend was experiencing persistent WebSocket connection failures:
-1. **Endpoint Mismatch**: Frontend expected `ws://localhost:8000/ws/{taskId}` but backend only implemented `/api/v1/browser-agent/ws?sessionId={sessionId}`
-2. **Connection Failures**: WebSocket connections were failing with error code 1006 and connection timeouts
-3. **Unnecessary Complexity**: WebSockets were only providing real-time updates, not core functionality
-4. **Reconnection Loops**: Failed connections triggered exponential backoff reconnection attempts
-
-**Root Cause Analysis**:
-- **WebSockets aren't essential**: Core app functionality (task submission, execution, status checking) works via REST API calls
-- **WebSockets only provide real-time updates**: They're just for live progress monitoring, not core functionality
-- **Polling alternative**: Same real-time updates can be achieved with periodic API calls to check task status
-
-**Changes Made**:
-
-**Frontend Changes**:
-- **Completely replaced `frontend/services/websocket.ts`**: 
-  - Converted from `WebSocketService` to `PollingService`
-  - Replaced WebSocket connections with API polling intervals
-  - Maintained same event-driven interface for backward compatibility
-  - Added `startPolling()` and `startBrowserAgentPolling()` methods
-  - Added `stopPolling()` and `stopAllPolling()` methods
-  - Set default polling interval to 2 seconds (configurable via env var)
-
-**Component Updates**:
-- **Updated `frontend/components/BrowserAgentRealtime.tsx`**: 
-  - Changed `websocketService.connectBrowserAgent()` to `websocketService.startBrowserAgentPolling()`
-  - Changed `websocketService.disconnect()` to `websocketService.stopPolling()`
-  - Updated error messages to reflect polling approach
-- **Updated `frontend/components/DualPaneMonitor.tsx`**: 
-  - Changed WebSocket connection methods to polling methods
-  - Updated disconnect calls to stop polling
-- **Updated `frontend/components/DashboardDualPane.tsx`**: 
-  - Changed WebSocket connection to polling for task monitoring
-
-**Technical Implementation Details**:
 - **Polling Mechanism**: Uses `setInterval` to poll API endpoints every 2 seconds
 - **Event Emission**: Same event-driven interface maintained for seamless component integration
 - **Authentication**: Automatically includes auth tokens from localStorage/sessionStorage
@@ -4371,7 +4268,7 @@ uv sync
 - `backend/src/routes/tickets.js` - Added `env: process.env` to both execSync calls
 
 **Code Changes**:
-```javascript
+```
 // Before (missing environment variables)
 const result = execSync(pythonCode, { 
   encoding: 'utf8',
@@ -4868,650 +4765,896 @@ The previous implementation had:
 ---
 
 ## 2024-12-19 16:00 - DashboardDualPane Left Pane Layout Restructuring
-=======
-### 2025-01-27 17:30 - Fixed Start Agent Button Implementation
-
-**Date & Time**: 2025-01-27 17:30
-
-**Objective**: Fix the Start Agent button implementation to use the existing /tasks endpoint and provide proper user feedback.
-
-**Issues Identified**:
-1. **Missing Backend Service Implementation**: The browser-use endpoint existed but the service layer was incomplete
-2. **Frontend-Backend Mismatch**: Frontend was calling non-existent browser-use methods
-3. **Button State Management Issues**: Complex disabled logic that prevented button from working
-4. **Missing Error Handling**: No user feedback when operations failed
-5. **Environment Configuration**: Backend connectivity issues
-
-**Changes Made**:
-
-1. **Updated `frontend/components/DashboardDualPane.tsx`**:
-   - **Replaced `handleStartAgentTask` function**: Now uses `ApiService.createTask()` instead of non-existent `createBrowserUseTask()`
-   - **Combined Data into Text Prompt**: Merges user details, ticket details, and vendor URL into a single comprehensive text prompt
-   - **Improved Button State Management**: Simplified disabled logic to `!vendorUrl || !ocrSuccess || taskState.status === 'running' || taskState.status === 'connecting'`
-   - **Added Task Message System**: New state for success/error/info messages with auto-clear functionality
-   - **Enhanced Error Handling**: Proper error messages and state reset on failures
-   - **Added Reset Functionality**: Reset button to clear task state and start over
-   - **Better User Feedback**: Clear status messages for each validation step
-
-2. **Button Functionality**:
-   - **Uses Existing Endpoint**: Now calls `/api/v1/tasks` (the working endpoint) instead of `/api/v1/tasks/browser-use`
-   - **Combined Data Format**: Creates a comprehensive text prompt that includes:
-     - Vendor website URL
-     - All ticket details (store, date, total, TC#, TR#, ID, etc.)
-     - Raw OCR text
-     - Clear task instructions for CFDI form filling
-   - **Proper State Management**: Button shows different states (Creating Task..., Agent Running..., Start Agent Task)
-   - **Validation Feedback**: Clear messages for missing vendor URL or incomplete OCR
-
-3. **User Experience Improvements**:
-   - **Immediate Feedback**: Users see exactly what's missing (vendor URL or OCR completion)
-   - **Success Confirmation**: Clear success message with task ID when task is created
-   - **Error Handling**: Detailed error messages with auto-clear after 10 seconds
-   - **Reset Capability**: Users can reset and start over if needed
-   - **Status Tracking**: Real-time status updates during task creation and execution
-
-4. **Technical Implementation**:
-   - **State Management**: Added `taskMessage` state for user feedback
-   - **Auto-clear Messages**: Success messages clear after 8 seconds, errors after 10 seconds
-   - **Error Recovery**: Automatic state reset on errors
-   - **Consistent UI**: Both desktop and mobile views have the same functionality
-   - **Proper API Integration**: Uses the working `ApiService.createTask()` method
-
-**Files Modified**:
-- `frontend/components/DashboardDualPane.tsx`
-
-**Status**: Implementation complete - Start Agent button now works correctly using the existing /tasks endpoint with combined data format and proper user feedback.
-
-**Testing Required**:
-1. Verify button is enabled when vendor URL and OCR are complete
-2. Test task creation with the combined text prompt
-3. Verify error handling for missing data
-4. Test reset functionality
-5. Confirm proper state management during task lifecycle
-
----
-
-### 2025-01-27 17:45 - Fixed Missing Vendor URL Input and Added Debug Tools
-
-**Date & Time**: 2025-01-27 17:45
-
-**Objective**: Fix the missing vendor URL input field in desktop view and add debugging tools to identify button state issues.
-
-**Issues Identified**:
-1. **Missing Vendor URL Input in Desktop View**: The desktop layout was missing the vendor URL input field, causing the button to always be disabled
-2. **Button State Debugging**: No visibility into why the button was disabled
-3. **OCR Success State**: Difficulty tracking when OCR success state is set
-
-**Changes Made**:
-
-1. **Updated `frontend/components/DashboardDualPane.tsx`**:
-   - **Added Vendor URL Input to Desktop View**: Added the missing vendor URL input field above the Start Agent button in the desktop layout
-   - **Added Debug Information Display**: Added debug panels showing:
-     - Vendor URL status (Set/Missing)
-     - OCR Success state (True/False)
-     - Task Status
-     - Button Disabled reason
-   - **Added Test Buttons**: Added debugging buttons to manually set OCR success and vendor URL for testing
-   - **Enhanced Console Logging**: Added detailed logging for button state changes and OCR initialization
-   - **Fixed Layout Consistency**: Both mobile and desktop views now have vendor URL inputs and debug information
-
-2. **Debug Tools Added**:
-   - **Debug Info Panel**: Shows real-time state of all button prerequisites
-   - **Test OCR Success Button**: Manually sets OCR success to true for testing
-   - **Test Vendor URL Button**: Manually sets vendor URL for testing
-   - **Console Logging**: Detailed logging of state changes and useEffect triggers
-   - **Button State Tracking**: Real-time visibility into why button is disabled
-
-3. **Vendor URL Input Fix**:
-   - **Desktop View**: Added vendor URL input field above Start Agent button
-   - **Mobile View**: Vendor URL input was already present and working
-   - **Consistent Styling**: Both inputs use the same styling and validation
-   - **Placeholder Text**: Helpful placeholder showing expected URL format
-
-4. **State Management Improvements**:
-   - **useEffect Logging**: Added logging to track when initialTicketData is processed
-   - **Button State Debug**: Real-time logging of button disabled condition
-   - **OCR Success Tracking**: Clear visibility into OCR success state changes
-
-**Files Modified**:
-- `frontend/components/DashboardDualPane.tsx`
-
-**Status**: Implementation complete - Vendor URL input now available in both views, debug tools added for troubleshooting button state issues.
-
-**Testing Instructions**:
-1. **Check Debug Info**: Look for the debug panel below the Start Agent button
-2. **Test OCR Success**: Click "Test: Set OCR Success" button to manually enable OCR
-3. **Test Vendor URL**: Click "Test: Set URL" button to manually set vendor URL
-4. **Verify Button State**: Button should become enabled when both OCR success and vendor URL are set
-5. **Check Console**: Open browser console to see detailed state logging
-
-**Next Steps**:
-1. Test the button functionality with the debug tools
-2. Verify OCR data is being passed correctly from dashboard
-3. Test actual OCR upload process to ensure proper state transitions
-4. Remove debug tools once button is working correctly
-
----
-
-### 2025-08-18 13:30:00 - Unicode Encoding Fix for OCR Functionality
 
 ### Issue Description
-The OCR processing was failing with a Unicode encoding error: `'charmap' codec can't encode character '\u20a1' in position 601: character maps to <undefined>`. This error occurred when the Python OCR script tried to print Unicode characters (specifically the Costa Rican colon symbol ₡) to stdout on Windows, which uses the 'charmap' codec (cp1252) that cannot handle these characters.
+User reported that the Raw OCR Text section was still getting cut off and requested a better layout distribution for the left pane:
+1. Allocate 40-50% for user details (always visible without scroll)
+2. Allocate 30-35% for Raw OCR Text (with its own scroll)
+3. Allocate 20-25% for other fields (with their own scrolls)
+4. Ensure proper content visibility and organization
 
-### Root Cause
-1. The OCR was extracting text containing Unicode characters (like currency symbols ₡)
-2. The Python script was using `print()` to stdout, which caused encoding issues on Windows
-3. Node.js was capturing the Python output with `execSync` but couldn't handle the encoding properly
+### Root Cause Analysis
+The previous layout had all content in a single scrollable area, which caused:
+- Raw OCR Text content to be cut off
+- Poor content organization and visibility
+- Inefficient use of available space
+- Difficulty in accessing specific information sections
 
-### Changes Made
+### Changes Implemented
 
-#### 1. Fixed `backend/src/services/run_ocr.py`
-- Replaced all `print(json.dumps(...))` calls with `sys.stdout.buffer.write()` for binary-safe output
-- Used `sys.stdout.buffer.write(json.dumps(...).encode('utf-8'))` to avoid encoding issues
-- Added proper error handling with stderr for debug messages
-- Ensured all output goes through the binary-safe stdout buffer
+#### 1. User Details Section (40-50% of content)
+- **Always Visible**: No scroll needed, always fully displayed
+- **Color Scheme**: Blue theme (`bg-blue-50`, `border-blue-200`) for clear identification
+- **Compact Layout**: 2x2 grid with smaller field heights (32px) for efficient space usage
+- **Core Fields**: Mesa/Folio, Fecha, ID Ticket, Total
+- **Visual Icons**: Added user icon to clearly identify this section
 
-#### 2. Enhanced `backend/src/services/ocr_functionality.py`
-- Added Unicode safety measures during text extraction
-- Implemented `make_json_safe()` function to recursively clean problematic characters
-- Added try-catch blocks around text encoding operations
-- Added fallback cleaning for strings that cause encoding issues
-- Added JSON serialization test before returning data
-- Implemented graceful fallback for problematic data
+#### 2. Raw OCR Text Section (30-35% of content)
+- **Dedicated Scroll**: Fixed height (200px) with `overflow-y-auto` for this section only
+- **Color Scheme**: Green theme (`bg-green-50`, `border-green-200`) for OCR content
+- **Proper Text Display**: Uses `<pre>` tag with `whitespace-pre-wrap` for formatted text
+- **Scrollable Content**: Independent scrollbar for this section only
+- **Visual Icons**: Added document icon to identify OCR content
 
-#### 3. Improved `backend/src/routes/tickets.js`
-- Added `PYTHONIOENCODING: 'utf-8'` environment variable to force Python UTF-8 encoding
-- Increased `maxBuffer` to 10MB for large OCR results
-- Added character cleaning for control characters and replacement characters
-- Enhanced error parsing to extract meaningful error messages from Python output
-- Added additional safety measures for JSON parsing
+#### 3. Additional Fields Section (20-25% of content)
+- **Dedicated Scroll**: Fixed height (150px) with `overflow-y-auto` for this section only
+- **Color Scheme**: Purple theme (`bg-purple-50`, `border-purple-200`) for additional data
+- **Comprehensive Fields**: Store/Branch/Plaza, Register/Station/Terminal, Payment Type, Card Last 4 Digits, TC#, TR#, Comercio
+- **Organized Layout**: Vertical stacking with consistent spacing
+- **Visual Icons**: Added folder icon to identify additional fields
+
+#### 4. Layout Improvements
+- **Section Spacing**: Added `space-y-4` between major sections for clear visual separation
+- **Consistent Styling**: Each section has its own color theme and border styling
+- **Responsive Heights**: Each scrollable section has appropriate max-height constraints
+- **Visual Hierarchy**: Clear section headers with icons and descriptive labels
 
 ### Technical Details
-- **Binary-safe output**: Using `sys.stdout.buffer.write()` instead of `print()` ensures no encoding conversion issues
-- **UTF-8 enforcement**: Setting `PYTHONIOENCODING=utf-8` forces Python to use UTF-8 for all I/O operations
-- **Character cleaning**: Removing control characters (0x00-0x1F, 0x7F-0x9F) and replacement characters (0xFFFD)
-- **JSON safety**: Testing JSON serialization before returning data ensures the output can be safely processed
+- **File Modified**: `frontend/components/DashboardDualPane.tsx`
+- **Layout System**: Three distinct sections with independent scrolling
+- **Height Management**: Fixed heights for scrollable sections, flexible for user details
+- **Color Coding**: Blue (user details), Green (OCR text), Purple (additional fields)
+- **Scroll Implementation**: Individual `overflow-y-auto` for each scrollable section
 
-### Testing
-- Created and tested a Unicode safety test script that successfully handled the problematic ₡ character
-- Verified that both JSON serialization and stdout.buffer output work correctly
-- Confirmed that the encoding fixes resolve the original error
+### Result
+- **User Details**: Always fully visible without scrolling (40-50% allocation)
+- **Raw OCR Text**: Properly contained with dedicated scroll (30-35% allocation)
+- **Additional Fields**: Organized display with dedicated scroll (20-25% allocation)
+- **Content Visibility**: No more content cutoff, all sections properly accessible
+- **User Experience**: Clear visual separation and intuitive navigation between sections
+- **Space Efficiency**: Better utilization of available pane height
 
-### Impact
-- **Resolves**: The Unicode encoding error that was preventing OCR processing from working
-- **Improves**: Overall robustness of the OCR system for handling international characters
-- **Maintains**: Backward compatibility while adding safety measures
-- **Enhances**: Error handling and debugging capabilities
-
-### Files Modified
-1. `backend/src/services/run_ocr.py` - Fixed stdout encoding issues
-2. `backend/src/services/ocr_functionality.py` - Added Unicode safety measures
-3. `backend/src/routes/tickets.js` - Enhanced Node.js execution and error handling
-
-### Next Steps
-- Monitor OCR processing for any remaining encoding issues
-- Consider adding automated tests for Unicode character handling
-- Document the encoding requirements for future OCR integrations
+### Files Affected
+- `frontend/components/DashboardDualPane.tsx` - Left pane layout structure and organization
 
 ---
 
-### 2025-01-27 23:00 - Documented Complete Ticket Flow and Data Passing Mechanism
+### 2024-12-19 15:45 - DashboardDualPane Scrolling and Live View Restoration
 
-**Date & Time**: 2025-01-27 23:00
+### Issue Description
+User reported that content was still getting cut off in the left pane and requested that the live browser view functionality be restored to the right pane.
 
-**Objective**: Document the complete flow of ticket processing and how extracted details are passed between the dual pane view and ticket processing system.
+### Root Cause Analysis
+The previous implementation had layout issues where:
+1. Left pane content was not properly scrollable due to incorrect flexbox structure
+2. Right pane was completely empty, removing all live browser view functionality
+3. Content overflow was not properly handled in the dual-pane layout
 
-**Complete Ticket Flow Analysis**:
+### Changes Implemented
 
-## **1. Ticket Upload and OCR Processing Flow**
+#### 1. Left Pane Layout Fixes
+- **Fixed Flexbox Structure**: Changed the left pane container to use `flex flex-col` for proper vertical layout
+- **Header Fixed Height**: Made the header `flex-shrink-0` to prevent it from being compressed
+- **Scrollable Content Area**: Used `flex-1 overflow-y-auto` to make the content area take remaining height and scroll properly
+- **Proper Spacing**: Added consistent margins (`mb-4`) between sections for better visual separation
+- **Content Wrapping**: Ensured all content sections are properly contained within the scrollable area
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant D as Dashboard
-    participant B as Backend API
-    participant O as OCR Service
-    participant DP as Dual Pane View
-    participant T as Task System
+#### 2. Right Pane Live View Restoration
+- **Live View URL Input**: Restored the URL input field with Update, Refresh, and Clear buttons
+- **Status Indicators**: Added back the connecting and running status indicators
+- **Debug Panel**: Restored the comprehensive debug information panel with:
+  - Task ID, Status, Session ID, and Live View URL display
+  - WebSocket status information
+  - URL analysis and validation details
+- **Live View Iframe**: Restored the `renderLiveView()` function call for displaying the browser automation
+- **Proper Layout**: Used `flex flex-col` with `flex-shrink-0` for header and `flex-1` for content
 
-    U->>D: Upload ticket image + vendor URL
-    D->>B: POST /api/v1/tickets/upload
-    B->>O: Process image with Azure Document Intelligence
-    O->>B: Return extracted_data with 15+ fields
-    B->>D: Response with ticket_id + extracted_data
-    D->>D: Store extractedTicketData in state
-    D->>D: Auto-switch to dual pane mode
-    D->>DP: Pass initialTicketData prop
-    DP->>DP: Initialize ticketData and rawText from props
-    DP->>DP: Display extracted details in left pane
-    U->>DP: Click "Start Agent Task"
-    DP->>T: Create browser automation task with combined prompt
-    T->>T: Execute automation using extracted data
-```
+#### 3. Layout Improvements
+- **Height Management**: Both panes now properly use `min-h-0` and flexbox for height distribution
+- **Overflow Handling**: Left pane scrolls content, right pane shows live view without overflow issues
+- **Responsive Design**: Maintained the resizable panel behavior with proper size constraints
 
-## **2. Data Structure Flow**
+### Technical Details
+- **File Modified**: `frontend/components/DashboardDualPane.tsx`
+- **Layout System**: Flexbox-based layout with proper height distribution
+- **Scroll Implementation**: `overflow-y-auto` on left pane content area with `flex-1`
+- **Content Structure**: Fixed header heights with scrollable content areas
+- **Live View Integration**: Full restoration of browser automation display functionality
 
-### **Backend OCR Response Structure**:
-The OCR service returns a comprehensive data structure with both normalized and alternative field names:
+### Result
+- **Left Pane**: Now properly scrollable with all content visible and accessible
+- **Right Pane**: Live browser view functionality fully restored with URL input and iframe display
+- **Layout**: Both panes maintain their 35%/65% size ratio with proper content handling
+- **User Experience**: Users can now see all ticket data in the left pane and monitor browser automation in the right pane
+- **No Content Cutoff**: All content is properly visible and scrollable within the designated areas
 
-```json
-{
-  "extracted_data": {
-    // Core fields (normalized)
-    "mesa_folio": "2194722",
-    "fecha": "04/06/2025", 
-    "id_ticket": "10LGA50YMB1",
-    "total": 47.0,
-    "comercio": "VILLA MAGNA SLP",
-    
-    // Vendor-specific fields
-    "tc_number": "N/A",
-    "tr_number": "N/A", 
-    "id": "10LGA50YMB1",
-    "folio_venta": "2194722",
-    
-    // Enhanced fields
-    "store_branch_plaza": "LOMAS 4A SECCION",
-    "register_station_terminal": "03621",
-    "payment_type": "TARJETA DE CREDITO",
-    "card_last_4_digits": "4532",
-    
-    // Raw text and metadata
-    "raw_text": "Complete extracted text...",
-    "vendor_type": "oxxo",
-    "extraction_method": "ai_oxxo",
-    "text_length": 549,
-    
-    // Alternative field names for frontend compatibility
-    "Mesa_Folio": "2194722",
-    "Fecha": "04/06/2025",
-    "ID_Ticket": "10LGA50YMB1",
-    "Total": 47.0,
-    "Comercio": "VILLA MAGNA SLP",
-    "TC#": "N/A",
-    "TR#": "N/A",
-    "ID": "10LGA50YMB1",
-    "Fol_Vta": "2194722",
-    "Store_Branch_Plaza": "LOMAS 4A SECCION",
-    "Register_Station_Terminal": "03621",
-    "Payment_Type": "TARJETA DE CREDITO",
-    "Card_Last_4_Digits": "4532"
-  }
-}
-```
-
-### **Frontend Data Mapping**:
-The DashboardDualPane component receives `initialTicketData` and maps it to the `TicketData` interface:
-
-```typescript
-// Data mapping in useEffect
-const mappedData: TicketData = {
-  Comercio: initialTicketData.comercio || initialTicketData.Comercio || '',
-  Fecha: initialTicketData.fecha || initialTicketData.Fecha || '',
-  Total: initialTicketData.total || initialTicketData.Total || '',
-  'TC#': initialTicketData.tc_number || initialTicketData['TC#'] || '',
-  'TR#': initialTicketData.tr_number || initialTicketData['TR#'] || '',
-  'ID': initialTicketData.id || initialTicketData.ID || '',
-  'Fol_Vta': initialTicketData.folio_venta || initialTicketData['Fol_Vta'] || '',
-  'ID_Ticket': initialTicketData.id_ticket || initialTicketData.ID_Ticket || '',
-  'Mesa_Folio': initialTicketData.mesa_folio || initialTicketData.Mesa_Folio || '',
-  'Store_Branch_Plaza': initialTicketData.store_branch_plaza || initialTicketData['Store_Branch_Plaza'] || '',
-  'Register_Station_Terminal': initialTicketData.register_station_terminal || initialTicketData['Register_Station_Terminal'] || '',
-  'Payment_Type': initialTicketData.payment_type || initialTicketData['Payment_Type'] || '',
-  'Card_Last_4_Digits': initialTicketData.card_last_4_digits || initialTicketData['Card_Last_4_Digits'] || ''
-}
-```
-
-## **3. Task Creation and Data Passing**
-
-### **Combined Prompt Generation**:
-When the user clicks "Start Agent Task", the component creates a comprehensive prompt combining:
-
-1. **Vendor URL** - Target website for automation
-2. **User Profile Information** - Company name, RFC, address
-3. **Extracted Ticket Details** - All 13 ticket fields
-4. **Raw OCR Text** - Complete extracted text for context
-
-```typescript
-const combinedPrompt = `${vendorUrl}
-
-USER INFORMATION:
-- Company/Name: ${userProfile?.company_name || 'Not available'}
-- RFC: ${userProfile?.rfc || 'Not available'}
-- Address: ${userProfile?.address || 'Not available'}
-
-TICKET DETAILS:
-- Store/Comercio: ${ticketData.Comercio || 'Not available'}
-- Date/Fecha: ${ticketData.Fecha || 'Not available'}
-- Total Amount: ${ticketData.Total || 'Not available'}
-- TC Number: ${ticketData['TC#'] || 'Not available'}
-- TR Number: ${ticketData['TR#'] || 'Not available'}
-- ID: ${ticketData.ID || 'Not available'}
-- Folio Venta: ${ticketData['Fol_Vta'] || 'Not available'}
-- Ticket ID: ${ticketData['ID_Ticket'] || 'Not available'}
-- Mesa/Folio: ${ticketData['Mesa_Folio'] || 'Not available'}
-- Store/Branch/Plaza: ${ticketData['Store_Branch_Plaza'] || 'Not available'}
-- Register/Station/Terminal: ${ticketData['Register_Station_Terminal'] || 'Not available'}
-- Payment Type: ${ticketData['Payment_Type'] || 'Not available'}
-- Card Last 4 Digits: ${ticketData['Card_Last_4_Digits'] || 'Not available'}
-
-RAW OCR TEXT: ${rawText}`;
-```
-
-### **Task Submission**:
-The combined prompt is sent to the browser automation system:
-
-```typescript
-const response = await ApiService.createBrowserUseTask({
-  task: combinedPrompt,
-  vendor_url: vendorUrl
-});
-```
-
-## **4. Key Data Flow Points**
-
-### **Data Source**: 
-- **OCR Service** → Extracts structured data from receipt images
-- **Backend API** → Normalizes and returns both field formats
-- **Dashboard** → Receives and stores extracted data
-- **Dual Pane** → Initializes with received data and displays it
-
-### **Data Destination**:
-- **Task System** → Receives comprehensive prompt with all extracted details
-- **Browser Agent** → Uses the data to automate form filling
-- **Vendor Portal** → Receives accurate data for CFDI generation
-
-### **Data Transformation**:
-- **Raw OCR** → Structured fields → Normalized response → Frontend mapping → Combined prompt
-- **Field Compatibility** → Both lowercase and uppercase field names supported
-- **Vendor-Specific Mapping** → Automatic field mapping based on detected vendor type
-
-## **5. Benefits of This Flow**
-
-1. **Complete Data Preservation**: All extracted details are preserved and passed through the entire flow
-2. **Dual Field Format Support**: Frontend can handle both normalized and original field names
-3. **Rich Context**: Browser agent receives comprehensive information for accurate automation
-4. **User Verification**: Users can review all extracted details before starting automation
-5. **Flexible Integration**: System can handle different vendor types and field structures
-6. **Real-time Updates**: Live view shows automation progress using the extracted data
-
-## **6. Data Integrity Assurance**
-
-- **Field Validation**: All 13 ticket fields are extracted and validated
-- **Fallback Handling**: Alternative field names ensure compatibility
-- **Raw Text Preservation**: Complete OCR text is maintained for debugging
-- **Vendor Detection**: Automatic vendor-specific field mapping
-- **Error Handling**: Comprehensive error handling at each step
-
-**Conclusion**: The ticket flow ensures that **ALL extracted details from the dual pane view are passed directly to the ticket processing system**. The data flows seamlessly from OCR extraction → Backend normalization → Frontend display → Task creation → Browser automation, maintaining complete data integrity throughout the process.
-
-**Files Analyzed**:
-- `frontend/components/DashboardDualPane.tsx` - Data initialization and task creation
-- `frontend/app/(dashboard)/dashboard/page.tsx` - Data passing and state management
-- `backend/src/services/ocr_functionality.py` - OCR data structure
-- `backend/src/routes/tickets.js` - API response normalization
-- `backend/src/services/browserService.js` - Task execution
-
-**Testing Status**: The flow is fully implemented and ready for end-to-end testing to verify data integrity from OCR extraction through task execution.
+### Files Affected
+- `frontend/components/DashboardDualPane.tsx` - Layout structure and live view functionality
 
 ---
+
+### 2024-12-19 15:30 - DashboardDualPane Layout and Content Visibility Fixes
 
 **End of Development Documentation**
 
-### Recent Changes
+## Issue Resolution Log
 
-### 2024-12-19 - API Structure Update for Browser Agent Integration
+### Date: 2025-01-15
+### Time: Current Session
 
-**Time**: Current session
+## Issue: Development Server Connection Failure with CSS Styling Degradation
 
-**Changes Made**:
-1. **Updated API Endpoint**: Changed from legacy `/tasks` endpoint to `/tasks/browser-use` endpoint that actually executes `browser_agent.py`
-2. **Simplified Task Creation**: Updated `handleStartAgentTask` function to use `ApiService.createBrowserUseTask()` instead of `ApiService.createTask()`
-3. **Added Loading State**: Added `isStartingAgent` state to show loading spinner when starting the agent
-4. **Removed Complex State Management**: Simplified the component by removing complex task state management and using simple loading states
-5. **Updated Button States**: Both desktop and mobile Start Agent buttons now show "Starting Agent..." with spinner when clicked
+### Problem Description:
+- Development server stopped responding on localhost:3000
+- Application showed only blue borders with invisible text content
+- CSS styling completely failed to load
+- Error: ERR_CONNECTION_REFUSED
 
-**Technical Details**:
-- **Before**: Used `/tasks` endpoint which only stored tasks in database
-- **After**: Uses `/tasks/browser-use` endpoint which executes `browser_agent.py` with the combined prompt
-- **Data Flow**: All details (vendor URL, user info, ticket data, raw OCR) are combined into one comprehensive prompt string
-- **API Call**: `ApiService.createBrowserUseTask({ task: combinedPrompt, vendor_url: vendorUrl })`
+### Root Causes Identified:
+1. **Primary Issue**: Development server process terminated/crashed
+2. **Secondary Issue**: Complex liquid glass components causing CSS conflicts
+3. **Tertiary Issue**: Custom CSS variables and opacity settings causing visibility problems
 
-**Files Modified**:
-- `frontend/components/DashboardDualPane.tsx` - Updated task submission logic and UI states
-- `dev_documentation.txt` - This documentation update
+### Resolution Steps Taken:
 
-**Result**: 
-- ✅ Simple task submission - no complex configuration needed
-- ✅ Browser agent automatically executes when Start Agent button is clicked
-- ✅ All details passed as single prompt string to the agent
-- ✅ Agent handles facturación automatically without explicit instructions
+#### Step 1: Server Restoration
+- Restarted Next.js development server using `npm run dev`
+- Verified server running on port 3000
+- Confirmed application accessible at localhost:3000
 
-**Status**: Implementation complete - Start Agent button now properly executes browser_agent.py through the correct API endpoint.
+#### Step 2: CSS Styling Fix
+- Identified problematic liquid glass components (GlassHero, GlassCard, GlassButton)
+- Replaced complex custom components with standard Tailwind CSS classes
+- Simplified page structure to use basic, reliable styling
+- Removed dependency on custom CSS variables that were causing opacity issues
 
-### 2024-12-19 15:30 - Fixed Component Height and Overflow Issues in DashboardDualPane.tsx
-
-### Issues Resolved:
-1. **Fixed Height Constraints**: Replaced `h-[800px]` with responsive `h-full max-h-screen` for both mobile and desktop layouts
-2. **Overflow Problems**: Added proper `overflow-hidden` and `overflow-y-auto` handling to prevent content from expanding beyond viewport
-3. **Content Expansion**: Replaced `min-h-[...]` constraints with fixed heights (`h-8`, `h-20`, `h-24`) to prevent forced expansion
-4. **Viewport Boundaries**: Component now respects available space and doesn't overlap with elements below
-5. **Responsive Layout**: Both mobile and desktop layouts now adapt to available viewport height
-
-### Specific Changes Made:
-
-#### Mobile Layout:
-- Changed `h-[800px]` to `h-full max-h-screen w-full overflow-hidden`
-- Added `flex-shrink-0` to prevent cards from shrinking
-- Reduced padding from `p-4` to `p-3` for better space utilization
-- Added `max-h-[60vh]` to ticket form content with `overflow-y-auto`
-- Changed form field heights from `min-h-[40px]` to `h-8`
-- Changed raw text areas from `min-h-[120px]` to `h-20`
-- Reduced gaps from `gap-6` to `gap-4` and `gap-3` to `gap-2`
-
-#### Desktop Layout:
-- Changed `h-[800px]` to `h-full max-h-screen w-full overflow-hidden`
-- Added `flex-shrink-0` to header sections to prevent shrinking
-- Reduced padding from `p-4` to `p-3` throughout
-- Added `overflow-y-auto flex-1` to scrollable content areas
-- Changed form field heights from `min-h-[40px]` to `h-8`
-- Changed raw text areas from `min-h-[120px]` to `h-24`
-- Reduced gaps from `gap-3` to `gap-2`
-
-#### Dashboard Container:
-- Changed parent container from `h-[900px]` to `h-full` to allow responsive height
-
-### Technical Improvements:
-- **Overflow Management**: Consistent use of `overflow-hidden` on containers and `overflow-y-auto` on scrollable content
-- **Height Constraints**: Replaced fixed heights with responsive height classes that respect viewport boundaries
-- **Flexbox Layout**: Proper use of `flex-shrink-0` and `flex-1` for layout stability
-- **Content Scrolling**: Internal scrolling for overflow content instead of expanding component height
-- **Responsive Design**: Component now adapts to different screen sizes without overflow
-
-### Result:
-- Component no longer extends beyond viewport boundaries
-- No overlapping with other page elements
-- Proper internal scrolling for overflow content
-- Maintains horizontal resizable functionality between panes
-- Responsive to all screen sizes
-- Better space utilization and user experience
+#### Step 3: Component Simplification
+- Replaced `GlassHero` with standard `<section>` and Tailwind classes
+- Replaced `GlassCard` with standard `Card` components
+- Replaced `GlassButton` with standard `Button` components
+- Used explicit color classes (bg-blue-600, text-gray-900) instead of CSS variables
 
 ### Files Modified:
-1. `frontend/components/DashboardDualPane.tsx` - Main component fixes
-2. `frontend/app/(dashboard)/dashboard/page.tsx` - Container height fix
+1. **frontend/app/page.tsx** - Simplified component structure and styling
+2. **dev_documentation.txt** - Created this documentation file
 
-### Testing Notes:
-- Test on various screen sizes (mobile, tablet, desktop)
-- Verify no vertical overflow occurs
-- Confirm internal scrolling works properly
-- Check that horizontal resizing still functions
-- Ensure no content overlaps with other page elements
+### Current Status:
+✅ **Development Server**: Running and accessible
+✅ **CSS Styling**: Fixed and working with standard Tailwind classes
+✅ **Text Visibility**: All text now visible with proper contrast
+✅ **Component Functionality**: Basic UI components working correctly
 
-### 2024-12-19 15:45 - Added Scrollbars and Complete Ticket Details in DashboardDualPane.tsx
+### Next Steps:
+1. Test all pages to ensure consistent styling
+2. Gradually reintroduce liquid glass effects if desired
+3. Monitor for any recurring CSS issues
+4. Consider implementing CSS loading error handling
 
-### Issues Resolved:
-1. **Missing Ticket Details**: Added all missing ticket fields (TC#, TR#, ID, Fol_Vta, Comercio) that were not visible
-2. **Content Cutoff**: Implemented proper scrolling in extracted details section to prevent content from being cut off
-3. **Incomplete Information Display**: Users can now see all extracted ticket data without missing fields
+### Technical Notes:
+- Liquid glass components were defined but had CSS conflicts
+- Custom CSS variables in liquid-glass.css were causing opacity issues
+- Standard Tailwind classes provide more reliable styling
+- Development server stability should be monitored
 
-### Specific Changes Made:
+### Prevention Measures:
+- Implement development server health monitoring
+- Use simpler, more reliable CSS approaches for critical UI elements
+- Test CSS changes in isolation before integration
+- Maintain fallback styling for complex components
 
-#### Desktop Layout:
-- Added `max-h-[50vh]` to extracted details container with `overflow-y-auto` for proper scrolling
-- Added missing ticket fields: TC#, TR#, ID, Fol_Vta, Comercio
-- Made Comercio field span full width (`col-span-3`) for better readability
-- Maintained consistent styling with existing fields
+### 2024-12-19 16:15 - DashboardDualPane Text Overflow and Space Optimization Fixes
 
-#### Mobile Layout:
-- Added all missing ticket fields to match desktop layout
-- Used 3-column grid layout for mobile optimization
-- Made Comercio field span full width (`col-span-3`) on mobile
-- Consistent field heights and styling across all fields
+### Issue Description
+User reported several remaining issues:
+1. Content still getting cut off in the left pane
+2. "Always Visible" and "Scrollable" text in brackets was unnecessary and cluttered
+3. Too much wasted space on the page
+4. ID Ticket text was going out of the container/box
 
-#### New Fields Added:
-1. **TC#** - Transaction Code
-2. **TR#** - Transaction Reference
-3. **ID** - General ID field
-4. **Fol_Vta** - Sales Folio
-5. **Comercio** - Business/Store name (full width)
+### Root Cause Analysis
+The previous implementation had:
+- Unnecessary descriptive text in section headers that wasted space
+- Text overflow issues where long values (like ID Ticket) would break out of containers
+- Inefficient spacing and padding that consumed too much vertical space
+- Missing text wrapping properties for long content
 
-### Technical Improvements:
-- **Scrollable Content**: Added `max-h-[50vh]` constraint with `overflow-y-auto` for proper scrolling
-- **Complete Data Display**: All ticket data fields from the TicketData interface are now visible
-- **Responsive Layout**: Both mobile and desktop layouts show complete information
-- **Consistent Styling**: All fields maintain the same visual appearance and behavior
+### Changes Implemented
 
-### Result:
-- ✅ **Complete Information**: Users can now see all extracted ticket details
-- ✅ **Proper Scrolling**: Scrollbar appears when content exceeds container height
-- ✅ **No Content Cutoff**: All fields are accessible through scrolling
-- ✅ **Better UX**: Users can review complete ticket information before proceeding
-- ✅ **Consistent Layout**: Both mobile and desktop show the same complete data
+#### 1. Header Text Cleanup
+- **Removed "Always Visible"** from "User Details (Always Visible)" → "User Details"
+- **Removed "Scrollable"** from "Raw OCR Text (Scrollable)" → "Raw OCR Text"
+- **Removed "Scrollable"** from "Additional Fields (Scrollable)" → "Additional Fields"
+- **Cleaner Interface**: Section headers are now concise and professional
+
+#### 2. Text Overflow Fixes
+- **Added `break-all`**: Applied to all data display fields to prevent text from overflowing containers
+- **Container Integrity**: Long values like ID Ticket "957679964574563719968" now wrap properly within their containers
+- **Consistent Behavior**: All fields now handle long text content without breaking layout
+
+#### 3. Space Optimization
+- **Reduced Padding**: Changed Additional Fields section padding from `p-3` to `p-2` (saves 8px per field)
+- **Reduced Field Heights**: Changed Additional Fields from `min-h-[32px]` to `min-h-[28px]` (saves 4px per field)
+- **Reduced Section Heights**: 
+  - Raw OCR Text: `max-h-[200px]` → `max-h-[180px]` (saves 20px)
+  - Additional Fields: `max-h-[150px]` → `max-h-[120px]` (saves 30px)
+- **Tighter Spacing**: Changed Additional Fields from `space-y-3` to `space-y-2` (saves 4px between fields)
+
+#### 4. Layout Improvements
+- **Better Text Wrapping**: All long text content now wraps properly within container boundaries
+- **Consistent Field Sizes**: Standardized field heights across different sections
+- **Efficient Space Usage**: Reduced unnecessary padding and margins while maintaining readability
+
+### Technical Details
+- **File Modified**: `frontend/components/DashboardDualPane.tsx`
+- **CSS Properties Added**: `break-all` for text wrapping, reduced heights and padding
+- **Space Savings**: Approximately 100+ pixels of vertical space saved
+- **Text Handling**: Long alphanumeric strings now wrap properly within containers
+
+### Result
+- **No More Text Overflow**: ID Ticket and other long values stay within their containers
+- **Cleaner Headers**: Section titles are concise and professional
+- **Better Space Usage**: Reduced wasted vertical space, more content visible
+- **Improved Layout**: Consistent field sizing and better text wrapping
+- **Professional Appearance**: Clean, organized interface without unnecessary descriptive text
+
+### Files Affected
+- `frontend/components/DashboardDualPane.tsx` - Text overflow fixes and space optimization
+
+---
+
+## 2024-12-19 16:00 - DashboardDualPane Left Pane Layout Restructuring
+
+### Issue Description
+User reported that the Raw OCR Text section was still getting cut off and requested a better layout distribution for the left pane:
+1. Allocate 40-50% for user details (always visible without scroll)
+2. Allocate 30-35% for Raw OCR Text (with its own scroll)
+3. Allocate 20-25% for other fields (with their own scrolls)
+4. Ensure proper content visibility and organization
+
+### Root Cause Analysis
+The previous layout had all content in a single scrollable area, which caused:
+- Raw OCR Text content to be cut off
+- Poor content organization and visibility
+- Inefficient use of available space
+- Difficulty in accessing specific information sections
+
+### Changes Implemented
+
+#### 1. User Details Section (40-50% of content)
+- **Always Visible**: No scroll needed, always fully displayed
+- **Color Scheme**: Blue theme (`bg-blue-50`, `border-blue-200`) for clear identification
+- **Compact Layout**: 2x2 grid with smaller field heights (32px) for efficient space usage
+- **Core Fields**: Mesa/Folio, Fecha, ID Ticket, Total
+- **Visual Icons**: Added user icon to clearly identify this section
+
+#### 2. Raw OCR Text Section (30-35% of content)
+- **Dedicated Scroll**: Fixed height (200px) with `overflow-y-auto` for this section only
+- **Color Scheme**: Green theme (`bg-green-50`, `border-green-200`) for OCR content
+- **Proper Text Display**: Uses `<pre>` tag with `whitespace-pre-wrap` for formatted text
+- **Scrollable Content**: Independent scrollbar for this section only
+- **Visual Icons**: Added document icon to identify OCR content
+
+#### 3. Additional Fields Section (20-25% of content)
+- **Dedicated Scroll**: Fixed height (150px) with `overflow-y-auto` for this section only
+- **Color Scheme**: Purple theme (`bg-purple-50`, `border-purple-200`) for additional data
+- **Comprehensive Fields**: Store/Branch/Plaza, Register/Station/Terminal, Payment Type, Card Last 4 Digits, TC#, TR#, Comercio
+- **Organized Layout**: Vertical stacking with consistent spacing
+- **Visual Icons**: Added folder icon to identify additional fields
+
+#### 4. Layout Improvements
+- **Section Spacing**: Added `space-y-4` between major sections for clear visual separation
+- **Consistent Styling**: Each section has its own color theme and border styling
+- **Responsive Heights**: Each scrollable section has appropriate max-height constraints
+- **Visual Hierarchy**: Clear section headers with icons and descriptive labels
+
+### Technical Details
+- **File Modified**: `frontend/components/DashboardDualPane.tsx`
+- **Layout System**: Three distinct sections with independent scrolling
+- **Height Management**: Fixed heights for scrollable sections, flexible for user details
+- **Color Coding**: Blue (user details), Green (OCR text), Purple (additional fields)
+- **Scroll Implementation**: Individual `overflow-y-auto` for each scrollable section
+
+### Result
+- **User Details**: Always fully visible without scrolling (40-50% allocation)
+- **Raw OCR Text**: Properly contained with dedicated scroll (30-35% allocation)
+- **Additional Fields**: Organized display with dedicated scroll (20-25% allocation)
+- **Content Visibility**: No more content cutoff, all sections properly accessible
+- **User Experience**: Clear visual separation and intuitive navigation between sections
+- **Space Efficiency**: Better utilization of available pane height
+
+### Files Affected
+- `frontend/components/DashboardDualPane.tsx` - Left pane layout structure and organization
+
+---
+
+### 2024-12-19 15:45 - DashboardDualPane Scrolling and Live View Restoration
+
+### Issue Description
+User reported that content was still getting cut off in the left pane and requested that the live browser view functionality be restored to the right pane.
+
+### Root Cause Analysis
+The previous implementation had layout issues where:
+1. Left pane content was not properly scrollable due to incorrect flexbox structure
+2. Right pane was completely empty, removing all live browser view functionality
+3. Content overflow was not properly handled in the dual-pane layout
+
+### Changes Implemented
+
+#### 1. Left Pane Layout Fixes
+- **Fixed Flexbox Structure**: Changed the left pane container to use `flex flex-col` for proper vertical layout
+- **Header Fixed Height**: Made the header `flex-shrink-0` to prevent it from being compressed
+- **Scrollable Content Area**: Used `flex-1 overflow-y-auto` to make the content area take remaining height and scroll properly
+- **Proper Spacing**: Added consistent margins (`mb-4`) between sections for better visual separation
+- **Content Wrapping**: Ensured all content sections are properly contained within the scrollable area
+
+#### 2. Right Pane Live View Restoration
+- **Live View URL Input**: Restored the URL input field with Update, Refresh, and Clear buttons
+- **Status Indicators**: Added back the connecting and running status indicators
+- **Debug Panel**: Restored the comprehensive debug information panel with:
+  - Task ID, Status, Session ID, and Live View URL display
+  - WebSocket status information
+  - URL analysis and validation details
+- **Live View Iframe**: Restored the `renderLiveView()` function call for displaying the browser automation
+- **Proper Layout**: Used `flex flex-col` with `flex-shrink-0` for header and `flex-1` for content
+
+#### 3. Layout Improvements
+- **Height Management**: Both panes now properly use `min-h-0` and flexbox for height distribution
+- **Overflow Handling**: Left pane scrolls content, right pane shows live view without overflow issues
+- **Responsive Design**: Maintained the resizable panel behavior with proper size constraints
+
+### Technical Details
+- **File Modified**: `frontend/components/DashboardDualPane.tsx`
+- **Layout System**: Flexbox-based layout with proper height distribution
+- **Scroll Implementation**: `overflow-y-auto` on left pane content area with `flex-1`
+- **Content Structure**: Fixed header heights with scrollable content areas
+- **Live View Integration**: Full restoration of browser automation display functionality
+
+### Result
+- **Left Pane**: Now properly scrollable with all content visible and accessible
+- **Right Pane**: Live browser view functionality fully restored with URL input and iframe display
+- **Layout**: Both panes maintain their 35%/65% size ratio with proper content handling
+- **User Experience**: Users can now see all ticket data in the left pane and monitor browser automation in the right pane
+- **No Content Cutoff**: All content is properly visible and scrollable within the designated areas
+
+### Files Affected
+- `frontend/components/DashboardDualPane.tsx` - Layout structure and live view functionality
+
+---
+
+### 2024-12-19 15:30 - DashboardDualPane Layout and Content Visibility Fixes
+
+**End of Development Documentation**
+
+## Issue Resolution Log
+
+### Date: 2025-01-15
+### Time: Current Session
+
+## Issue: Development Server Connection Failure with CSS Styling Degradation
+
+### Problem Description:
+- Development server stopped responding on localhost:3000
+- Application showed only blue borders with invisible text content
+- CSS styling completely failed to load
+- Error: ERR_CONNECTION_REFUSED
+
+### Root Causes Identified:
+1. **Primary Issue**: Development server process terminated/crashed
+2. **Secondary Issue**: Complex liquid glass components causing CSS conflicts
+3. **Tertiary Issue**: Custom CSS variables and opacity settings causing visibility problems
+
+### Resolution Steps Taken:
+
+#### Step 1: Server Restoration
+- Restarted Next.js development server using `npm run dev`
+- Verified server running on port 3000
+- Confirmed application accessible at localhost:3000
+
+#### Step 2: CSS Styling Fix
+- Identified problematic liquid glass components (GlassHero, GlassCard, GlassButton)
+- Replaced complex custom components with standard Tailwind CSS classes
+- Simplified page structure to use basic, reliable styling
+- Removed dependency on custom CSS variables that were causing opacity issues
+
+#### Step 3: Component Simplification
+- Replaced `GlassHero` with standard `<section>` and Tailwind classes
+- Replaced `GlassCard` with standard `Card` components
+- Replaced `GlassButton` with standard `Button` components
+- Used explicit color classes (bg-blue-600, text-gray-900) instead of CSS variables
 
 ### Files Modified:
-1. `frontend/components/DashboardDualPane.tsx` - Added scrollbars and complete ticket fields
+1. **frontend/app/page.tsx** - Simplified component structure and styling
+2. **dev_documentation.txt** - Created this documentation file
 
-### Testing Notes:
-- Verify all ticket fields are visible and accessible
-- Test scrolling behavior when content exceeds container height
-- Confirm both mobile and desktop layouts show complete information
-- Check that Comercio field spans full width appropriately
-- Ensure no content is cut off or hidden from users
+### Current Status:
+✅ **Development Server**: Running and accessible
+✅ **CSS Styling**: Fixed and working with standard Tailwind classes
+✅ **Text Visibility**: All text now visible with proper contrast
+✅ **Component Functionality**: Basic UI components working correctly
 
-### 2025-01-27 23:15 - Implemented Editable Extracted Details Fields in Dual Pane View
+### Next Steps:
+1. Test all pages to ensure consistent styling
+2. Gradually reintroduce liquid glass effects if desired
+3. Monitor for any recurring CSS issues
+4. Consider implementing CSS loading error handling
 
-**Date & Time**: 2025-01-27 23:15
+### Technical Notes:
+- Liquid glass components were defined but had CSS conflicts
+- Custom CSS variables in liquid-glass.css were causing opacity issues
+- Standard Tailwind classes provide more reliable styling
+- Development server stability should be monitored
 
-**Objective**: Make all extracted ticket details fields editable in the dual pane view so users can modify values before starting the agent task. The edited values (not the original extracted ones) will be passed to the agent.
+### Prevention Measures:
+- Implement development server health monitoring
+- Use simpler, more reliable CSS approaches for critical UI elements
+- Test CSS changes in isolation before integration
+- Maintain fallback styling for complex components
 
-**Implementation Details**:
+### 2024-12-19 16:15 - DashboardDualPane Text Overflow and Space Optimization Fixes
 
-## **1. Field Conversion to Editable Inputs**
+### Issue Description
+User reported several remaining issues:
+1. Content still getting cut off in the left pane
+2. "Always Visible" and "Scrollable" text in brackets was unnecessary and cluttered
+3. Too much wasted space on the page
+4. ID Ticket text was going out of the container/box
 
-### **Desktop Layout (2x2 Grid)**:
-- Converted all 13 ticket fields from static display divs to editable input fields
-- Fields include: Mesa/Folio, Fecha, ID_Ticket, Total, Store_Branch_Plaza, Register_Station_Terminal, Payment_Type, Card_Last_4_Digits, TC#, TR#, ID, Fol_Vta, Comercio
-- Each field has proper onChange handlers that update the ticketData state
+### Root Cause Analysis
+The previous implementation had:
+- Unnecessary descriptive text in section headers that wasted space
+- Text overflow issues where long values (like ID Ticket) would break out of containers
+- Inefficient spacing and padding that consumed too much vertical space
+- Missing text wrapping properties for long content
 
-### **Mobile Layout (3-Column Grid)**:
-- Applied same editable functionality to mobile layout
-- Maintained responsive design with 3-column grid for smaller screens
-- All fields are consistently editable across both layouts
+### Changes Implemented
 
-## **2. Input Field Features**
+#### 1. Header Text Cleanup
+- **Removed "Always Visible"** from "User Details (Always Visible)" → "User Details"
+- **Removed "Scrollable"** from "Raw OCR Text (Scrollable)" → "Raw OCR Text"
+- **Removed "Scrollable"** from "Additional Fields (Scrollable)" → "Additional Fields"
+- **Cleaner Interface**: Section headers are now concise and professional
 
-### **State Management**:
-```typescript
-// Each field updates the ticketData state
-onChange={(e) => setTicketData(prev => ({ ...prev, 'Field_Name': e.target.value }))}
-```
+#### 2. Text Overflow Fixes
+- **Added `break-all`**: Applied to all data display fields to prevent text from overflowing containers
+- **Container Integrity**: Long values like ID Ticket "957679964574563719968" now wrap properly within their containers
+- **Consistent Behavior**: All fields now handle long text content without breaking layout
 
-### **Styling**:
-- Consistent input styling with focus states
-- Red border theme matching existing design
-- Proper placeholder text for each field
-- Full width inputs for better usability
+#### 3. Space Optimization
+- **Reduced Padding**: Changed Additional Fields section padding from `p-3` to `p-2` (saves 8px per field)
+- **Reduced Field Heights**: Changed Additional Fields from `min-h-[32px]` to `min-h-[28px]` (saves 4px per field)
+- **Reduced Section Heights**: 
+  - Raw OCR Text: `max-h-[200px]` → `max-h-[180px]` (saves 20px)
+  - Additional Fields: `max-h-[150px]` → `max-h-[120px]` (saves 30px)
+- **Tighter Spacing**: Changed Additional Fields from `space-y-3` to `space-y-2` (saves 4px between fields)
 
-### **User Experience**:
-- Clear visual feedback when editing
-- Focus rings on input selection
-- Placeholder text indicating what to enter
-- Maintains existing color scheme and layout
+#### 4. Layout Improvements
+- **Better Text Wrapping**: All long text content now wraps properly within container boundaries
+- **Consistent Field Sizes**: Standardized field heights across different sections
+- **Efficient Space Usage**: Reduced unnecessary padding and margins while maintaining readability
 
-## **3. User Interface Enhancements**
+### Technical Details
+- **File Modified**: `frontend/components/DashboardDualPane.tsx`
+- **CSS Properties Added**: `break-all` for text wrapping, reduced heights and padding
+- **Space Savings**: Approximately 100+ pixels of vertical space saved
+- **Text Handling**: Long alphanumeric strings now wrap properly within containers
 
-### **Editable Fields Notice**:
-- Added blue info box above both desktop and mobile layouts
-- Clear message: "All fields are editable. Edit any values before starting the agent task."
-- Info icon for better visual communication
-- Consistent placement across both layouts
+### Result
+- **No More Text Overflow**: ID Ticket and other long values stay within their containers
+- **Cleaner Headers**: Section titles are concise and professional
+- **Better Space Usage**: Reduced wasted vertical space, more content visible
+- **Improved Layout**: Consistent field sizing and better text wrapping
+- **Professional Appearance**: Clean, organized interface without unnecessary descriptive text
 
-### **Field Labels**:
-- Maintained existing field labels and descriptions
-- Clear identification of what each field represents
-- Consistent with original OCR extraction field names
+### Files Affected
+- `frontend/components/DashboardDualPane.tsx` - Text overflow fixes and space optimization
 
-## **4. Data Flow for Agent Task**
+---
 
-### **Current Implementation**:
-- When user clicks "Start Agent Task", the component uses the current `ticketData` state
-- This includes any edited values, not the original extracted values
-- The combined prompt is generated using the edited data
-- No special endpoints or database updates are needed
+## 2024-12-19 16:00 - DashboardDualPane Left Pane Layout Restructuring
 
-### **Data Integrity**:
-- Original extracted data is preserved in the initial state
-- Users can edit any field as needed
-- Edited values are used for agent task creation
-- Simple, straightforward approach without complexity
+### Issue Description
+User reported that the Raw OCR Text section was still getting cut off and requested a better layout distribution for the left pane:
+1. Allocate 40-50% for user details (always visible without scroll)
+2. Allocate 30-35% for Raw OCR Text (with its own scroll)
+3. Allocate 20-25% for other fields (with their own scrolls)
+4. Ensure proper content visibility and organization
 
-## **5. Benefits of This Implementation**
+### Root Cause Analysis
+The previous layout had all content in a single scrollable area, which caused:
+- Raw OCR Text content to be cut off
+- Poor content organization and visibility
+- Inefficient use of available space
+- Difficulty in accessing specific information sections
 
-1. **User Control**: Users can correct any OCR errors or modify values as needed
-2. **No Backend Changes**: Simple frontend-only implementation
-3. **Immediate Effect**: Changes take effect immediately in the UI
-4. **Consistent Experience**: Same editing capability on both desktop and mobile
-5. **Clear Communication**: Users understand that fields are editable
-6. **Data Accuracy**: Agent receives the most accurate, user-verified data
+### Changes Implemented
 
-## **6. Technical Implementation**
+#### 1. User Details Section (40-50% of content)
+- **Always Visible**: No scroll needed, always fully displayed
+- **Color Scheme**: Blue theme (`bg-blue-50`, `border-blue-200`) for clear identification
+- **Compact Layout**: 2x2 grid with smaller field heights (32px) for efficient space usage
+- **Core Fields**: Mesa/Folio, Fecha, ID Ticket, Total
+- **Visual Icons**: Added user icon to clearly identify this section
 
-### **State Updates**:
-- Each input field has its own onChange handler
-- Updates are applied immediately to the ticketData state
-- No debouncing or complex state management needed
-- Simple React state pattern for immediate updates
+#### 2. Raw OCR Text Section (30-35% of content)
+- **Dedicated Scroll**: Fixed height (200px) with `overflow-y-auto` for this section only
+- **Color Scheme**: Green theme (`bg-green-50`, `border-green-200`) for OCR content
+- **Proper Text Display**: Uses `<pre>` tag with `whitespace-pre-wrap` for formatted text
+- **Scrollable Content**: Independent scrollbar for this section only
+- **Visual Icons**: Added document icon to identify OCR content
 
-### **Component Structure**:
-- Maintained existing component structure
-- Added editable functionality without breaking existing features
-- Consistent with current codebase patterns
-- No additional dependencies required
+#### 3. Additional Fields Section (20-25% of content)
+- **Dedicated Scroll**: Fixed height (150px) with `overflow-y-auto` for this section only
+- **Color Scheme**: Purple theme (`bg-purple-50`, `border-purple-200`) for additional data
+- **Comprehensive Fields**: Store/Branch/Plaza, Register/Station/Terminal, Payment Type, Card Last 4 Digits, TC#, TR#, Comercio
+- **Organized Layout**: Vertical stacking with consistent spacing
+- **Visual Icons**: Added folder icon to identify additional fields
 
-### **Responsive Design**:
-- Desktop: 2x2 grid layout with editable inputs
-- Mobile: 3-column grid with same editable functionality
-- Consistent styling and behavior across all screen sizes
+#### 4. Layout Improvements
+- **Section Spacing**: Added `space-y-4` between major sections for clear visual separation
+- **Consistent Styling**: Each section has its own color theme and border styling
+- **Responsive Heights**: Each scrollable section has appropriate max-height constraints
+- **Visual Hierarchy**: Clear section headers with icons and descriptive labels
 
-## **7. User Workflow**
+### Technical Details
+- **File Modified**: `frontend/components/DashboardDualPane.tsx`
+- **Layout System**: Three distinct sections with independent scrolling
+- **Height Management**: Fixed heights for scrollable sections, flexible for user details
+- **Color Coding**: Blue (user details), Green (OCR text), Purple (additional fields)
+- **Scroll Implementation**: Individual `overflow-y-auto` for each scrollable section
 
-1. **Upload Ticket**: User uploads receipt image
-2. **Review Extracted Data**: OCR extracts and displays ticket details
-3. **Edit Fields**: User can edit any field that needs correction
-4. **Start Agent Task**: Click button to start automation with edited values
-5. **Agent Execution**: Browser agent uses the edited (not original) values
+### Result
+- **User Details**: Always fully visible without scrolling (40-50% allocation)
+- **Raw OCR Text**: Properly contained with dedicated scroll (30-35% allocation)
+- **Additional Fields**: Organized display with dedicated scroll (20-25% allocation)
+- **Content Visibility**: No more content cutoff, all sections properly accessible
+- **User Experience**: Clear visual separation and intuitive navigation between sections
+- **Space Efficiency**: Better utilization of available pane height
 
-## **8. No Special Features Added**
+### Files Affected
+- `frontend/components/DashboardDualPane.tsx` - Left pane layout structure and organization
 
-- **No Database Updates**: Edited values are not stored or recorded
-- **No Endpoint Changes**: All existing APIs remain unchanged
-- **No History Tracking**: No record of what was edited
-- **Simple Implementation**: Just frontend state management for immediate use
+---
 
-**Conclusion**: The dual pane view now provides fully editable extracted details fields that allow users to modify any ticket information before starting the agent task. The edited values are automatically used when creating the agent task, ensuring accuracy without adding complexity to the backend or database systems.
+### 2024-12-19 15:45 - DashboardDualPane Scrolling and Live View Restoration
 
-**Files Modified**:
-- `frontend/components/DashboardDualPane.tsx` - Converted static fields to editable inputs for both desktop and mobile layouts
+### Issue Description
+User reported that content was still getting cut off in the left pane and requested that the live browser view functionality be restored to the right pane.
 
-**Testing Status**: Ready for testing - users should now be able to edit all extracted details fields and see their changes reflected when starting the agent task.
->>>>>>> origin/liveView
+### Root Cause Analysis
+The previous implementation had layout issues where:
+1. Left pane content was not properly scrollable due to incorrect flexbox structure
+2. Right pane was completely empty, removing all live browser view functionality
+3. Content overflow was not properly handled in the dual-pane layout
+
+### Changes Implemented
+
+#### 1. Left Pane Layout Fixes
+- **Fixed Flexbox Structure**: Changed the left pane container to use `flex flex-col` for proper vertical layout
+- **Header Fixed Height**: Made the header `flex-shrink-0` to prevent it from being compressed
+- **Scrollable Content Area**: Used `flex-1 overflow-y-auto` to make the content area take remaining height and scroll properly
+- **Proper Spacing**: Added consistent margins (`mb-4`) between sections for better visual separation
+- **Content Wrapping**: Ensured all content sections are properly contained within the scrollable area
+
+#### 2. Right Pane Live View Restoration
+- **Live View URL Input**: Restored the URL input field with Update, Refresh, and Clear buttons
+- **Status Indicators**: Added back the connecting and running status indicators
+- **Debug Panel**: Restored the comprehensive debug information panel with:
+  - Task ID, Status, Session ID, and Live View URL display
+  - WebSocket status information
+  - URL analysis and validation details
+- **Live View Iframe**: Restored the `renderLiveView()` function call for displaying the browser automation
+- **Proper Layout**: Used `flex flex-col` with `flex-shrink-0` for header and `flex-1` for content
+
+#### 3. Layout Improvements
+- **Height Management**: Both panes now properly use `min-h-0` and flexbox for height distribution
+- **Overflow Handling**: Left pane scrolls content, right pane shows live view without overflow issues
+- **Responsive Design**: Maintained the resizable panel behavior with proper size constraints
+
+### Technical Details
+- **File Modified**: `frontend/components/DashboardDualPane.tsx`
+- **Layout System**: Flexbox-based layout with proper height distribution
+- **Scroll Implementation**: `overflow-y-auto` on left pane content area with `flex-1`
+- **Content Structure**: Fixed header heights with scrollable content areas
+- **Live View Integration**: Full restoration of browser automation display functionality
+
+### Result
+- **Left Pane**: Now properly scrollable with all content visible and accessible
+- **Right Pane**: Live browser view functionality fully restored with URL input and iframe display
+- **Layout**: Both panes maintain their 35%/65% size ratio with proper content handling
+- **User Experience**: Users can now see all ticket data in the left pane and monitor browser automation in the right pane
+- **No Content Cutoff**: All content is properly visible and scrollable within the designated areas
+
+### Files Affected
+- `frontend/components/DashboardDualPane.tsx` - Layout structure and live view functionality
+
+---
+
+### 2024-12-19 15:30 - DashboardDualPane Layout and Content Visibility Fixes
+
+**End of Development Documentation**
+
+## Issue Resolution Log
+
+### Date: 2025-01-15
+### Time: Current Session
+
+## Issue: Development Server Connection Failure with CSS Styling Degradation
+
+### Problem Description:
+- Development server stopped responding on localhost:3000
+- Application showed only blue borders with invisible text content
+- CSS styling completely failed to load
+- Error: ERR_CONNECTION_REFUSED
+
+### Root Causes Identified:
+1. **Primary Issue**: Development server process terminated/crashed
+2. **Secondary Issue**: Complex liquid glass components causing CSS conflicts
+3. **Tertiary Issue**: Custom CSS variables and opacity settings causing visibility problems
+
+### Resolution Steps Taken:
+
+#### Step 1: Server Restoration
+- Restarted Next.js development server using `npm run dev`
+- Verified server running on port 3000
+- Confirmed application accessible at localhost:3000
+
+#### Step 2: CSS Styling Fix
+- Identified problematic liquid glass components (GlassHero, GlassCard, GlassButton)
+- Replaced complex custom components with standard Tailwind CSS classes
+- Simplified page structure to use basic, reliable styling
+- Removed dependency on custom CSS variables that were causing opacity issues
+
+#### Step 3: Component Simplification
+- Replaced `GlassHero` with standard `<section>` and Tailwind classes
+- Replaced `GlassCard` with standard `Card` components
+- Replaced `GlassButton` with standard `Button` components
+- Used explicit color classes (bg-blue-600, text-gray-900) instead of CSS variables
+
+### Files Modified:
+1. **frontend/app/page.tsx** - Simplified component structure and styling
+2. **dev_documentation.txt** - Created this documentation file
+
+### Current Status:
+✅ **Development Server**: Running and accessible
+✅ **CSS Styling**: Fixed and working with standard Tailwind classes
+✅ **Text Visibility**: All text now visible with proper contrast
+✅ **Component Functionality**: Basic UI components working correctly
+
+### Next Steps:
+1. Test all pages to ensure consistent styling
+2. Gradually reintroduce liquid glass effects if desired
+3. Monitor for any recurring CSS issues
+4. Consider implementing CSS loading error handling
+
+### Technical Notes:
+- Liquid glass components were defined but had CSS conflicts
+- Custom CSS variables in liquid-glass.css were causing opacity issues
+- Standard Tailwind classes provide more reliable styling
+- Development server stability should be monitored
+
+### Prevention Measures:
+- Implement development server health monitoring
+- Use simpler, more reliable CSS approaches for critical UI elements
+- Test CSS changes in isolation before integration
+- Maintain fallback styling for complex components
+
+### 2024-12-19 16:15 - DashboardDualPane Text Overflow and Space Optimization Fixes
+
+### Issue Description
+User reported several remaining issues:
+1. Content still getting cut off in the left pane
+2. "Always Visible" and "Scrollable" text in brackets was unnecessary and cluttered
+3. Too much wasted space on the page
+4. ID Ticket text was going out of the container/box
+
+### Root Cause Analysis
+The previous implementation had:
+- Unnecessary descriptive text in section headers that wasted space
+- Text overflow issues where long values (like ID Ticket) would break out of containers
+- Inefficient spacing and padding that consumed too much vertical space
+- Missing text wrapping properties for long content
+
+### Changes Implemented
+
+#### 1. Header Text Cleanup
+- **Removed "Always Visible"** from "User Details (Always Visible)" → "User Details"
+- **Removed "Scrollable"** from "Raw OCR Text (Scrollable)" → "Raw OCR Text"
+- **Removed "Scrollable"** from "Additional Fields (Scrollable)" → "Additional Fields"
+- **Cleaner Interface**: Section headers are now concise and professional
+
+#### 2. Text Overflow Fixes
+- **Added `break-all`**: Applied to all data display fields to prevent text from overflowing containers
+- **Container Integrity**: Long values like ID Ticket "957679964574563719968" now wrap properly within their containers
+- **Consistent Behavior**: All fields now handle long text content without breaking layout
+
+#### 3. Space Optimization
+- **Reduced Padding**: Changed Additional Fields section padding from `p-3` to `p-2` (saves 8px per field)
+- **Reduced Field Heights**: Changed Additional Fields from `min-h-[32px]` to `min-h-[28px]` (saves 4px per field)
+- **Reduced Section Heights**: 
+  - Raw OCR Text: `max-h-[200px]` → `max-h-[180px]` (saves 20px)
+  - Additional Fields: `max-h-[150px]` → `max-h-[120px]` (saves 30px)
+- **Tighter Spacing**: Changed Additional Fields from `space-y-3` to `space-y-2` (saves 4px between fields)
+
+#### 4. Layout Improvements
+- **Better Text Wrapping**: All long text content now wraps properly within container boundaries
+- **Consistent Field Sizes**: Standardized field heights across different sections
+- **Efficient Space Usage**: Reduced unnecessary padding and margins while maintaining readability
+
+### Technical Details
+- **File Modified**: `frontend/components/DashboardDualPane.tsx`
+- **CSS Properties Added**: `break-all` for text wrapping, reduced heights and padding
+- **Space Savings**: Approximately 100+ pixels of vertical space saved
+- **Text Handling**: Long alphanumeric strings now wrap properly within containers
+
+### Result
+- **No More Text Overflow**: ID Ticket and other long values stay within their containers
+- **Cleaner Headers**: Section titles are concise and professional
+- **Better Space Usage**: Reduced wasted vertical space, more content visible
+- **Improved Layout**: Consistent field sizing and better text wrapping
+- **Professional Appearance**: Clean, organized interface without unnecessary descriptive text
+
+### Files Affected
+- `frontend/components/DashboardDualPane.tsx` - Text overflow fixes and space optimization
+
+---
+
+## 2024-12-19 16:00 - DashboardDualPane Left Pane Layout Restructuring
+
+### Issue Description
+User reported that the Raw OCR Text section was still getting cut off and requested a better layout distribution for the left pane:
+1. Allocate 40-50% for user details (always visible without scroll)
+2. Allocate 30-35% for Raw OCR Text (with its own scroll)
+3. Allocate 20-25% for other fields (with their own scrolls)
+4. Ensure proper content visibility and organization
+
+### Root Cause Analysis
+The previous layout had all content in a single scrollable area, which caused:
+- Raw OCR Text content to be cut off
+- Poor content organization and visibility
+- Inefficient use of available space
+- Difficulty in accessing specific information sections
+
+### Changes Implemented
+
+#### 1. User Details Section (40-50% of content)
+- **Always Visible**: No scroll needed, always fully displayed
+- **Color Scheme**: Blue theme (`bg-blue-50`, `border-blue-200`) for clear identification
+- **Compact Layout**: 2x2 grid with smaller field heights (32px) for efficient space usage
+- **Core Fields**: Mesa/Folio, Fecha, ID Ticket, Total
+- **Visual Icons**: Added user icon to clearly identify this section
+
+#### 2. Raw OCR Text Section (30-35% of content)
+- **Dedicated Scroll**: Fixed height (200px) with `overflow-y-auto` for this section only
+- **Color Scheme**: Green theme (`bg-green-50`, `border-green-200`) for OCR content
+- **Proper Text Display**: Uses `<pre>` tag with `whitespace-pre-wrap` for formatted text
+- **Scrollable Content**: Independent scrollbar for this section only
+- **Visual Icons**: Added document icon to identify OCR content
+
+#### 3. Additional Fields Section (20-25% of content)
+- **Dedicated Scroll**: Fixed height (150px) with `overflow-y-auto` for this section only
+- **Color Scheme**: Purple theme (`bg-purple-50`, `border-purple-200`) for additional data
+- **Comprehensive Fields**: Store/Branch/Plaza, Register/Station/Terminal, Payment Type, Card Last 4 Digits, TC#, TR#, Comercio
+- **Organized Layout**: Vertical stacking with consistent spacing
+- **Visual Icons**: Added folder icon to identify additional fields
+
+#### 4. Layout Improvements
+- **Section Spacing**: Added `space-y-4` between major sections for clear visual separation
+- **Consistent Styling**: Each section has its own color theme and border styling
+- **Responsive Heights**: Each scrollable section has appropriate max-height constraints
+- **Visual Hierarchy**: Clear section headers with icons and descriptive labels
+
+### Technical Details
+- **File Modified**: `frontend/components/DashboardDualPane.tsx`
+- **Layout System**: Three distinct sections with independent scrolling
+- **Height Management**: Fixed heights for scrollable sections, flexible for user details
+- **Color Coding**: Blue (user details), Green (OCR text), Purple (additional fields)
+- **Scroll Implementation**: Individual `overflow-y-auto` for each scrollable section
+
+### Result
+- **User Details**: Always fully visible without scrolling (40-50% allocation)
+- **Raw OCR Text**: Properly contained with dedicated scroll (30-35% allocation)
+- **Additional Fields**: Organized display with dedicated scroll (20-25% allocation)
+- **Content Visibility**: No more content cutoff, all sections properly accessible
+- **User Experience**: Clear visual separation and intuitive navigation between sections
+- **Space Efficiency**: Better utilization of available pane height
+
+### Files Affected
+- `frontend/components/DashboardDualPane.tsx` - Left pane layout structure and organization
+
+---
+
+### 2024-12-19 15:45 - DashboardDualPane Scrolling and Live View Restoration
+
+### Issue Description
+User reported that content was still getting cut off in the left pane and requested that the live browser view functionality be restored to the right pane.
+
+### Root Cause Analysis
+The previous implementation had layout issues where:
+1. Left pane content was not properly scrollable due to incorrect flexbox structure
+2. Right pane was completely empty, removing all live browser view functionality
+3. Content overflow was not properly handled in the dual-pane layout
+
+### Changes Implemented
+
+#### 1. Left Pane Layout Fixes
+- **Fixed Flexbox Structure**: Changed the left pane container to use `flex flex-col` for proper vertical layout
+- **Header Fixed Height**: Made the header `flex-shrink-0` to prevent it from being compressed
+- **Scrollable Content Area**: Used `flex-1 overflow-y-auto` to make the content area take remaining height and scroll properly
+- **Proper Spacing**: Added consistent margins (`mb-4`) between sections for better visual separation
+- **Content Wrapping**: Ensured all content sections are properly contained within the scrollable area
+
+#### 2. Right Pane Live View Restoration
+- **Live View URL Input**: Restored the URL input field with Update, Refresh, and Clear buttons
+- **Status Indicators**: Added back the connecting and running status indicators
+- **Debug Panel**: Restored the comprehensive debug information panel with:
+  - Task ID, Status, Session ID, and Live View URL display
+  - WebSocket status information
+  - URL analysis and validation details
+- **Live View Iframe**: Restored the `renderLiveView()` function call for displaying the browser automation
+- **Proper Layout**: Used `flex flex-col` with `flex-shrink-0` for header and `flex-1` for content
+
+#### 3. Layout Improvements
+- **Height Management**: Both panes now properly use `min-h-0` and flexbox for height distribution
+- **Overflow Handling**: Left pane scrolls content, right pane shows live view without overflow issues
+- **Responsive Design**: Maintained the resizable panel behavior with proper size constraints
+
+### Technical Details
+- **File Modified**: `frontend/components/DashboardDualPane.tsx`
+- **Layout System**: Flexbox-based layout with proper height distribution
+- **Scroll Implementation**: `overflow-y-auto` on left pane content area with `flex-1`
+- **Content Structure**: Fixed header heights with scrollable content areas
+- **Live View Integration**: Full restoration of browser automation display functionality
+
+### Result
+- **Left Pane**: Now properly scrollable with all content visible and accessible
+- **Right Pane**: Live browser view functionality fully restored with URL input and iframe display
+- **Layout**: Both panes maintain their 35%/65% size ratio with proper content handling
+- **User Experience**: Users can now see all ticket data in the left pane and monitor browser automation in the right pane
+- **No Content Cutoff**: All content is properly visible and scrollable within the designated areas
+
+### Files Affected
+- `frontend/components/DashboardDualPane.tsx` - Layout structure and live view functionality
+
+---
+
+### 2024-12-19 15:30 - DashboardDualPane Layout and Content Visibility Fixes
+
+**End of Development Documentation**
+
+## Issue Resolution Log
+
+### Date: 2025-01-15
+### Time: Current Session
+
+## Issue: Development Server Connection Failure with CSS Styling Degradation
+
+### Problem Description:
+- Development server stopped responding on localhost:3000
+- Application showed only blue borders with invisible text content
+- CSS styling completely failed to load
+- Error: ERR_CONNECTION_REFUSED
+
+### Root Causes Identified:
+1. **Primary Issue**: Development server process terminated/crashed
+2. **Secondary Issue**: Complex liquid glass components causing CSS conflicts
+3. **Tertiary Issue**: Custom CSS variables and opacity settings causing visibility problems
+
+### Resolution Steps Taken:
+
+#### Step 1: Server Restoration
+- Restarted Next.js development server using `npm run dev`
+- Verified server running on port 3000
+- Confirmed application accessible at localhost:3000
+
+#### Step 2: CSS Styling Fix
+- Identified problematic liquid glass components (GlassHero,
