@@ -100,6 +100,63 @@ const BrowserAgentRealtime: React.FC<BrowserAgentRealtimeProps> = ({
       // Handle ping-pong silently
     };
 
+    // New URL-specific event handlers
+    const handleSessionCreated = (data: any) => {
+      console.log('BrowserAgentRealtime: Session created event received:', data);
+      const sessionIdValue = data.sessionId || data.session_id;
+      if (sessionIdValue) {
+        addLog(`🔗 Browser session created: ${sessionIdValue}`, 'success');
+        setSessionId(sessionIdValue);
+      }
+    };
+
+    const handleLiveViewReady = (data: any) => {
+      console.log('BrowserAgentRealtime: Live view ready event received:', data);
+      const liveViewUrlValue = data.liveViewUrl || data.live_view_url;
+      if (liveViewUrlValue) {
+        addLog(`👀 Live view ready: ${liveViewUrlValue}`, 'success');
+        addLog(`🌐 Live view URL: ${liveViewUrlValue}`, 'info');
+        
+        // Store the live view URL for potential use
+        setCurrentResult(prev => ({
+          ...prev,
+          live_view_url: liveViewUrlValue,
+          session_id: data.sessionId || data.session_id
+        }));
+      }
+    };
+
+    const handleUrlGenerated = (data: any) => {
+      console.log('BrowserAgentRealtime: URL generated event received:', data);
+      const urlValue = data.url || data.liveViewUrl || data.live_view_url;
+      if (urlValue) {
+        addLog(`🔗 New URL generated: ${urlValue}`, 'success');
+        
+        // Update result with new URL information
+        setCurrentResult(prev => ({
+          ...prev,
+          generated_url: urlValue,
+          timestamp: new Date().toISOString()
+        }));
+      }
+    };
+
+    const handleAutomationProgress = (data: any) => {
+      console.log('BrowserAgentRealtime: Automation progress event received:', data);
+      const message = data.message || 'Processing...';
+      const progress = data.progress || 0;
+      addLog(`📊 ${message} (${progress}%)`, 'info');
+      
+      // You can update progress indicators here
+      if (progress > 0) {
+        setCurrentResult(prev => ({
+          ...prev,
+          progress: progress,
+          current_step: data.step || 'processing'
+        }));
+      }
+    };
+
     // Add event listeners
     websocketService.on('connection_status', handleConnectionStatus);
     websocketService.on('connection', handleConnectionMessage);
@@ -108,6 +165,12 @@ const BrowserAgentRealtime: React.FC<BrowserAgentRealtimeProps> = ({
     websocketService.on('task_error', handleTaskError);
     websocketService.on('log_update', handleLogUpdate);
     websocketService.on('pong', handlePong);
+    
+    // Add new URL-specific event listeners
+    websocketService.on('session_created', handleSessionCreated);
+    websocketService.on('live_view_ready', handleLiveViewReady);
+    websocketService.on('url_generated', handleUrlGenerated);
+    websocketService.on('automation_progress', handleAutomationProgress);
 
     // Cleanup event listeners on unmount
     return () => {
@@ -118,8 +181,22 @@ const BrowserAgentRealtime: React.FC<BrowserAgentRealtimeProps> = ({
       websocketService.off('task_error', handleTaskError);
       websocketService.off('log_update', handleLogUpdate);
       websocketService.off('pong', handlePong);
+      
+      // Clean up new URL-specific event listeners
+      websocketService.off('session_created', handleSessionCreated);
+      websocketService.off('live_view_ready', handleLiveViewReady);
+      websocketService.off('url_generated', handleUrlGenerated);
+      websocketService.off('automation_progress', handleAutomationProgress);
     };
   }, []);
+
+  // Auto-connect when component mounts if taskId is provided
+  useEffect(() => {
+    if (taskId && !isConnected) {
+      console.log('BrowserAgentRealtime: Auto-connecting for task:', taskId);
+      connectWebSocket();
+    }
+  }, [taskId, isConnected]);
 
   const addLog = (message: string, type: LogEntry['type'] = 'info') => {
     const newLog: LogEntry = {
@@ -144,15 +221,30 @@ const BrowserAgentRealtime: React.FC<BrowserAgentRealtimeProps> = ({
     setConnectionError(null);
     
     try {
-              const connected = await websocketService.startBrowserAgentPolling(newSessionId);
-              if (!connected) {
-          throw new Error('Failed to start task monitoring');
-        }
+      console.log('BrowserAgentRealtime: Connecting to WebSocket...');
+      // Connect to real WebSocket instead of polling
+      const connected = await websocketService.connect(newSessionId);
+      if (!connected) {
+        throw new Error('Failed to establish WebSocket connection');
+      }
+      
+      console.log('BrowserAgentRealtime: WebSocket connected successfully');
+      
+      // Subscribe to task updates once connected
+      if (taskId) {
+        websocketService.subscribeToTask(taskId);
+        console.log('BrowserAgentRealtime: Subscribed to task updates:', taskId);
+      }
+      
+      setIsConnecting(false);
+      addLog(`✅ WebSocket connected successfully`, 'success');
+      
     } catch (error) {
       setIsConnecting(false);
       const errorMessage = error instanceof Error ? error.message : 'Unknown connection error';
       setConnectionError(errorMessage);
       addLog(`❌ WebSocket connection failed: ${errorMessage}`, 'error');
+      console.error('BrowserAgentRealtime: WebSocket connection error:', error);
     }
   };
 

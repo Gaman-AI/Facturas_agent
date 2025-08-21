@@ -1,28 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Browser Agent Service - Multi-Mode Implementation
+Browser Agent Service - Streamlined Implementation
 
-This script provides three ways to execute browser automation tasks:
-1. Interactive Mode: Run without arguments to enter tasks interactively
-2. Simple Text Mode: Pass a plain text task as argument
-3. JSON API Mode: Pass structured JSON for API integration
+This script processes user details and ticket information to automate browser tasks.
+It supports two browser modes:
+1. Local Mode: Uses local Playwright browser
+2. Browserbase Mode: Uses remote Browserbase cloud browser
 
-It uses the local browser-use implementation for browser automation tasks.
+Usage:
+python browser_agent.py '{"user_profile": {...}, "ocr_ticket_data": {...}, "vendor_url": "...", "browser_mode": "local|browserbase"}'
 
-Usage Examples:
-- Interactive: python browser_agent.py
-- Simple text: python browser_agent.py "search google for AI news"
-- Multiple words: python browser_agent.py search google for AI news
-- JSON API: python browser_agent.py '{"prompt": "search google", "model": "gpt-4o-mini"}'
-
-@file purpose: Flexible Python execution bridge for browser-use tasks
+@file purpose: Direct execution bridge for browser automation with user data
 """
 
 import asyncio
 import sys
 import json
 import os
+import re
+import signal
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -42,6 +39,55 @@ from browser_use.browser.profile import BrowserProfile
 from browser_use.browser.session import BrowserSession
 
 
+# Global session manager for signal handling
+class GlobalSessionManager:
+    """Global manager for tracking browser sessions for signal handling"""
+    
+    def __init__(self):
+        self.current_session = None
+        self.should_stop = False
+        self.cleanup_in_progress = False
+        
+    def set_current_session(self, session_manager):
+        """Set the current session manager for signal handling"""
+        self.current_session = session_manager
+        
+    def signal_handler(self, signum, frame):
+        """Handle termination signals by triggering emergency cleanup"""
+        print(f"[SIGNAL] Received termination signal: {signum}")
+        self.should_stop = True
+        
+        if not self.cleanup_in_progress and self.current_session:
+            self.cleanup_in_progress = True
+            print("[SIGNAL] Triggering emergency cleanup...")
+            
+            # Create a new event loop if needed for cleanup
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If loop is running, schedule cleanup as a task
+                    asyncio.create_task(self.current_session._emergency_cleanup())
+                else:
+                    # If loop is not running, run cleanup directly
+                    loop.run_until_complete(self.current_session._emergency_cleanup())
+            except Exception as cleanup_error:
+                print(f"[SIGNAL] Error during signal cleanup: {cleanup_error}")
+            finally:
+                print("[SIGNAL] Emergency cleanup completed, exiting...")
+                sys.exit(1)
+        else:
+            print("[SIGNAL] Cleanup already in progress or no session to clean up")
+            sys.exit(1)
+
+
+# Global instance for signal handling
+global_session_manager = GlobalSessionManager()
+
+# Set up signal handlers
+signal.signal(signal.SIGTERM, global_session_manager.signal_handler)
+signal.signal(signal.SIGINT, global_session_manager.signal_handler)
+
+
 class ManagedBrowserSession:
     """Context manager for proper BrowserSession lifecycle management"""
     
@@ -52,6 +98,9 @@ class ManagedBrowserSession:
         
     async def __aenter__(self) -> BrowserSession:
         try:
+            # Register this session with the global manager for signal handling
+            global_session_manager.set_current_session(self)
+            
             self.browser_session = BrowserSession(
                 cdp_url=self.cdp_url,
                 browser_profile=self.browser_profile,
@@ -69,6 +118,10 @@ class ManagedBrowserSession:
             raise
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        # Unregister from global manager
+        if global_session_manager.current_session == self:
+            global_session_manager.current_session = None
+        
         await self._close_session_properly()
     
     async def _close_session_properly(self):
@@ -119,8 +172,8 @@ class ManagedBrowserSession:
         self.browser_session = None
 
 
-async def create_browserbase_session():
-    """Create a Browserbase session and return session details"""
+async def create_browserbase_session(viewport_width=1920, viewport_height=1080):
+    """Create a Browserbase session with viewport settings and return session details with correct debug URL"""
     # Validate environment variables
     if not os.getenv('BROWSERBASE_API_KEY'):
         raise ValueError("BROWSERBASE_API_KEY environment variable is required")
@@ -128,32 +181,48 @@ async def create_browserbase_session():
         raise ValueError("BROWSERBASE_PROJECT_ID environment variable is required")
     
     bb = Browserbase(api_key=os.environ["BROWSERBASE_API_KEY"])
-    session = bb.sessions.create(project_id=os.environ["BROWSERBASE_PROJECT_ID"])
+    
+    # Create session with viewport configuration matching dashboard dimensions
+    session = bb.sessions.create(
+        project_id=os.environ["BROWSERBASE_PROJECT_ID"],
+        browser_settings={
+            "viewport": {
+                "width": viewport_width,
+                "height": viewport_height,
+            },
+            "fingerprint": {
+                "screen": {
+                    "maxWidth": viewport_width,
+                    "maxHeight": viewport_height,
+                    "minWidth": max(1024, viewport_width - 200),  # Minimum supported
+                    "minHeight": max(768, viewport_height - 200),
+                },
+            },
+        },
+    )
     
     # Get the proper live view/debug URLs using Browserbase debug method
     debug_info = bb.sessions.debug(session.id)
     
-    # Construct standard devtools inspector URL instead of fullscreen
-    # Extract session ID and page ID from the debug info
+    # Extract session and page IDs from debug info to construct devtools inspector URL
+    live_view_url = None
     if hasattr(debug_info, 'debugger_fullscreen_url') and debug_info.debugger_fullscreen_url:
         # Parse the existing URL to extract session and page IDs
-        import re
         url_match = re.search(r'wss=connect\.browserbase\.com/debug/([^/]+)/devtools/page/([^?]+)', debug_info.debugger_fullscreen_url)
         if url_match:
             session_id = url_match.group(1)
             page_id = url_match.group(2)
             live_view_url = f"https://www.browserbase.com/devtools/inspector.html?wss=connect.browserbase.com/debug/{session_id}/devtools/page/{page_id}?debug=true"
-        else:
-            # Fallback to fullscreen URL if parsing fails
-            live_view_url = debug_info.debugger_fullscreen_url
-    else:
-        # Fallback if debug info doesn't have the expected URL
+    
+    # Fallback if parsing fails
+    if not live_view_url:
         live_view_url = f"https://www.browserbase.com/devtools/inspector.html?wss=connect.browserbase.com/debug/{session.id}/devtools/page/default?debug=true"
     
-    # Print session details for monitoring and frontend iframe integration
     print(f"Session ID: {session.id}")
-    print(f"Debug URL (devtools): {live_view_url}")
-    print(f"Live View URL (devtools): {live_view_url}")
+    print(f"Debug URL: {live_view_url}")
+    
+    # Add live_view_url to session object for easy access
+    session.live_view_url = live_view_url
     
     return session
 
@@ -168,15 +237,16 @@ def create_browser_profile() -> BrowserProfile:
     )
 
 
-async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", temperature: float = 0.5, max_steps: int = 30):
+async def run_local_browser_task(task: str, model: str = "gpt-4o-mini", max_steps: int = 100, user_profile: dict = None, ocr_ticket_data: dict = None):
     """
-    Run a browser automation task using Browserbase session with proper resource management
+    Run a browser automation task using local Playwright browser (simple approach)
     
     Args:
-        task_prompt (str): The task description/prompt
+        task (str): The task description
         model (str): LLM model to use
-        temperature (float): LLM temperature
         max_steps (int): Maximum steps for the agent
+        user_profile (dict): User profile data for custom system message
+        ocr_ticket_data (dict): OCR ticket data for custom system message
     
     Returns:
         The result from the agent execution
@@ -185,68 +255,68 @@ async def run_browser_task(task_prompt: str, model: str = "gpt-4o-mini", tempera
     if not os.getenv('OPENAI_API_KEY'):
         raise ValueError("OPENAI_API_KEY environment variable is required")
     
-    print(f"[STARTING] Browser automation task...")
+    print(f"[STARTING] Local browser task...")
     print(f"   Model: {model}")
     print(f"   Max Steps: {max_steps}")
-    print(f"   Task: {task_prompt[:100]}...")
+    print(f"   Task: {task[:100]}...")
     
     try:
-        # Create Browserbase session
-        browserbase_session = await create_browserbase_session()
-        browser_profile = create_browser_profile()
+        # Create agent with local browser - simple approach
+        llm = ChatOpenAI(model=model)
         
-        # Use managed browser session context manager
-        async with ManagedBrowserSession(browserbase_session.connect_url, browser_profile) as browser_session:
-            # Create agent with optimized settings
-            llm = ChatOpenAI(model=model, temperature=temperature)
+        # Create custom system message that includes user profile data
+        custom_system_message = None
+        if user_profile or ocr_ticket_data:
+            custom_system_message = "You are an AI Facturacion agent. "
             
-            agent = Agent(
-                task=task_prompt,
-                llm=llm,
-                browser_session=browser_session,
-                enable_memory=False,
-                max_failures=5,
-                retry_delay=5,
-                max_actions_per_step=1,
-            )
+            if user_profile:
+                custom_system_message += f"Use these user details: RFC: {user_profile.get('rfc', 'Not provided')}, "
+                if user_profile.get('company_name'):
+                    custom_system_message += f"Company: {user_profile['company_name']}, "
+                if user_profile.get('email'):
+                    custom_system_message += f"Email: {user_profile['email']}, "
+                if user_profile.get('zip_code'):
+                    custom_system_message += f"ZIP Code: {user_profile['zip_code']}. "
             
-            try:
-                print("[RUNNING] Starting agent task...")
-                result = await agent.run(max_steps=max_steps)
-                print("[SUCCESS] Task completed successfully!")
-                return str(result)
-                
-            except Exception as e:
-                # Handle expected browser disconnection after successful completion
-                error_msg = str(e).lower()
-                if "browser is closed" in error_msg or "disconnected" in error_msg:
-                    print("[COMPLETE] Task completed - Browser session ended normally")
-                    return "Task completed successfully (session ended normally)"
-                else:
-                    print(f"[ERROR] Agent execution error: {e}")
-                    raise
-                    
-            finally:
-                # Clean up agent reference
-                del agent
+            if ocr_ticket_data:
+                custom_system_message += "Ticket details: "
+                if ocr_ticket_data.get('Total'):
+                    custom_system_message += f"Total: {ocr_ticket_data['Total']}, "
+                if ocr_ticket_data.get('ID_Ticket'):
+                    custom_system_message += f"Ticket ID: {ocr_ticket_data['ID_Ticket']}, "
+                if ocr_ticket_data.get('TC#'):
+                    custom_system_message += f"TC: {ocr_ticket_data['TC#']}, "
+                if ocr_ticket_data.get('TR#'):
+                    custom_system_message += f"TR: {ocr_ticket_data['TR#']}. "
             
-    except KeyboardInterrupt:
-        print("\n[INTERRUPTED] Process interrupted by user")
-        raise
+            custom_system_message += "Fill forms with the EXACT values provided above. Do NOT use placeholder or mock data."
+        
+        agent = Agent(
+            task=task, 
+            llm=llm,
+            override_system_message=custom_system_message  # Use our custom system message
+        )
+        
+        # Execute task
+        result = await agent.run(max_steps=max_steps)
+        print("[SUCCESS] Local task completed successfully!")
+        return str(result)
+        
     except Exception as e:
-        print(f"[FATAL] Fatal error in browser task: {e}")
+        print(f"[ERROR] Local agent execution error: {e}")
         raise
 
 
-async def run_browser_task_with_session_info(task_prompt: str, model: str = "gpt-4o-mini", temperature: float = 0.5, max_steps: int = 30):
+async def run_browserbase_browser_task(task: str, model: str = "gpt-4o", max_steps: int = 20, user_profile: dict = None, ocr_ticket_data: dict = None):
     """
-    Run a browser automation task using Browserbase session and return both result and session information
+    Run a browser automation task using Browserbase cloud browser with session management
     
     Args:
-        task_prompt (str): The task description/prompt
+        task (str): The task description
         model (str): LLM model to use
-        temperature (float): LLM temperature
         max_steps (int): Maximum steps for the agent
+        user_profile (dict): User profile data for custom system message
+        ocr_ticket_data (dict): OCR ticket data for custom system message
     
     Returns:
         Tuple[str, dict]: The result from the agent execution and session information
@@ -255,267 +325,357 @@ async def run_browser_task_with_session_info(task_prompt: str, model: str = "gpt
     if not os.getenv('OPENAI_API_KEY'):
         raise ValueError("OPENAI_API_KEY environment variable is required")
     
-    print(f"[STARTING] Browser automation task with session tracking...")
+    print(f"[STARTING] Browserbase browser task...")
     print(f"   Model: {model}")
     print(f"   Max Steps: {max_steps}")
-    print(f"   Task: {task_prompt[:100]}...")
-    
-    session_info = {
-        "session_id": None,
-        "live_view_url": None,
-        "connect_url": None
-    }
+    print(f"   Task: {task[:100]}...")
     
     try:
-        # Create Browserbase session
-        browserbase_session = await create_browserbase_session()
+        # Create Browserbase session with optimal viewport
+        session = await create_browserbase_session(viewport_width=1920, viewport_height=1080)
         browser_profile = create_browser_profile()
         
-        # Capture session information
-        session_info["session_id"] = browserbase_session.id
-        session_info["connect_url"] = browserbase_session.connect_url
-        
-        # Get the proper live view/debug URLs using Browserbase debug method
-        bb = Browserbase(api_key=os.environ["BROWSERBASE_API_KEY"])
-        debug_info = bb.sessions.debug(browserbase_session.id)
-        
-        # Construct standard devtools inspector URL instead of fullscreen
-        # Extract session ID and page ID from the debug info
-        if hasattr(debug_info, 'debugger_fullscreen_url') and debug_info.debugger_fullscreen_url:
-            # Parse the existing URL to extract session and page IDs
-            import re
-            url_match = re.search(r'wss=connect\.browserbase\.com/debug/([^/]+)/devtools/page/([^?]+)', debug_info.debugger_fullscreen_url)
-            if url_match:
-                session_id = url_match.group(1)
-                page_id = url_match.group(2)
-                session_info["live_view_url"] = f"https://www.browserbase.com/devtools/inspector.html?wss=connect.browserbase.com/debug/{session_id}/devtools/page/{page_id}?debug=true"
-            else:
-                # Fallback to fullscreen URL if parsing fails
-                session_info["live_view_url"] = debug_info.debugger_fullscreen_url
-        else:
-            # Fallback if debug info doesn't have the expected URL
-            session_info["live_view_url"] = f"https://www.browserbase.com/devtools/inspector.html?wss=connect.browserbase.com/debug/{browserbase_session.id}/devtools/page/default?debug=true"
-        
-        print(f"[SESSION] Created Browserbase session: {session_info['session_id']}")
-        print(f"[SESSION] Live view URL (devtools): {session_info['live_view_url']}")
+        # Prepare session information
+        session_info = {
+            "session_id": session.id,
+            "live_view_url": getattr(session, 'live_view_url', None),
+            "connect_url": session.connect_url
+        }
         
         # Use managed browser session context manager
-        async with ManagedBrowserSession(browserbase_session.connect_url, browser_profile) as browser_session:
-            # Create agent with optimized settings
-            llm = ChatOpenAI(model=model, temperature=temperature)
-            
-            agent = Agent(
-                task=task_prompt,
-                llm=llm,
-                browser_session=browser_session,
-                enable_memory=False,
-                max_failures=5,
-                retry_delay=5,
-                max_actions_per_step=1,
-            )
-            
-            try:
-                print("[RUNNING] Starting agent task...")
-                result = await agent.run(max_steps=max_steps)
-                print("[SUCCESS] Task completed successfully!")
-                return str(result), session_info
-                
-            except Exception as e:
-                # Handle expected browser disconnection after successful completion
-                error_msg = str(e).lower()
-                if "browser is closed" in error_msg or "disconnected" in error_msg:
-                    print("[COMPLETE] Task completed - Browser session ended normally")
-                    return "Task completed successfully (session ended normally)", session_info
-                else:
-                    print(f"[ERROR] Agent execution error: {e}")
-                    raise
-                    
-            finally:
-                # Clean up agent reference
-                del agent
+        async with ManagedBrowserSession(session.connect_url, browser_profile) as browser_session:
+            result = await run_automation_task(browser_session, task, model, max_steps, user_profile, ocr_ticket_data)
+            print(f"[SUCCESS] Browserbase task completed successfully!")
+            return str(result), session_info
             
     except KeyboardInterrupt:
         print("\n[INTERRUPTED] Process interrupted by user")
         raise
     except Exception as e:
-        print(f"[FATAL] Fatal error in browser task: {e}")
+        print(f"[FATAL] Fatal error in Browserbase task: {e}")
+        raise
+
+
+async def run_automation_task(browser_session, task: str, model: str = "gpt-4o", max_steps: int = 20, user_profile: dict = None, ocr_ticket_data: dict = None):
+    """Helper function to run automation task with given browser session"""
+    llm = ChatOpenAI(model=model, temperature=0.0)
+    
+    # Create custom system message that includes user profile data
+    custom_system_message = None
+    if user_profile or ocr_ticket_data:
+        custom_system_message = "You are an AI Facturacion agent. "
+        
+        if user_profile:
+            custom_system_message += f"Use these user details: RFC: {user_profile.get('rfc', 'Not provided')}, "
+            if user_profile.get('company_name'):
+                custom_system_message += f"Company: {user_profile['company_name']}, "
+            if user_profile.get('email'):
+                custom_system_message += f"Email: {user_profile['email']}, "
+            if user_profile.get('zip_code'):
+                custom_system_message += f"ZIP Code: {user_profile['zip_code']}. "
+        
+        if ocr_ticket_data:
+            custom_system_message += "Ticket details: "
+            if ocr_ticket_data.get('Total'):
+                custom_system_message += f"Total: {ocr_ticket_data['Total']}, "
+            if ocr_ticket_data.get('ID_Ticket'):
+                custom_system_message += f"Ticket ID: {ocr_ticket_data['ID_Ticket']}, "
+            if ocr_ticket_data.get('TC#'):
+                custom_system_message += f"TC: {ocr_ticket_data['TC#']}, "
+            if ocr_ticket_data.get('TR#'):
+                custom_system_message += f"TR: {ocr_ticket_data['TR#']}. "
+        
+        custom_system_message += "Fill forms with the EXACT values provided above. Do NOT use placeholder or mock data."
+
+    agent = Agent(
+        task=task,
+        llm=llm,
+        browser_session=browser_session,
+        enable_memory=False,
+        max_failures=5,
+        retry_delay=5,
+        max_actions_per_step=1,
+        override_system_message=custom_system_message,  # Use our custom system message
+    )
+    
+    try:
+        print("[RUNNING] Starting agent task...")
+        
+        # Check for stop signal before starting
+        if global_session_manager.should_stop:
+            print("[SIGNAL] Stop signal detected before agent execution")
+            return "Task stopped by signal before execution"
+        
+        result = await agent.run(max_steps=max_steps)
+        print("[SUCCESS] Task completed successfully!")
+        return str(result)
+        
+    except Exception as e:
+        # Handle expected browser disconnection after successful completion
+        error_msg = str(e).lower()
+        if "browser is closed" in error_msg or "disconnected" in error_msg:
+            print("[COMPLETE] Task completed - Browser session ended normally")
+            return "Task completed successfully (session ended normally)"
+        else:
+            print(f"[ERROR] Agent execution error: {e}")
+            raise
+            
+    finally:
+        del agent
+
+
+def generate_task_from_data(vendor_url: str, user_profile: dict = None, ocr_ticket_data: dict = None) -> str:
+    """
+    Generate a comprehensive task description that includes user profile data
+    This ensures the agent has access to the real user information
+    
+    Args:
+        vendor_url (str): The vendor website URL
+        user_profile (dict): User profile data including RFC, company name, etc.
+        ocr_ticket_data (dict): OCR extracted ticket data
+        
+    Returns:
+        str: Comprehensive task description with user data
+    """
+    if not vendor_url:
+        return "Complete the required browser automation task"
+    
+    # Build comprehensive task description
+    task_parts = [f"Navigate to {vendor_url} and complete the required actions"]
+    
+    # Add user profile information if available
+    if user_profile:
+        if user_profile.get('rfc'):
+            task_parts.append(f"Use RFC: {user_profile['rfc']}")
+        if user_profile.get('company_name'):
+            task_parts.append(f"Company: {user_profile['company_name']}")
+        if user_profile.get('email'):
+            task_parts.append(f"Email: {user_profile['email']}")
+        if user_profile.get('zip_code'):
+            task_parts.append(f"ZIP Code: {user_profile['zip_code']}")
+    
+    # Add OCR ticket data if available
+    if ocr_ticket_data:
+        if ocr_ticket_data.get('Total'):
+            task_parts.append(f"Ticket Total: {ocr_ticket_data['Total']}")
+        if ocr_ticket_data.get('ID_Ticket'):
+            task_parts.append(f"Ticket ID: {ocr_ticket_data['ID_Ticket']}")
+        if ocr_ticket_data.get('TC#'):
+            task_parts.append(f"TC Number: {ocr_ticket_data['TC#']}")
+        if ocr_ticket_data.get('TR#'):
+            task_parts.append(f"TR Number: {ocr_ticket_data['TR#']}")
+    
+    return ". ".join(task_parts)
+
+
+async def run_agent_on_existing_session(session_connect_url: str, task: str, model: str = "gpt-4o", max_steps: int = 20, user_profile: dict = None, ocr_ticket_data: dict = None):
+    """
+    Run agent automation on an existing Browserbase session
+    
+    Args:
+        session_connect_url (str): The connect URL for existing Browserbase session
+        task (str): The task description
+        model (str): LLM model to use
+        max_steps (int): Maximum steps for the agent
+        user_profile (dict): User profile data
+        ocr_ticket_data (dict): OCR ticket data
+    
+    Returns:
+        str: The result from agent execution
+    """
+    # Validate environment variables
+    if not os.getenv('OPENAI_API_KEY'):
+        raise ValueError("OPENAI_API_KEY environment variable is required")
+    
+    print(f"[STARTING] Agent execution on existing session...")
+    print(f"   Connect URL: {session_connect_url}")
+    print(f"   Model: {model}")
+    print(f"   Max Steps: {max_steps}")
+    print(f"   Task: {task[:100]}...")
+    
+    try:
+        browser_profile = create_browser_profile()
+        
+        # Use managed browser session with existing session
+        async with ManagedBrowserSession(session_connect_url, browser_profile) as browser_session:
+            result = await run_automation_task(browser_session, task, model, max_steps, user_profile, ocr_ticket_data)
+            print(f"[SUCCESS] Agent execution completed on existing session!")
+            return str(result)
+            
+    except KeyboardInterrupt:
+        print("\n[INTERRUPTED] Agent execution interrupted by user")
+        raise
+    except Exception as e:
+        print(f"[FATAL] Fatal error in agent execution: {e}")
         raise
 
 
 async def main():
     """
-    Main execution function - handles interactive mode, simple text input, and JSON input
+    Two-Phase Execution Function:
+    Phase 1: Create session and return info immediately (execution_mode: 'create_session')  
+    Phase 2: Run agent on existing session (execution_mode: 'execute_on_session')
     """
     
-    # Case 1: No arguments - Interactive mode
-    if len(sys.argv) == 1:
-        print("Browser Agent - Interactive Mode")
-        print("=" * 50)
-        print("Enter your task description and press Enter to execute.")
-        print("Type 'exit' to quit.\n")
-        
-        while True:
-            try:
-                # Get task input from user
-                task_input = input("Enter task: ").strip()
-                
-                if not task_input:
-                    print("WARNING: Please enter a task description.")
-                    continue
-                    
-                if task_input.lower() in ['exit', 'quit', 'q']:
-                    print("Goodbye!")
-                    break
-                
-                print(f"\nExecuting task: {task_input[:100]}...")
-                print("-" * 50)
-                
-                # Execute the task
-                result = await run_browser_task(task_input)
-                
-                print("\n" + "=" * 50)
-                print("Task completed successfully!")
-                print(f"Result: {str(result)}")
-                print("=" * 50 + "\n")
-                
-            except KeyboardInterrupt:
-                print("\n\nInterrupted by user. Goodbye!")
-                break
-            except Exception as e:
-                print(f"\n[ERROR] Error: {str(e)}")
-                print("Please try again.\n")
-        
-        print("[FINISHED] Interactive session ended")
+    # Simple input handling - take the first argument and try to parse as JSON
+    if len(sys.argv) < 2:
+        print(json.dumps({
+            "success": False,
+            "error": "No JSON input provided. Usage: python browser_agent.py '{\"execution_mode\": \"create_session|execute_on_session\", \"user_profile\": {...}, \"ocr_ticket_data\": {...}, \"vendor_url\": \"...\", \"browser_mode\": \"local|browserbase\"}'"
+        }))
         return
     
-    # Case 2: Single argument - could be simple text or JSON
-    if len(sys.argv) == 2:
-        argument = sys.argv[1]
+    # Try to parse the first argument as JSON
+    json_input = sys.argv[1]
+    
+    try:
+        # Parse JSON input
+        task_data = json.loads(json_input)
         
-        # Try to parse as JSON first (for API integration)
-        try:
-            task_data = json.loads(argument)
+        # Extract execution mode - determines which phase we're in
+        execution_mode = task_data.get('execution_mode', 'create_session')  # Default to Phase 1
+        
+        # Extract required parameters
+        user_profile = task_data.get('user_profile', {})
+        ocr_ticket_data = task_data.get('ocr_ticket_data', {})
+        vendor_url = task_data.get('vendor_url', '')
+        browser_mode = task_data.get('browser_mode', 'local')
+        
+        # Optional parameters
+        model = task_data.get('model', 'gpt-4o-mini')
+        max_steps = task_data.get('max_steps', 100)
+        
+        # Debug: Log the execution mode and key data
+        print(f"[DEBUG] Execution Mode: {execution_mode}")
+        print(f"[DEBUG] Browser Mode: {browser_mode}")
+        print(f"[DEBUG] User RFC: {user_profile.get('rfc', 'Not provided')}")
+        
+        # Generate comprehensive task with user profile and OCR data
+        task = generate_task_from_data(vendor_url, user_profile, ocr_ticket_data)
+        
+        # TWO-PHASE EXECUTION LOGIC
+        if execution_mode == 'create_session':
+            # PHASE 1: Create session and return info immediately
+            print(f"[PHASE 1] Creating session...")
             
-            # Extract task parameters from JSON
-            # Support both 'task' (from API) and 'prompt' (legacy) field names
-            prompt = task_data.get('task', '') or task_data.get('prompt', '')
-            model = task_data.get('model', 'gpt-4o-mini')
-            temperature = task_data.get('temperature', 0.7)
-            max_steps = task_data.get('max_steps', 30)
-            vendor_url = task_data.get('vendor_url', '')
-            
-            # Build complete prompt
-            if vendor_url:
-                if prompt:
-                    complete_prompt = f"Go to {vendor_url} and {prompt}"
-                else:
-                    complete_prompt = f"Navigate to {vendor_url} and perform the required tasks on this website"
+            if browser_mode == 'browserbase':
+                try:
+                    # Create Browserbase session with optimal viewport
+                    session = await create_browserbase_session(viewport_width=1920, viewport_height=1080)
+                    
+                    # Return session information immediately for real-time URL delivery
+                    print(json.dumps({
+                        "success": True,
+                        "result": "Browserbase session created successfully - Phase 1 Complete",
+                        "phase": "create_session",
+                        "model_used": model,
+                        "steps_executed": 0,  # No agent steps yet
+                        "task_prompt": task,
+                        "vendor_url": vendor_url,
+                        "browser_mode": "browserbase",
+                        "session_id": session.id,
+                        "live_view_url": getattr(session, 'live_view_url', None),
+                        "connect_url": session.connect_url,  # Essential for Phase 2
+                        "browser_session_id": session.id,
+                        "browserbase_session": True,
+                        "user_profile_processed": bool(user_profile),
+                        "ticket_data_processed": bool(ocr_ticket_data),
+                        "ready_for_agent_execution": True
+                    }, indent=2))
+                    
+                except Exception as e:
+                    print(json.dumps({
+                        "success": False,
+                        "error": f"Failed to create Browserbase session: {str(e)}",
+                        "error_type": type(e).__name__,
+                        "phase": "create_session"
+                    }))
             else:
-                complete_prompt = prompt
+                # Local mode - execute immediately (no session creation needed)
+                result = await run_local_browser_task(task, model, max_steps, user_profile, ocr_ticket_data)
                 
-            # Add context if available
-            context = build_task_context(task_data)
-            if context:
-                complete_prompt += context
+                print(json.dumps({
+                    "success": True,
+                    "result": str(result),
+                    "phase": "complete",
+                    "model_used": model,
+                    "steps_executed": max_steps,
+                    "task_prompt": task,
+                    "vendor_url": vendor_url,
+                    "browser_mode": "local",
+                    "session_id": None,
+                    "live_view_url": None,
+                    "browser_session_id": None,
+                    "browserbase_session": False,
+                    "user_profile_processed": bool(user_profile),
+                    "ticket_data_processed": bool(ocr_ticket_data)
+                }, indent=2))
                 
-            if not complete_prompt:
+        elif execution_mode == 'execute_on_session':
+            # PHASE 2: Run agent on existing session
+            print(f"[PHASE 2] Running agent on existing session...")
+            
+            # Extract session connection info
+            session_connect_url = task_data.get('session_connect_url')
+            
+            if not session_connect_url:
                 print(json.dumps({
                     "success": False,
-                    "error": "No task description provided. Please provide either 'task' or 'prompt' field."
+                    "error": "session_connect_url is required for execute_on_session mode",
+                    "phase": "execute_on_session"
                 }))
                 return
             
-            # Execute the task and capture session information
-            result, session_info = await run_browser_task_with_session_info(complete_prompt, model, temperature, max_steps)
-            
-            # Output result as JSON with session information (for API integration)
-            print(json.dumps({
-                "success": True,
-                "result": str(result),
-                "model_used": model,
-                "steps_executed": max_steps,
-                "task_prompt": complete_prompt,
-                "vendor_url": vendor_url or "none",
-                # Include session information for frontend
-                "session_id": session_info.get("session_id"),
-                "live_view_url": session_info.get("live_view_url"),
-                "browser_session_id": session_info.get("session_id"),
-                "browserbase_session": True
-            }, indent=2))
-            
-        except json.JSONDecodeError:
-            # Not JSON, treat as simple text task
             try:
-                print(f"[RUNNING] Executing simple task: {argument[:100]}...")
-                result = await run_browser_task(argument)
-                print(f"[SUCCESS] Task completed successfully!")
-                print(f"Result: {str(result)}")
+                # Run agent automation on existing session
+                result = await run_agent_on_existing_session(
+                    session_connect_url, task, model, max_steps, user_profile, ocr_ticket_data
+                )
+                
+                print(json.dumps({
+                    "success": True,
+                    "result": str(result),
+                    "phase": "execute_on_session",
+                    "model_used": model,
+                    "steps_executed": max_steps,
+                    "task_prompt": task,
+                    "vendor_url": vendor_url,
+                    "browser_mode": "browserbase",
+                    "automation_completed": True,
+                    "user_profile_processed": bool(user_profile),
+                    "ticket_data_processed": bool(ocr_ticket_data)
+                }, indent=2))
+                
             except Exception as e:
-                print(f"[ERROR] Error executing task: {str(e)}")
-        
-        except Exception as e:
+                print(json.dumps({
+                    "success": False,
+                    "error": f"Failed to execute agent on session: {str(e)}",
+                    "error_type": type(e).__name__,
+                    "phase": "execute_on_session"
+                }))
+                
+        else:
+            # Unknown execution mode
             print(json.dumps({
                 "success": False,
-                "error": f"Execution failed: {str(e)}",
-                "error_type": type(e).__name__,
-                # Try to include session information even on error
-                "session_id": None,
-                "live_view_url": None,
-                "browser_session_id": None,
-                "browserbase_session": False
+                "error": f"Unknown execution_mode: {execution_mode}. Use 'create_session' or 'execute_on_session'",
+                "available_modes": ["create_session", "execute_on_session"]
             }))
-        
-        finally:
-            print("[FINISHED] Application shutdown complete")
-        
-        return
-    
-    # Case 3: Multiple arguments - treat as simple text task (join arguments)
-    if len(sys.argv) > 2:
-        task_text = " ".join(sys.argv[1:])
-        try:
-            print(f"[RUNNING] Executing task: {task_text[:100]}...")
-            result = await run_browser_task(task_text, model="gpt-4o-mini")
-            print(f"[SUCCESS] Task completed successfully!")
-            print(f"Result: {str(result)}")
-        except Exception as e:
-            print(f"[ERROR] Error executing task: {str(e)}")
-        finally:
-            print("[FINISHED] Application shutdown complete")
-        return
-
-
-def build_task_context(task_data: dict) -> str:
-    """
-    Add simple context to the task prompt based on available data
-    
-    Args:
-        task_data (dict): Task data containing context information
-        
-    Returns:
-        str: Additional context string to append to the prompt
-    """
-    context_parts = []
-    
-    # Add customer details if available
-    customer_details = task_data.get('customer_details', {})
-    if customer_details and isinstance(customer_details, dict):
-        if customer_details.get('rfc'):
-            context_parts.append(f"Customer RFC: {customer_details['rfc']}")
-        if customer_details.get('email'):
-            context_parts.append(f"Customer Email: {customer_details['email']}")
-        if customer_details.get('company_name'):
-            context_parts.append(f"Company: {customer_details['company_name']}")
-    
-    # Add invoice details if available
-    invoice_details = task_data.get('invoice_details', {})
-    if invoice_details and isinstance(invoice_details, dict):
-        if invoice_details.get('total'):
-            context_parts.append(f"Total Amount: {invoice_details['total']}")
-        if invoice_details.get('folio'):
-            context_parts.append(f"Folio: {invoice_details['folio']}")
-    
-    return "\nContext: " + "; ".join(context_parts) if context_parts else ""
+            
+    except json.JSONDecodeError as e:
+        print(json.dumps({
+            "success": False,
+            "error": f"Invalid JSON input: {str(e)}",
+            "error_type": "JSONDecodeError"
+        }))
+    except Exception as e:
+        print(json.dumps({
+            "success": False,
+            "error": f"Execution failed: {str(e)}",
+            "error_type": type(e).__name__
+        }))
+    finally:
+        print("[FINISHED] Application shutdown complete")
 
 
 if __name__ == "__main__":

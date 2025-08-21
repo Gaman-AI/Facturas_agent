@@ -6,6 +6,8 @@ import browserService from '../services/browserService.js'
 import browserAgentService from '../services/browserAgentService.js'
 import taskService from '../services/taskService.js'
 import queueService from '../services/queueService.js'
+import authService from '../services/authService.js'
+import config from '../config/index.js'
 
 const router = express.Router()
 
@@ -309,7 +311,7 @@ router.post('/execute', validateCreateTask, asyncHandler(async (req, res) => {
       completed_at: null,
       execution_time_ms: null,
       model: model || 'gpt-4o-mini',
-      max_steps: 30,
+      max_steps: config.tasks.maxSteps || 100,
       result: null,
       error: null,
       error_type: null,
@@ -466,6 +468,113 @@ router.put('/:taskId/resume', validateTaskParams, asyncHandler(async (req, res) 
       requestId: req.id
     }
   })
+}))
+
+/**
+ * @route   PUT /api/v1/tasks/:taskId/stop
+ * @desc    Stop a running task
+ * @access  Private
+ */
+router.put('/:taskId/stop', validateTaskParams, asyncHandler(async (req, res) => {
+  const { taskId } = req.params
+  const userId = 'anonymous'
+
+  try {
+    // Import the browser agent service
+    const browserAgentService = (await import('../services/browserAgentService.js')).default
+    
+    // Stop the task using the browser agent service
+    const stopResult = await browserAgentService.stopTask(taskId)
+    
+    if (stopResult.success) {
+      res.json({
+        success: true,
+        data: {
+          task_id: taskId,
+          status: 'stopped',
+          message: stopResult.message,
+          note: stopResult.note
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: req.id
+        }
+      })
+    } else {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'TASK_STOP_FAILED',
+          message: stopResult.error,
+          details: `Failed to stop task ${taskId}`
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: req.id
+        }
+      })
+    }
+  } catch (error) {
+    console.error(`❌ Error stopping task ${taskId}:`, error)
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'TASK_STOP_ERROR',
+        message: 'Internal server error while stopping task',
+        details: error.message
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+}))
+
+/**
+ * @route   POST /api/v1/sessions/:sessionId/terminate
+ * @desc    Terminate a Browserbase session
+ * @access  Private
+ */
+router.post('/sessions/:sessionId/terminate', asyncHandler(async (req, res) => {
+  const { sessionId } = req.params
+
+  try {
+    console.log(`🛑 Terminating Browserbase session: ${sessionId}`)
+    
+    // Note: This endpoint is a placeholder for future Browserbase API integration
+    // Currently, session termination is handled by the Python script's emergency cleanup
+    // when the task is stopped via the stop task endpoint
+    
+    res.json({
+      success: true,
+      data: {
+        session_id: sessionId,
+        status: 'termination_signal_sent',
+        message: 'Session termination signal sent. Python emergency cleanup will handle actual termination.',
+        note: 'Actual session cleanup handled by Python _emergency_cleanup() method with keep_alive=False'
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+    
+  } catch (error) {
+    console.error(`❌ Error terminating session ${sessionId}:`, error)
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SESSION_TERMINATION_FAILED',
+        message: 'Failed to terminate Browserbase session',
+        details: error.message
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+    }
 }))
 
 /**
@@ -668,27 +777,46 @@ router.get('/browser/health', asyncHandler(async (req, res) => {
  * @desc    Create and execute a browser automation task using local browser-use
  * @access  Private
  */
-router.post('/browser-use', asyncHandler(async (req, res) => {
-  const userId = 'anonymous'
+router.post('/browser-use', authenticate, asyncHandler(async (req, res) => {
+  const userId = req.user.id
   const {
     prompt,
     vendor_url,
-    customer_details,
-    invoice_details,
+    ocr_ticket_data,
+    raw_text,
     model,
     temperature,
     max_steps,
-    timeout_minutes
+    timeout_minutes,
+    browser_mode
   } = req.body
+  
+
 
   // Validate required fields
-  if (!prompt && !vendor_url) {
+  if (!vendor_url) {
     return res.status(400).json({
       success: false,
       error: {
         code: 'VALIDATION_ERROR',
-        message: 'Either prompt or vendor_url must be provided',
-        details: { fields: ['prompt', 'vendor_url'] }
+        message: 'vendor_url is required',
+        details: { fields: ['vendor_url'] }
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+
+  // Validate browser_mode if provided
+  if (browser_mode && !['browserbase', 'local'].includes(browser_mode)) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid browser_mode. Must be "browserbase" or "local"',
+        details: { fields: ['browser_mode'] }
       },
       meta: {
         timestamp: new Date().toISOString(),
@@ -698,20 +826,55 @@ router.post('/browser-use', asyncHandler(async (req, res) => {
   }
 
   try {
-    // Create the browser task
-    const task = await browserAgentService.createTask(userId, {
-      prompt,
+    // Use the user_profile from the frontend request if available, otherwise fetch from auth service as fallback
+    let userProfile = null
+    
+    if (req.body.user_profile && Object.keys(req.body.user_profile).length > 0) {
+      // Use the real user profile data sent from frontend
+      userProfile = req.body.user_profile
+      console.log('✅ Using user profile from frontend request:', {
+        rfc: userProfile.rfc,
+        company_name: userProfile.company_name
+      })
+    } else {
+      // Fallback to authService (which currently returns mock data)
+      console.log('⚠️ No user profile in request, fetching from authService as fallback...')
+      userProfile = await authService.getUserProfile(userId)
+      
+      if (!userProfile || userProfile.error) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'USER_PROFILE_NOT_FOUND',
+            message: 'User profile not found or error fetching profile',
+            details: userProfile?.error || 'Profile fetch failed'
+          },
+          meta: {
+            timestamp: new Date().toISOString(),
+            requestId: req.id
+          }
+        })
+      }
+    }
+
+    // Combine user profile, OCR data, and vendor URL
+    const completeTaskData = {
       vendor_url,
-      customer_details,
-      invoice_details,
+      user_profile: userProfile,
+      ocr_ticket_data: ocr_ticket_data || {},
+      raw_text: raw_text || null,
       model,
       temperature,
       max_steps,
       timeout_minutes,
+      browser_mode: browser_mode || 'browserbase',
       request_id: req.id,
       user_agent: req.headers['user-agent'],
       ip_address: req.ip
-    })
+    }
+
+    // Create the browser task
+    const task = await browserAgentService.createTask(userId, completeTaskData)
 
     res.status(201).json({
       success: true,
@@ -774,7 +937,7 @@ router.get('/browser-use/:taskId', validateTaskParams, asyncHandler(async (req, 
           completed_at: new Date().toISOString(),
           execution_time_ms: null,
           model: 'gpt-4o-mini',
-          max_steps: 30,
+          max_steps: config.tasks.maxSteps || 100,
           result: 'Task executed via /execute endpoint',
           error: null,
           error_type: null,
