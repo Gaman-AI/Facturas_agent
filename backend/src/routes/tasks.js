@@ -7,6 +7,7 @@ import browserAgentService from '../services/browserAgentService.js'
 import taskService from '../services/taskService.js'
 import queueService from '../services/queueService.js'
 import authService from '../services/authService.js'
+import config from '../config/index.js'
 
 const router = express.Router()
 
@@ -310,7 +311,7 @@ router.post('/execute', validateCreateTask, asyncHandler(async (req, res) => {
       completed_at: null,
       execution_time_ms: null,
       model: model || 'gpt-4o-mini',
-      max_steps: 30,
+      max_steps: config.tasks.maxSteps || 100,
       result: null,
       error: null,
       error_type: null,
@@ -675,11 +676,15 @@ router.post('/browser-use', authenticate, asyncHandler(async (req, res) => {
     prompt,
     vendor_url,
     ocr_ticket_data,
+    raw_text,
     model,
     temperature,
     max_steps,
-    timeout_minutes
+    timeout_minutes,
+    browser_mode
   } = req.body
+  
+
 
   // Validate required fields
   if (!vendor_url) {
@@ -697,23 +702,52 @@ router.post('/browser-use', authenticate, asyncHandler(async (req, res) => {
     })
   }
 
+  // Validate browser_mode if provided
+  if (browser_mode && !['browserbase', 'local'].includes(browser_mode)) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid browser_mode. Must be "browserbase" or "local"',
+        details: { fields: ['browser_mode'] }
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+
   try {
-    // Fetch complete user profile
-    const userProfile = await authService.getUserProfile(userId)
+    // Use the user_profile from the frontend request if available, otherwise fetch from auth service as fallback
+    let userProfile = null
     
-    if (!userProfile || userProfile.error) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'USER_PROFILE_NOT_FOUND',
-          message: 'User profile not found or error fetching profile',
-          details: userProfile?.error || 'Profile fetch failed'
-        },
-        meta: {
-          timestamp: new Date().toISOString(),
-          requestId: req.id
-        }
+    if (req.body.user_profile && Object.keys(req.body.user_profile).length > 0) {
+      // Use the real user profile data sent from frontend
+      userProfile = req.body.user_profile
+      console.log('✅ Using user profile from frontend request:', {
+        rfc: userProfile.rfc,
+        company_name: userProfile.company_name
       })
+    } else {
+      // Fallback to authService (which currently returns mock data)
+      console.log('⚠️ No user profile in request, fetching from authService as fallback...')
+      userProfile = await authService.getUserProfile(userId)
+      
+      if (!userProfile || userProfile.error) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'USER_PROFILE_NOT_FOUND',
+            message: 'User profile not found or error fetching profile',
+            details: userProfile?.error || 'Profile fetch failed'
+          },
+          meta: {
+            timestamp: new Date().toISOString(),
+            requestId: req.id
+          }
+        })
+      }
     }
 
     // Combine user profile, OCR data, and vendor URL
@@ -721,11 +755,12 @@ router.post('/browser-use', authenticate, asyncHandler(async (req, res) => {
       vendor_url,
       user_profile: userProfile,
       ocr_ticket_data: ocr_ticket_data || {},
-      prompt: prompt || null,
+      raw_text: raw_text || null,
       model,
       temperature,
       max_steps,
       timeout_minutes,
+      browser_mode: browser_mode || 'browserbase',
       request_id: req.id,
       user_agent: req.headers['user-agent'],
       ip_address: req.ip
@@ -795,7 +830,7 @@ router.get('/browser-use/:taskId', validateTaskParams, asyncHandler(async (req, 
           completed_at: new Date().toISOString(),
           execution_time_ms: null,
           model: 'gpt-4o-mini',
-          max_steps: 30,
+          max_steps: config.tasks.maxSteps || 100,
           result: 'Task executed via /execute endpoint',
           error: null,
           error_type: null,

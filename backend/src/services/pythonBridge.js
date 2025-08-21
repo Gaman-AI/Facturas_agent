@@ -13,6 +13,7 @@ import fs from 'fs/promises'
 import process from 'process'
 import { fileURLToPath } from 'url'
 import config from '../config/index.js'
+import websocketService from './websocketService.js'
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url)
@@ -29,7 +30,7 @@ class PythonBridge {
     ]
     this.scriptPath = path.join(__dirname, '..', '..', 'browser_agent.py')
     this.timeout = config.python.timeout || 300000 // 5 minutes default
-    this.sessionTimeout = config.python.sessionTimeout || 120000 // 2 minutes default
+    this.sessionTimeout = config.python.sessionTimeout || 300000 // 5 minutes default
   }
 
   /**
@@ -148,13 +149,16 @@ class PythonBridge {
 
     return new Promise((resolve, reject) => {
       const taskJson = JSON.stringify(taskData)
-      // Use session_only mode to create session only
-      const pythonProcess = spawn(pythonExecutable, [this.scriptPath, taskJson, 'session_only'], {
+      
+      // Our refactored browser_agent.py only accepts JSON argument
+      // The mode is determined from the JSON data itself
+      const pythonProcess = spawn(pythonExecutable, [this.scriptPath, taskJson], {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
           ...process.env,
           PYTHONPATH: path.join(__dirname, '..', '..', 'browser-use'),
-          BROWSER_USE_SETUP_LOGGING: 'true'
+          BROWSER_USE_SETUP_LOGGING: 'true',
+          BROWSER_USE_DEBUG: 'false'  // Disable debug output to stdout for clean JSON parsing
         }
       })
 
@@ -193,30 +197,64 @@ class PythonBridge {
         if (code === 0) {
           try {
             // Try to parse the last JSON object from stdout
-            const jsonLines = stdout.trim().split('\n')
+            const lines = stdout.trim().split('\n')
             let result = null
             
-            // Find the last valid JSON line (in case there are log messages)
-            for (let i = jsonLines.length - 1; i >= 0; i--) {
-              try {
-                result = JSON.parse(jsonLines[i])
-                break
-              } catch (e) {
-                // Continue looking for valid JSON
+            // First, try to find any valid JSON in the output
+            // Look for lines that start with { and end with }
+            for (let i = lines.length - 1; i >= 0; i--) {
+              const line = lines[i].trim()
+              // Skip empty lines and debug messages
+              if (!line || line.startsWith('[DEBUG]') || line.startsWith('[INFO]') || line.startsWith('[WARNING]') || line.startsWith('[ERROR]')) {
                 continue
+              }
+              
+              // Check if line looks like JSON (starts with { and ends with })
+              if (line.startsWith('{') && line.endsWith('}')) {
+                try {
+                  result = JSON.parse(line)
+                  console.log('✅ Successfully parsed JSON from line:', i, 'Content:', line.substring(0, 100) + '...')
+                  break
+                } catch (e) {
+                  // Continue looking for valid JSON
+                  continue
+                }
+              }
+            }
+            
+            // If no single-line JSON found, try to find JSON across multiple lines
+            if (!result) {
+              // Look for JSON that might span multiple lines
+              const jsonMatch = stdout.match(/\{[\s\S]*\}/)
+              if (jsonMatch) {
+                try {
+                  result = JSON.parse(jsonMatch[0])
+                  console.log('✅ Successfully parsed multi-line JSON')
+                } catch (e) {
+                  console.warn('⚠️ Failed to parse multi-line JSON:', e.message)
+                }
               }
             }
 
             if (!result) {
+              // Log the full output for debugging
+              console.error('❌ No valid JSON found in Python output')
+              console.error('Full stdout:', stdout)
+              console.error('Full stderr:', stderr)
               throw new Error('No valid JSON found in Python output')
             }
 
             resolve(result)
           } catch (parseError) {
+            console.error('❌ JSON parsing failed:', parseError.message)
+            console.error('Full stdout:', stdout)
+            console.error('Full stderr:', stderr)
             reject(new Error(`Failed to parse Python output: ${parseError.message}\nOutput: ${stdout}\nError: ${stderr}`))
           }
         } else {
           const errorMsg = stderr || stdout || `Python process exited with code ${code}`
+          console.error('❌ Python process failed with code:', code)
+          console.error('Error message:', errorMsg)
           reject(new Error(`Session creation failed: ${errorMsg}`))
         }
       })
@@ -240,16 +278,9 @@ class PythonBridge {
   }
 
   /**
-   * Execute a browser automation task using the Python browser-use agent
+   * Execute a browser automation task using Python
    * 
    * @param {Object} taskData - Task configuration object
-   * @param {string} [taskData.prompt] - The task description/prompt
-   * @param {string} [taskData.model] - LLM model to use
-   * @param {number} [taskData.temperature] - LLM temperature
-   * @param {number} [taskData.max_steps] - Maximum steps for the agent
-   * @param {string} taskData.vendor_url - Vendor URL for CFDI
-   * @param {Object} [taskData.user_profile] - Complete user profile data
-   * @param {Object} [taskData.ocr_ticket_data] - OCR extracted ticket data (formatted + raw)
    * @returns {Promise<Object>} Execution result
    */
   async executeBrowserTask(taskData) {
@@ -274,19 +305,37 @@ class PythonBridge {
 
     return new Promise((resolve, reject) => {
       const taskJson = JSON.stringify(taskData)
-      // Use execute_task mode (default) for full task execution
-      const pythonProcess = spawn(pythonExecutable, [this.scriptPath, taskJson, 'execute_task'], {
+      
+      // Debug: Log the JSON being sent to Python
+      console.log('🔍 JSON being sent to Python browser_agent.py:', {
+        length: taskJson.length,
+        user_profile_rfc: taskData.user_profile?.rfc,
+        user_profile_company: taskData.user_profile?.company_name,
+        vendor_url: taskData.vendor_url,
+        browser_mode: taskData.browser_mode
+      })
+      
+      // Our refactored browser_agent.py only accepts JSON argument
+      // The mode is determined from the JSON data itself
+      const pythonProcess = spawn(pythonExecutable, [this.scriptPath, taskJson], {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
           ...process.env,
           PYTHONPATH: path.join(__dirname, '..', '..', 'browser-use'),
-          BROWSER_USE_SETUP_LOGGING: 'true'
+          BROWSER_USE_SETUP_LOGGING: 'true',
+          BROWSER_USE_DEBUG: 'false'  // Disable debug output to stdout for clean JSON parsing
         }
       })
 
       let stdout = ''
       let stderr = ''
       let isResolved = false
+      let taskId = null
+
+      // Extract taskId from taskData if available for WebSocket events
+      if (taskData.request_id) {
+        taskId = taskData.request_id
+      }
 
       // Set up timeout
       const timeoutId = setTimeout(() => {
@@ -297,9 +346,85 @@ class PythonBridge {
         }
       }, this.timeout)
 
-      // Collect stdout data
+      // Collect stdout data and stream URL events
+      let jsonBuffer = ''
+      let braceCount = 0
+      let inJsonBlock = false
+      
       pythonProcess.stdout.on('data', (data) => {
-        stdout += data.toString()
+        const chunk = data.toString()
+        stdout += chunk
+        
+        // Parse JSON responses for immediate URL delivery
+        if (taskId) {
+          try {
+            // Process each character to find complete JSON blocks
+            for (let i = 0; i < chunk.length; i++) {
+              const char = chunk[i]
+              
+              if (char === '{') {
+                if (braceCount === 0) {
+                  inJsonBlock = true
+                  jsonBuffer = '{'
+                } else {
+                  jsonBuffer += char
+                }
+                braceCount++
+              } else if (char === '}') {
+                jsonBuffer += char
+                braceCount--
+                
+                if (braceCount === 0 && inJsonBlock) {
+                  // We have a complete JSON block
+                  try {
+                    const result = JSON.parse(jsonBuffer)
+                    
+                    // Send immediate session creation event if available
+                    if (result.success && result.session_id && result.live_view_url) {
+                      websocketService.sendSessionCreated(taskId, {
+                        sessionId: result.session_id,
+                        browserMode: taskData.browser_mode || 'browserbase',
+                        timestamp: new Date().toISOString()
+                      })
+                      
+                      websocketService.sendLiveViewReady(taskId, {
+                        liveViewUrl: result.live_view_url,
+                        sessionId: result.session_id,
+                        browserMode: taskData.browser_mode || 'browserbase',
+                        timestamp: new Date().toISOString()
+                      })
+                      
+                      console.log(`🔗 Real-time URL events sent for task ${taskId}:`, {
+                        sessionId: result.session_id,
+                        liveViewUrl: result.live_view_url
+                      })
+                    }
+                    
+                    // Send URL update event for any successful response
+                    if (result.success) {
+                      websocketService.sendUrlUpdate(taskId, {
+                        type: 'task_progress',
+                        url: result.live_view_url || result.session_id,
+                        data: result,
+                        timestamp: new Date().toISOString()
+                      })
+                    }
+                  } catch (parseError) {
+                    console.warn(`⚠️ Failed to parse JSON block for task ${taskId}:`, parseError.message)
+                  }
+                  
+                  // Reset for next JSON block
+                  jsonBuffer = ''
+                  inJsonBlock = false
+                }
+              } else if (inJsonBlock) {
+                jsonBuffer += char
+              }
+            }
+          } catch (error) {
+            console.warn(`⚠️ Error processing real-time output for task ${taskId}:`, error.message)
+          }
+        }
       })
 
       // Collect stderr data
@@ -307,43 +432,86 @@ class PythonBridge {
         stderr += data.toString()
       })
 
-      // Handle process completion
+      // Process completed
       pythonProcess.on('close', (code) => {
         clearTimeout(timeoutId)
         
         if (isResolved) {
-          return // Already handled by timeout
+          return
         }
-        isResolved = true
-
+        
         if (code === 0) {
           try {
-            // Try to parse the last JSON object from stdout
-            const jsonLines = stdout.trim().split('\n')
-            let result = null
+            // Parse the final result using multi-line JSON parsing
+            let finalResult = null
+            let jsonBuffer = ''
+            let braceCount = 0
+            let inJsonBlock = false
+            const foundResults = []
             
-            // Find the last valid JSON line (in case there are log messages)
-            for (let i = jsonLines.length - 1; i >= 0; i--) {
-              try {
-                result = JSON.parse(jsonLines[i])
-                break
-              } catch (e) {
-                // Continue looking for valid JSON
-                continue
+            // Process the entire stdout to find all JSON blocks
+            for (let i = 0; i < stdout.length; i++) {
+              const char = stdout[i]
+              
+              if (char === '{') {
+                if (braceCount === 0) {
+                  inJsonBlock = true
+                  jsonBuffer = '{'
+                } else {
+                  jsonBuffer += char
+                }
+                braceCount++
+              } else if (char === '}') {
+                jsonBuffer += char
+                braceCount--
+                
+                if (braceCount === 0 && inJsonBlock) {
+                  // We have a complete JSON block
+                  try {
+                    const parsed = JSON.parse(jsonBuffer)
+                    if (parsed.success) {
+                      foundResults.push(parsed)
+                    }
+                  } catch (parseError) {
+                    // Continue processing other JSON blocks
+                  }
+                  
+                  // Reset for next JSON block
+                  jsonBuffer = ''
+                  inJsonBlock = false
+                }
+              } else if (inJsonBlock) {
+                jsonBuffer += char
               }
             }
-
-            if (!result) {
-              throw new Error('No valid JSON found in Python output')
+            
+            // Use the last successful result as the final result
+            if (foundResults.length > 0) {
+              finalResult = foundResults[foundResults.length - 1]
+              
+              console.log(`✅ Python process completed successfully for task ${taskId}`)
+              console.log(`🔗 Session ID: ${finalResult.session_id}`)
+              console.log(`👀 Live View URL: ${finalResult.live_view_url}`)
+              console.log(`📊 Found ${foundResults.length} successful JSON response(s)`)
+              
+              isResolved = true
+              resolve(finalResult)
+            } else {
+              throw new Error('No successful JSON response found in Python output')
             }
-
-            resolve(result)
           } catch (parseError) {
-            reject(new Error(`Failed to parse Python output: ${parseError.message}\nOutput: ${stdout}\nError: ${stderr}`))
+            console.error(`❌ Failed to parse Python output for task ${taskId}:`, parseError.message)
+            console.error('Raw output:', stdout)
+            
+            isResolved = true
+            reject(new Error(`Failed to parse Python output: ${parseError.message}`))
           }
         } else {
-          const errorMsg = stderr || stdout || `Python process exited with code ${code}`
-          reject(new Error(`Python execution failed: ${errorMsg}`))
+          console.error(`❌ Python process failed with code ${code} for task ${taskId}`)
+          console.error('Error output:', stderr)
+          
+          isResolved = true
+          reject(new Error(`Python process failed with exit code ${code}`))
         }
       })
 
