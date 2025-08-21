@@ -644,6 +644,93 @@ class BrowserAgentService {
   }
 
   /**
+   * Stop a running browser automation task
+   * 
+   * @param {string} taskId - Task ID to stop
+   * @returns {Promise<Object>} Stop result
+   */
+  async stopTask(taskId) {
+    try {
+      console.log(`🛑 Stopping browser task: ${taskId}`)
+      
+      const task = this.tasks.get(taskId)
+      if (!task) {
+        return {
+          success: false,
+          error: 'Task not found'
+        }
+      }
+      
+      if (!['running', 'connecting'].includes(task.status)) {
+        return {
+          success: false,
+          error: `Task is not running (current status: ${task.status})`
+        }
+      }
+      
+      // Update task status to stopping
+      this.updateTaskStatus(taskId, 'stopping')
+      
+      // Try to stop the Python process via Python bridge
+      const stopResult = await pythonBridge.stopBrowserTask(taskId, task.sessionId)
+      
+      if (stopResult.success) {
+        // Update task status to stopped
+        this.updateTaskStatus(taskId, 'stopped', {
+          stoppedAt: new Date().toISOString()
+        })
+        
+        // Remove from running tasks
+        this.runningTasks.delete(taskId)
+        
+        // Send WebSocket update
+        websocketService.sendTaskUpdate(taskId, {
+          taskId: taskId,
+          status: 'stopped',
+          message: 'Task stopped successfully'
+        })
+        
+        console.log(`✅ Task ${taskId} stopped successfully`)
+        
+        return {
+          success: true,
+          task_id: taskId,
+          message: 'Task stopped successfully',
+          note: 'Session termination handled by Python emergency cleanup'
+        }
+      } else {
+        // Revert status if stop failed
+        this.updateTaskStatus(taskId, task.status)
+        
+        return {
+          success: false,
+          task_id: taskId,
+          error: stopResult.error || 'Failed to stop task'
+        }
+      }
+      
+    } catch (error) {
+      console.error(`❌ Error stopping task ${taskId}:`, error)
+      
+      // Try to revert task status
+      try {
+        const task = this.tasks.get(taskId)
+        if (task) {
+          this.updateTaskStatus(taskId, task.status)
+        }
+      } catch (revertError) {
+        console.error(`❌ Failed to revert task status:`, revertError)
+      }
+      
+      return {
+        success: false,
+        task_id: taskId,
+        error: error.message
+      }
+    }
+  }
+
+  /**
    * Health check for the browser agent service
    * 
    * @returns {Promise<Object>} Health status

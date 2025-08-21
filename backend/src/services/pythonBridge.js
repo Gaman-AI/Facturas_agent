@@ -31,6 +31,9 @@ class PythonBridge {
     this.scriptPath = path.join(__dirname, '..', '..', 'browser_agent.py')
     this.timeout = config.python.timeout || 300000 // 5 minutes default
     this.sessionTimeout = config.python.sessionTimeout || 300000 // 5 minutes default
+    
+    // Track running processes for proper termination
+    this.runningProcesses = new Map() // taskId -> { process, taskData, startTime }
   }
 
   /**
@@ -336,6 +339,16 @@ class PythonBridge {
       if (taskData.request_id) {
         taskId = taskData.request_id
       }
+      
+      // Store process reference for termination capability
+      if (taskId) {
+        this.runningProcesses.set(taskId, {
+          process: pythonProcess,
+          taskData: taskData,
+          startTime: new Date().toISOString()
+        })
+        console.log(`🔍 Tracking Python process for task: ${taskId} (PID: ${pythonProcess.pid})`)
+      }
 
       // Set up timeout
       const timeoutId = setTimeout(() => {
@@ -436,6 +449,12 @@ class PythonBridge {
       pythonProcess.on('close', (code) => {
         clearTimeout(timeoutId)
         
+        // Clean up process tracking
+        if (taskId) {
+          this.runningProcesses.delete(taskId)
+          console.log(`🧹 Cleaned up process tracking for task: ${taskId}`)
+        }
+        
         if (isResolved) {
           return
         }
@@ -519,6 +538,12 @@ class PythonBridge {
       pythonProcess.on('error', (error) => {
         clearTimeout(timeoutId)
         
+        // Clean up process tracking on error
+        if (taskId) {
+          this.runningProcesses.delete(taskId)
+          console.log(`🧹 Cleaned up process tracking for failed task: ${taskId}`)
+        }
+        
         if (isResolved) {
           return
         }
@@ -531,6 +556,112 @@ class PythonBridge {
         }
       })
     })
+  }
+
+  /**
+   * Stop a running browser automation task
+   * 
+   * @param {string} taskId - Task ID to stop
+   * @param {string} sessionId - Browserbase session ID if available
+   * @returns {Promise<Object>} Stop result
+   */
+  async stopBrowserTask(taskId, sessionId = null) {
+    try {
+      console.log(`🛑 Stopping browser task: ${taskId}`)
+      
+      // Get the running process for this task
+      const processInfo = this.runningProcesses.get(taskId)
+      
+      if (!processInfo) {
+        console.log(`⚠️ No running process found for task: ${taskId}`)
+        return {
+          success: false,
+          task_id: taskId,
+          error: 'No running process found for this task'
+        }
+      }
+      
+      const { process: pythonProcess, startTime } = processInfo
+      console.log(`🔍 Found Python process for task ${taskId} (PID: ${pythonProcess.pid}, started: ${startTime})`)
+      
+      if (sessionId) {
+        console.log(`🔗 Task ${taskId} has session ${sessionId} - will be cleaned up by Python emergency cleanup`)
+      }
+      
+      // Implement graceful termination with timeout
+      return new Promise((resolve) => {
+        let terminated = false
+        const gracefulTimeout = 10000 // 10 seconds for graceful shutdown
+        
+        // Set up force kill timeout
+        const forceKillTimeout = setTimeout(() => {
+          if (!terminated && !pythonProcess.killed) {
+            console.log(`⚡ Force killing Python process for task ${taskId} (PID: ${pythonProcess.pid})`)
+            try {
+              pythonProcess.kill('SIGKILL')
+            } catch (killError) {
+              console.error(`❌ Error force killing process: ${killError.message}`)
+            }
+          }
+        }, gracefulTimeout)
+        
+        // Listen for process exit
+        const handleProcessExit = (code, signal) => {
+          if (terminated) return
+          terminated = true
+          
+          clearTimeout(forceKillTimeout)
+          this.runningProcesses.delete(taskId)
+          
+          console.log(`✅ Python process for task ${taskId} terminated (code: ${code}, signal: ${signal})`)
+          
+          resolve({
+            success: true,
+            task_id: taskId,
+            session_id: sessionId,
+            message: `Task stopped successfully. Python process terminated with ${signal ? `signal ${signal}` : `code ${code}`}`,
+            note: 'Session termination handled by Python _emergency_cleanup() method',
+            termination_method: signal ? 'signal' : 'graceful',
+            process_pid: pythonProcess.pid
+          })
+        }
+        
+        // Set up process exit listener
+        pythonProcess.once('exit', handleProcessExit)
+        
+        // Send SIGTERM for graceful shutdown
+        try {
+          console.log(`📡 Sending SIGTERM to Python process for task ${taskId} (PID: ${pythonProcess.pid})`)
+          pythonProcess.kill('SIGTERM')
+          
+          // If process is already dead, handle immediately
+          if (pythonProcess.killed) {
+            handleProcessExit(null, 'SIGTERM')
+          }
+        } catch (signalError) {
+          terminated = true
+          clearTimeout(forceKillTimeout)
+          this.runningProcesses.delete(taskId)
+          
+          console.error(`❌ Error sending SIGTERM to process: ${signalError.message}`)
+          
+          resolve({
+            success: false,
+            task_id: taskId,
+            error: `Failed to send termination signal: ${signalError.message}`,
+            process_pid: pythonProcess.pid
+          })
+        }
+      })
+      
+    } catch (error) {
+      console.error(`❌ Error stopping browser task ${taskId}:`, error)
+      return {
+        success: false,
+        task_id: taskId,
+        error: error.message
+      }
+    }
   }
 
   /**
