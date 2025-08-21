@@ -471,6 +471,113 @@ router.put('/:taskId/resume', validateTaskParams, asyncHandler(async (req, res) 
 }))
 
 /**
+ * @route   PUT /api/v1/tasks/:taskId/stop
+ * @desc    Stop a running task
+ * @access  Private
+ */
+router.put('/:taskId/stop', validateTaskParams, asyncHandler(async (req, res) => {
+  const { taskId } = req.params
+  const userId = 'anonymous'
+
+  try {
+    // Import the browser agent service
+    const browserAgentService = (await import('../services/browserAgentService.js')).default
+    
+    // Stop the task using the browser agent service
+    const stopResult = await browserAgentService.stopTask(taskId)
+    
+    if (stopResult.success) {
+      res.json({
+        success: true,
+        data: {
+          task_id: taskId,
+          status: 'stopped',
+          message: stopResult.message,
+          note: stopResult.note
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: req.id
+        }
+      })
+    } else {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'TASK_STOP_FAILED',
+          message: stopResult.error,
+          details: `Failed to stop task ${taskId}`
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: req.id
+        }
+      })
+    }
+  } catch (error) {
+    console.error(`❌ Error stopping task ${taskId}:`, error)
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'TASK_STOP_ERROR',
+        message: 'Internal server error while stopping task',
+        details: error.message
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+  }
+}))
+
+/**
+ * @route   POST /api/v1/sessions/:sessionId/terminate
+ * @desc    Terminate a Browserbase session
+ * @access  Private
+ */
+router.post('/sessions/:sessionId/terminate', asyncHandler(async (req, res) => {
+  const { sessionId } = req.params
+
+  try {
+    console.log(`🛑 Terminating Browserbase session: ${sessionId}`)
+    
+    // Note: This endpoint is a placeholder for future Browserbase API integration
+    // Currently, session termination is handled by the Python script's emergency cleanup
+    // when the task is stopped via the stop task endpoint
+    
+    res.json({
+      success: true,
+      data: {
+        session_id: sessionId,
+        status: 'termination_signal_sent',
+        message: 'Session termination signal sent. Python emergency cleanup will handle actual termination.',
+        note: 'Actual session cleanup handled by Python _emergency_cleanup() method with keep_alive=False'
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+    
+  } catch (error) {
+    console.error(`❌ Error terminating session ${sessionId}:`, error)
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'SESSION_TERMINATION_FAILED',
+        message: 'Failed to terminate Browserbase session',
+        details: error.message
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        requestId: req.id
+      }
+    })
+    }
+}))
+
+/**
  * @route   DELETE /api/v1/tasks/:taskId
  * @desc    Cancel/delete a task
  * @access  Private

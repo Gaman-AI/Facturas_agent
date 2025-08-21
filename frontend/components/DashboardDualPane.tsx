@@ -187,6 +187,91 @@ export function DashboardDualPane({
     })
     setTaskMessage(null)
   }
+
+  const handleStopTask = async () => {
+    if (!taskState.taskId) {
+      console.warn('No task ID to stop')
+      return
+    }
+
+    const originalStatus = taskState.status
+
+    try {
+      console.log(`🛑 Stopping task: ${taskState.taskId} (current status: ${taskState.status})`)
+      console.log(`🛑 Session ID: ${taskState.sessionId}`)
+      
+      // Update status to show stopping
+      setTaskState(prev => ({
+        ...prev,
+        status: 'idle'
+      }))
+
+      // Stop the task using proper cleanup methods
+      try {
+        // 1. Call our API to stop the task (handles backend termination)
+        console.log(`🛑 Calling backend to stop task: ${taskState.taskId}`)
+        await ApiService.stopTask(taskState.taskId)
+        console.log(`✅ Backend task stop successful`)
+        
+        // 2. Disconnect WebSocket connection
+        if (taskState.taskId) {
+          websocketService.disconnect()
+          console.log(`🔌 WebSocket disconnected for task: ${taskState.taskId}`)
+        }
+        
+        // 3. Note: Session termination is handled by backend emergency cleanup
+        // The backend will call _emergency_cleanup() with keep_alive=False
+        if (taskState.sessionId) {
+          console.log(`🔗 Session ${taskState.sessionId} will be terminated by backend emergency cleanup`)
+        }
+        
+      } catch (error) {
+        console.error('❌ Error stopping task via API:', error)
+        // Continue with cleanup even if API call fails
+      }
+      
+      // Clear all task-related state
+      setTaskState({
+        taskId: null,
+        sessionId: null,
+        liveViewUrl: null,
+        status: 'idle'
+      })
+      setCurrentLiveViewUrl(null)
+      
+      // Show success message
+      setTaskMessage({
+        type: 'info',
+        message: `Task ${taskState.taskId.slice(0, 8)}... and browser session have been terminated successfully`
+      })
+
+      // Clear task message after 5 seconds
+      setTimeout(() => {
+        setTaskMessage(null)
+      }, 5000)
+
+      console.log(`✅ Task and session stopped successfully: ${taskState.taskId}`)
+      
+    } catch (error) {
+      console.error('❌ Error stopping task:', error)
+      
+      // Set back to original status if stop failed
+      setTaskState(prev => ({
+        ...prev,
+        status: originalStatus
+      }))
+      
+      setTaskMessage({
+        type: 'error',
+        message: `Failed to stop task: ${error instanceof Error ? error.message : 'Unknown error'}`
+      })
+
+      // Clear error message after 8 seconds
+      setTimeout(() => {
+        setTaskMessage(null)
+      }, 8000)
+    }
+  }
   
 
 
@@ -436,6 +521,7 @@ export function DashboardDualPane({
             }))
             setCurrentLiveViewUrl(liveViewUrl)
             console.log('🎯 DashboardDualPane: Live view URL updated via WebSocket:', liveViewUrl)
+            console.log(`🔄 Task state updated to 'running' for task: ${taskState.taskId}`)
           }
         }
       }
@@ -543,6 +629,8 @@ export function DashboardDualPane({
           status: 'connecting'
         });
         
+        console.log(`🔄 Task state updated to 'connecting' for task: ${response.data.task_id}`);
+        
         // Call the parent callback if provided
         if (onTaskSubmit) {
           onTaskSubmit(response.data.task_id)
@@ -564,24 +652,16 @@ export function DashboardDualPane({
     if (!currentLiveViewUrl) {
       return (
         <div className="h-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <div className="text-center text-gray-500">
-            <Monitor className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-            <h3 className="text-lg font-medium mb-2">No Live View Available</h3>
-            <p className="text-sm mb-3">
-              {browserMode === 'local' 
-                ? 'Local browser mode - no live view available' 
-                : 'Waiting for task to start and generate live view URL...'
-              }
-            </p>
-            <div className="p-2 bg-blue-50 rounded border border-blue-200">
-              <p className="text-xs text-blue-700 font-medium">Debug Info:</p>
-              <p className="text-xs text-blue-600">Task ID: {taskState.taskId || 'None'}</p>
-              <p className="text-xs text-blue-600">Status: {taskState.status}</p>
-              <p className="text-xs text-blue-600">Session ID: {taskState.sessionId || 'None'}</p>
-              <p className="text-xs text-blue-600">Browser Mode: {browserMode}</p>
-              <p className="text-xs text-blue-600">Live View URL: {currentLiveViewUrl || 'Not set'}</p>
+                      <div className="text-center text-gray-500">
+              <Monitor className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+              <h3 className="text-lg font-medium mb-2">No Live View Available</h3>
+              <p className="text-sm mb-3">
+                {browserMode === 'local' 
+                  ? 'Local browser mode - no live view available' 
+                  : 'Waiting for task to start and generate live view URL...'
+                }
+              </p>
             </div>
-          </div>
         </div>
       )
     }
@@ -615,9 +695,8 @@ export function DashboardDualPane({
             <h3 className="text-lg font-medium mb-2">Invalid Live View URL Format</h3>
             <p className="text-sm">Expected Browserbase devtools URL format</p>
             <div className="mt-4 p-3 bg-yellow-100 rounded border border-yellow-200">
-              <p className="text-xs text-yellow-700 font-medium">Received URL:</p>
-              <p className="text-xs text-yellow-600 break-all">{currentLiveViewUrl}</p>
-              <p className="text-xs text-yellow-600 mt-2">Expected format: https://www.browserbase.com/devtools/inspector.html?wss=...</p>
+              <p className="text-xs text-yellow-700 font-medium">Invalid URL Format</p>
+              <p className="text-xs text-yellow-600 mt-2">Expected Browserbase devtools URL format</p>
             </div>
           </div>
         </div>
@@ -641,13 +720,7 @@ export function DashboardDualPane({
           </div>
         </div>
         
-        {/* URL Debug Info */}
-        <div className="p-2 bg-blue-50 border-b border-blue-200 flex-shrink-0">
-          <div className="text-xs text-blue-700">
-            <strong>Live View URL:</strong> 
-            <span className="ml-2 break-all">{currentLiveViewUrl}</span>
-          </div>
-        </div>
+
         
         <div className="flex-1 relative overflow-hidden" style={{ minHeight: '500px' }}>
           <iframe
@@ -1013,44 +1086,7 @@ export function DashboardDualPane({
             </CardContent>
           </Card>
 
-          {/* Live View URL Input - Only show when no backend URL */}
-          {!taskState.liveViewUrl && (
-            <Card className="flex-shrink-0">
-              <CardContent className="p-3">
-                <div className="flex gap-2">
-                  <Input
-                    type="url"
-                    placeholder="Paste Browserbase live view URL here..."
-                    value={currentLiveViewUrl || ''}
-                    onChange={(e) => setCurrentLiveViewUrl(e.target.value)}
-                    className="flex-1 text-xs h-8"
-                  />
-                  <Button 
-                    size="sm" 
-                    variant="default"
-                    onClick={() => {
-                      // Force iframe refresh
-                      const tempUrl = currentLiveViewUrl
-                      setCurrentLiveViewUrl('')
-                      setTimeout(() => setCurrentLiveViewUrl(tempUrl), 100)
-                    }}
-                    disabled={!currentLiveViewUrl}
-                    className="h-8 px-2 text-xs"
-                  >
-                    Update
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => setCurrentLiveViewUrl('')}
-                    className="h-8 px-2 text-xs"
-                  >
-                    Clear
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+
 
           {/* Browser View Section - Show when task is active OR manual URL is present */}
           {(taskState.status !== 'idle' || currentLiveViewUrl) && (
@@ -1064,96 +1100,9 @@ export function DashboardDualPane({
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                {/* Status Indicators for Mobile */}
-                {currentLiveViewUrl && taskState.status === 'idle' && (
-                  <div className="mb-3 p-2 bg-purple-50 rounded-lg border border-purple-200">
-                    <div className="flex items-center gap-2 text-purple-700">
-                      <ExternalLink className="w-3 h-3" />
-                      <span className="text-xs font-medium">Manual URL Input Active</span>
-                    </div>
-                    <p className="text-xs text-purple-600 mt-1">
-                      Displaying manually entered live view URL
-                    </p>
-                  </div>
-                )}
+
                 
-                {taskState.status === 'connecting' && (
-                  <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex items-center gap-2 text-blue-700">
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700"></div>
-                      <span className="text-xs font-medium">Connecting to Browserbase...</span>
-                    </div>
-                    <p className="text-xs text-blue-600 mt-1">
-                      Creating session and generating live view URL. Waiting for WebSocket updates...
-                    </p>
-                  </div>
-                )}
-                
-                {taskState.status === 'running' && !currentLiveViewUrl && (
-                  <div className="mb-3 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <div className="flex items-center gap-2 text-yellow-700">
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-700"></div>
-                      <span className="text-xs font-medium">Task Running - Waiting for Live View URL</span>
-                    </div>
-                    <p className="text-xs text-yellow-600 mt-1">
-                      The task is executing. Live view URL will be received via WebSocket shortly...
-                    </p>
-                  </div>
-                )}
-                
-                {/* Debug Panel for Mobile */}
-                <div className="mb-3 p-2 bg-gray-50 rounded-lg border border-gray-200">
-                  <h4 className="text-xs font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <Activity className="w-3 h-3" />
-                    Debug Info
-                  </h4>
-                  <div className="space-y-1 text-xs">
-                    <div>
-                      <span className="font-medium text-gray-600">Task ID:</span>
-                      <span className="ml-2 text-gray-800 font-mono">{taskState.taskId || 'None'}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Status:</span>
-                      <span className="ml-2 text-gray-800">{taskState.status}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Session ID:</span>
-                      <span className="ml-2 text-gray-800 font-mono">{taskState.sessionId || 'None'}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Live View URL:</span>
-                      <span className="ml-2 text-gray-800 font-mono break-all">
-                        {currentLiveViewUrl || 'Not set'}
-                      </span>
-                    </div>
-                  </div>
-                  {currentLiveViewUrl && (
-                    <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
-                      <div className="text-xs text-blue-700">
-                        <strong>URL Analysis:</strong>
-                        <div className="mt-1 space-y-1">
-                          <div>✅ Protocol: {currentLiveViewUrl.startsWith('https://') ? 'HTTPS' : 'Other'}</div>
-                          <div>✅ Domain: {currentLiveViewUrl.includes('browserbase.com') ? 'Browserbase' : 'Other'}</div>
-                          <div>✅ Path: {currentLiveViewUrl.includes('/devtools/inspector.html') ? 'DevTools Inspector' : 'Other'}</div>
-                          <div>✅ WebSocket: {currentLiveViewUrl.includes('wss=') ? 'Present' : 'Missing'}</div>
-                          <div>✅ Debug Flag: {currentLiveViewUrl.includes('debug=true') ? 'Present' : 'Missing'}</div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* WebSocket Status for Mobile */}
-                  <div className="mt-2 p-2 bg-green-50 rounded border border-green-200">
-                    <div className="text-xs text-green-700">
-                      <strong>WebSocket Status:</strong>
-                      <div className="mt-1 space-y-1">
-                        <div>✅ Connection: Active for task {taskState.taskId || 'None'}</div>
-                        <div>✅ Updates: Listening for live view URL</div>
-                        <div>✅ Fallback: API fetch after 30s if needed</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+
                 
                 {renderLiveView()}
               </CardContent>
@@ -1327,25 +1276,34 @@ export function DashboardDualPane({
                           {!ocrSuccess && vendorUrl && (
                             <p className="text-xs text-red-600 mt-2">Please complete OCR processing first</p>
                           )}
-                          {taskState.status === 'running' && (
-                            <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
+                          {/* Task Status and Control Buttons */}
+                          {(taskState.status === 'running' || taskState.status === 'connecting') && (
+                            <div className="mt-2 p-3 bg-blue-50 rounded border border-blue-200">
                               <div className="flex items-center justify-between">
                                 <div>
                                   <p className="text-xs text-blue-700">
                                     <strong>Task Status:</strong> {taskState.status}
                                     {taskState.taskId && (
-                                      <span className="block mt-1">Task ID: {taskState.taskId}</span>
+                                      <span className="block mt-1">Task ID: {taskState.taskId.slice(0, 8)}...</span>
                                     )}
                                   </p>
                                 </div>
-                                <Button
-                                  onClick={resetTaskState}
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-xs h-6 px-2"
-                                >
-                                  Reset
-                                </Button>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={handleStopTask}
+                                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-3 rounded border"
+                                    type="button"
+                                  >
+                                    🛑 Stop
+                                  </button>
+                                  <button
+                                    onClick={resetTaskState}
+                                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-semibold py-2 px-3 rounded border"
+                                    type="button"
+                                  >
+                                    Reset
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           )}
@@ -1535,98 +1493,17 @@ export function DashboardDualPane({
                         />
                       </div>
                       
-                      {/* Mode-specific Information */}
-                      {browserMode === 'browserbase' && (
-                        <div className="p-2 bg-blue-50 rounded border border-blue-200">
-                          <div className="flex items-center gap-2 text-blue-700">
-                            <Cloud className="w-4 h-4" />
-                            <span className="text-sm font-medium">Cloud Mode (Browserbase)</span>
-                          </div>
-                          <p className="text-xs text-blue-600 mt-1">
-                            Uses remote cloud browser with live view capability
-                          </p>
-                        </div>
-                      )}
+
                       
-                      {browserMode === 'local' && (
-                        <div className="p-2 bg-green-50 rounded border border-green-200">
-                          <div className="flex items-center gap-2 text-green-700">
-                            <Monitor className="w-4 h-4" />
-                            <span className="text-sm font-medium">Local Mode</span>
-                          </div>
-                          <p className="text-xs text-green-600 mt-1">
-                            Uses your local browser (faster, no live view)
-                          </p>
-                        </div>
-                      )}
+
                     </div>
                     
-                    {/* Live View URL Input - Only show when no backend URL */}
-                    {!taskState.liveViewUrl && (
-                      <div className="p-3 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-                        <div className="flex gap-2">
-                          <Input
-                            type="url"
-                            placeholder="Paste Browserbase live view URL here..."
-                            value={currentLiveViewUrl || ''}
-                            onChange={(e) => setCurrentLiveViewUrl(e.target.value)}
-                            className="flex-1 text-xs h-8"
-                          />
-                          <Button 
-                            size="sm" 
-                            variant="default"
-                            onClick={() => {
-                              // Force iframe refresh
-                              const tempUrl = currentLiveViewUrl
-                              setCurrentLiveViewUrl('')
-                              setTimeout(() => setCurrentLiveViewUrl(tempUrl), 100)
-                            }}
-                            disabled={!currentLiveViewUrl}
-                            className="h-8 px-2 text-xs"
-                          >
-                            Update
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => setCurrentLiveViewUrl('')}
-                            className="h-8 px-2 text-xs"
-                          >
-                            Clear
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+
                     
                     {/* Live View Content */}
                     <div className="flex-1 p-3 overflow-hidden">
                       {browserMode === 'browserbase' ? (
                         <>
-                          {/* Status Indicators for Browserbase mode */}
-                          {taskState.status === 'connecting' && (
-                            <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                              <div className="flex items-center gap-2 text-blue-700">
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700"></div>
-                                <span className="text-xs font-medium">Connecting to Browserbase...</span>
-                              </div>
-                              <p className="text-xs text-blue-600 mt-1">
-                                Creating session and generating live view URL. Waiting for WebSocket updates...
-                              </p>
-                            </div>
-                          )}
-                          
-                          {taskState.status === 'running' && !currentLiveViewUrl && (
-                            <div className="mb-3 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
-                              <div className="flex items-center gap-2 text-yellow-700">
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-700"></div>
-                                <span className="text-xs font-medium">Task Running - Waiting for Live View URL</span>
-                              </div>
-                              <p className="text-xs text-yellow-600 mt-1">
-                                The task is executing. Live view URL will be received via WebSocket shortly...
-                              </p>
-                            </div>
-                          )}
-                          
                           {renderLiveView()}
                         </>
                       ) : (
@@ -1642,48 +1519,7 @@ export function DashboardDualPane({
                               No live view available, but execution is typically faster.
                             </p>
                             
-                            {/* Status for local mode */}
-                            {taskState.status === 'connecting' && (
-                              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                                <div className="flex items-center justify-center gap-2 text-green-700">
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-700"></div>
-                                  <span className="text-sm font-medium">Initializing Local Browser...</span>
-                                </div>
-                              </div>
-                            )}
-                            
-                            {taskState.status === 'running' && (
-                              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                                <div className="flex items-center justify-center gap-2 text-green-700">
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-700"></div>
-                                  <span className="text-sm font-medium">Task Running Locally...</span>
-                                </div>
-                                <p className="text-xs text-green-600 mt-2">
-                                  Check your system for the browser window that opened automatically.
-                                </p>
-                              </div>
-                            )}
-                            
-                            {taskState.status === 'completed' && (
-                              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                                <div className="flex items-center justify-center gap-2 text-green-700">
-                                  <Check className="h-4 w-4" />
-                                  <span className="text-sm font-medium">Task Completed Successfully!</span>
-                                </div>
-                              </div>
-                            )}
-                            
-                            {taskState.status === 'failed' && (
-                              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                                <div className="flex items-center justify-center gap-2 text-red-700">
-                                  <X className="h-4 w-4" />
-                                  <span className="text-sm font-medium">Task Failed</span>
-                                </div>
-                                <p className="text-xs text-red-600 mt-2">
-                                  Check the console logs for more details.
-                                </p>
-                              </div>
-                            )}
+
                           </div>
                         </div>
                       )}

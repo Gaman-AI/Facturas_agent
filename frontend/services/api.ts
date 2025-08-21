@@ -568,7 +568,7 @@ export class ApiService {
   }
 
   static async stopTask(taskId: string): Promise<{ message: string; task_id: string }> {
-    const response = await apiClient.post(`/tasks/${taskId}/stop`);
+    const response = await apiClient.put(`/tasks/${taskId}/stop`);
     return response.data as { message: string; task_id: string };
   }
 

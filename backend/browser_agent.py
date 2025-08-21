@@ -19,6 +19,7 @@ import sys
 import json
 import os
 import re
+import signal
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -38,6 +39,55 @@ from browser_use.browser.profile import BrowserProfile
 from browser_use.browser.session import BrowserSession
 
 
+# Global session manager for signal handling
+class GlobalSessionManager:
+    """Global manager for tracking browser sessions for signal handling"""
+    
+    def __init__(self):
+        self.current_session = None
+        self.should_stop = False
+        self.cleanup_in_progress = False
+        
+    def set_current_session(self, session_manager):
+        """Set the current session manager for signal handling"""
+        self.current_session = session_manager
+        
+    def signal_handler(self, signum, frame):
+        """Handle termination signals by triggering emergency cleanup"""
+        print(f"[SIGNAL] Received termination signal: {signum}")
+        self.should_stop = True
+        
+        if not self.cleanup_in_progress and self.current_session:
+            self.cleanup_in_progress = True
+            print("[SIGNAL] Triggering emergency cleanup...")
+            
+            # Create a new event loop if needed for cleanup
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # If loop is running, schedule cleanup as a task
+                    asyncio.create_task(self.current_session._emergency_cleanup())
+                else:
+                    # If loop is not running, run cleanup directly
+                    loop.run_until_complete(self.current_session._emergency_cleanup())
+            except Exception as cleanup_error:
+                print(f"[SIGNAL] Error during signal cleanup: {cleanup_error}")
+            finally:
+                print("[SIGNAL] Emergency cleanup completed, exiting...")
+                sys.exit(1)
+        else:
+            print("[SIGNAL] Cleanup already in progress or no session to clean up")
+            sys.exit(1)
+
+
+# Global instance for signal handling
+global_session_manager = GlobalSessionManager()
+
+# Set up signal handlers
+signal.signal(signal.SIGTERM, global_session_manager.signal_handler)
+signal.signal(signal.SIGINT, global_session_manager.signal_handler)
+
+
 class ManagedBrowserSession:
     """Context manager for proper BrowserSession lifecycle management"""
     
@@ -48,6 +98,9 @@ class ManagedBrowserSession:
         
     async def __aenter__(self) -> BrowserSession:
         try:
+            # Register this session with the global manager for signal handling
+            global_session_manager.set_current_session(self)
+            
             self.browser_session = BrowserSession(
                 cdp_url=self.cdp_url,
                 browser_profile=self.browser_profile,
@@ -65,6 +118,10 @@ class ManagedBrowserSession:
             raise
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        # Unregister from global manager
+        if global_session_manager.current_session == self:
+            global_session_manager.current_session = None
+        
         await self._close_session_properly()
     
     async def _close_session_properly(self):
@@ -343,6 +400,12 @@ async def run_automation_task(browser_session, task: str, model: str = "gpt-4o",
     
     try:
         print("[RUNNING] Starting agent task...")
+        
+        # Check for stop signal before starting
+        if global_session_manager.should_stop:
+            print("[SIGNAL] Stop signal detected before agent execution")
+            return "Task stopped by signal before execution"
+        
         result = await agent.run(max_steps=max_steps)
         print("[SUCCESS] Task completed successfully!")
         return str(result)
