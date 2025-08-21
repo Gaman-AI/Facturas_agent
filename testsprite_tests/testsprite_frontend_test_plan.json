@@ -1,0 +1,522 @@
+[
+  {
+    "id": "TC001",
+    "title": "User Registration with Valid Data",
+    "description": "Verify that a new user can successfully register with all required valid CFDI profile information.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the registration page."
+      },
+      {
+        "type": "action",
+        "description": "Input valid user credentials and all required CFDI profile fields."
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form."
+      },
+      {
+        "type": "assertion",
+        "description": "Check that the registration is successful and user is redirected or logged in."
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "User Registration with Missing Required Fields",
+    "description": "Ensure the registration form validation prevents submission when required fields are missing.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the registration page."
+      },
+      {
+        "type": "action",
+        "description": "Input incomplete user data, missing mandatory CFDI profile fields."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to submit the registration form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify appropriate validation messages prevent form submission."
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "User Login with Correct Credentials",
+    "description": "Verify that a user with valid credentials can log in successfully and receive a JWT token.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page."
+      },
+      {
+        "type": "action",
+        "description": "Enter valid username/email and password."
+      },
+      {
+        "type": "action",
+        "description": "Click the login button."
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure login is successful, JWT token is issued and user is directed to dashboard."
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "User Login with Incorrect Credentials",
+    "description": "Verify login fails with invalid credentials and proper error is displayed.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the login page."
+      },
+      {
+        "type": "action",
+        "description": "Input incorrect username/email and password."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to submit the login form."
+      },
+      {
+        "type": "assertion",
+        "description": "Login fails and error message is displayed."
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Profile Management CRUD Operations",
+    "description": "Validate that authenticated users can retrieve, update, and delete their CFDI profile data.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in with a valid user account."
+      },
+      {
+        "type": "action",
+        "description": "Fetch current profile data via API or UI."
+      },
+      {
+        "type": "assertion",
+        "description": "Current profile data is presented correctly."
+      },
+      {
+        "type": "action",
+        "description": "Update profile fields with valid new data."
+      },
+      {
+        "type": "assertion",
+        "description": "Changes are saved and reflected immediately."
+      },
+      {
+        "type": "action",
+        "description": "Delete profile or specific profile data if supported."
+      },
+      {
+        "type": "assertion",
+        "description": "Deletion operation completes successfully and data is removed."
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Task Creation with Valid Natural Language Prompt",
+    "description": "Ensure that users can create browser automation tasks successfully by submitting natural language CFDI task requests.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in and navigate to task submission interface."
+      },
+      {
+        "type": "action",
+        "description": "Enter a valid natural language prompt describing the CFDI task."
+      },
+      {
+        "type": "action",
+        "description": "Submit the task creation request."
+      },
+      {
+        "type": "assertion",
+        "description": "Task is created with correct parameters and appears in the monitoring dashboard."
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Task Creation with Invalid or Empty Input",
+    "description": "Verify the system prevents submission of automation tasks when the input prompt is invalid or empty.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to task submission page."
+      },
+      {
+        "type": "action",
+        "description": "Input an empty or syntactically invalid natural language prompt."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to submit task creation form."
+      },
+      {
+        "type": "assertion",
+        "description": "Submission is rejected with meaningful validation error."
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "OCR Processing Accuracy for Major Vendor",
+    "description": "Verify that the OCR engine extracts all expected CFDI fields with high confidence from tickets for a major Mexican retailer using vendor-specific templates.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Upload a sample ticket image for a major vendor."
+      },
+      {
+        "type": "action",
+        "description": "Trigger OCR processing using both Azure Document Intelligence and LangExtract engines."
+      },
+      {
+        "type": "assertion",
+        "description": "OCR output contains correctly extracted CFDI fields matching expected schema with confidence thresholds met."
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "OCR Processing with Unsupported Vendor",
+    "description": "Ensure system handles OCR requests for tickets from unsupported or unknown vendors gracefully with appropriate error or fallback.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Upload a ticket image from an unsupported vendor."
+      },
+      {
+        "type": "action",
+        "description": "Submit OCR processing request."
+      },
+      {
+        "type": "assertion",
+        "description": "System returns an error or fallback response indicating unsupported vendor without crashing."
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Create and Execute Browser Agent Task",
+    "description": "Verify the lifecycle of a browser automation task from creation, execution, real-time status updates, to completion.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create a new browser agent task via the API or dashboard."
+      },
+      {
+        "type": "action",
+        "description": "Start execution of the browser automation task."
+      },
+      {
+        "type": "assertion",
+        "description": "Task status updates are streamed in real-time via WebSocket and reflected on UI."
+      },
+      {
+        "type": "action",
+        "description": "Wait for task completion."
+      },
+      {
+        "type": "assertion",
+        "description": "Task completes successfully with expected logs and output."
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Pause, Resume and Cancel Browser Agent Task",
+    "description": "Validate that users can pause, resume, and cancel running browser automation tasks and receive correct status updates.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Start a browser agent task execution."
+      },
+      {
+        "type": "action",
+        "description": "Send pause command to the running task."
+      },
+      {
+        "type": "assertion",
+        "description": "Task status changes to paused and logs reflect the pause action."
+      },
+      {
+        "type": "action",
+        "description": "Resume the paused task."
+      },
+      {
+        "type": "assertion",
+        "description": "Task status updates to running and continues execution."
+      },
+      {
+        "type": "action",
+        "description": "Cancel the running task."
+      },
+      {
+        "type": "assertion",
+        "description": "Task terminates and status changes to canceled with proper logs."
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "WebSocket Real-Time Status Handling",
+    "description": "Confirm that WebSocket connection streams live updates for task status, logs, and browser agent control commands correctly and resiliently.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Connect to WebSocket endpoint during task execution."
+      },
+      {
+        "type": "assertion",
+        "description": "Receive continuous real-time updates about task status and logs."
+      },
+      {
+        "type": "action",
+        "description": "Send control commands (pause/resume/takeover) via WebSocket."
+      },
+      {
+        "type": "assertion",
+        "description": "Commands are executed and corresponding status changes received."
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "API Endpoint Contract Compliance",
+    "description": "Verify that all RESTful API endpoints (authentication, tasks, OCR, browser control, health checks) conform to documented request and response schemas including error cases.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Send correctly formatted requests to each API endpoint."
+      },
+      {
+        "type": "assertion",
+        "description": "Responses meet expected status codes and data schemas."
+      },
+      {
+        "type": "action",
+        "description": "Send malformed or unauthorized requests."
+      },
+      {
+        "type": "assertion",
+        "description": "API returns appropriate error codes and messages without leaking sensitive information."
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Frontend Components Render without Hydration Mismatches",
+    "description": "Ensure that React/Next.js frontend components render correctly without hydration or reconciliation errors in various browsers and devices.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Load main frontend pages (login, dashboard, task submission, monitoring) in supported browsers."
+      },
+      {
+        "type": "assertion",
+        "description": "No hydration mismatch warnings or UI glitches occur during server-side rendering and client hydration."
+      },
+      {
+        "type": "action",
+        "description": "Resize browser and test responsive layouts."
+      },
+      {
+        "type": "assertion",
+        "description": "UI adjusts correctly and remains stable."
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Docker Container Build and Health Check Validation",
+    "description": "Verify that all containerized services (frontend, backend, browser service, nginx, redis) build, start successfully, and pass health checks.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Execute docker-compose build and bring up all services."
+      },
+      {
+        "type": "assertion",
+        "description": "All containers start without errors and remain running."
+      },
+      {
+        "type": "action",
+        "description": "Send requests to health endpoints of each service."
+      },
+      {
+        "type": "assertion",
+        "description": "Health endpoints respond with success and expected status."
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Error Logging and Graceful Failure Handling",
+    "description": "Verify that system logs errors clearly and handles failure scenarios gracefully for API failures, OCR errors, and browser automation exceptions without data loss.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Simulate errors such as invalid OCR input, API unauthorized access, and browser agent crashes."
+      },
+      {
+        "type": "assertion",
+        "description": "System logs error details with timestamps and context."
+      },
+      {
+        "type": "assertion",
+        "description": "User-facing error messages are informative and no data corruption occurs."
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Rate Limiting and Authorization Enforcement",
+    "description": "Confirm that the system enforces JWT authorization correctly and rate limits sensitive endpoints to prevent abuse.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to access protected API endpoints without JWT or with invalid tokens."
+      },
+      {
+        "type": "assertion",
+        "description": "Access is denied with proper HTTP 401/403 responses."
+      },
+      {
+        "type": "action",
+        "description": "Send large volume of requests exceeding rate limit thresholds."
+      },
+      {
+        "type": "assertion",
+        "description": "System enforces rate limiting and responds with HTTP 429 errors accordingly."
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Vendor-Specific OCR Template Switching",
+    "description": "Test that the OCR processing engine correctly detects vendor from ticket input and applies the corresponding extraction template and scoring.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Upload ticket images from multiple supported vendors."
+      },
+      {
+        "type": "assertion",
+        "description": "System detects vendor correctly for each input."
+      },
+      {
+        "type": "assertion",
+        "description": "Appropriate OCR extraction template and confidence scoring is applied for each vendor."
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Frontend Task Monitoring Display Accuracy",
+    "description": "Ensure the dashboard interface accurately displays task status, statistics, and log information with real-time updates.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create and execute sample tasks to generate monitoring data."
+      },
+      {
+        "type": "action",
+        "description": "Navigate to the dashboard monitoring view."
+      },
+      {
+        "type": "assertion",
+        "description": "Task statuses and statistics appear correct and reflect real-time data from backend."
+      },
+      {
+        "type": "assertion",
+        "description": "Logs and updates refresh dynamically without UI glitches."
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Comprehensive Automated Test Suite Execution",
+    "description": "Run all existing automated unit, integration, API, and end-to-end tests to verify test coverage and passing status.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Execute backend API and integration tests."
+      },
+      {
+        "type": "assertion",
+        "description": "All backend tests pass without failures."
+      },
+      {
+        "type": "action",
+        "description": "Run frontend component unit and UI tests."
+      },
+      {
+        "type": "assertion",
+        "description": "Frontend tests pass with coverage meeting target thresholds."
+      },
+      {
+        "type": "action",
+        "description": "Run end-to-end user flow tests covering registration, login, task lifecycle, and OCR processing."
+      },
+      {
+        "type": "assertion",
+        "description": "All e2e tests complete successfully."
+      }
+    ]
+  }
+]
