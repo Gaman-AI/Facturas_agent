@@ -13,7 +13,7 @@ import ApiService from '@/services/api'
 import { LiveViewPane } from './LiveViewPane'
 import { BrowserModeSwitch } from '@/components/ui/browser-mode-switch'
 import { tokenManager } from '@/utils/tokenManager'
-import { toast } from 'react-toastify'
+import { toast } from 'sonner'
 
 export interface DashboardDualPaneProps {
   onTaskSubmit?: (taskId: string) => void
