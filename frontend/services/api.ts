@@ -601,25 +601,28 @@ export class ApiService {
 
   // Browser-Use Task Creation (main method for browser automation)
   static async createBrowserUseTask(request: {
-    prompt?: string;
-    task?: string;
-    vendor_url?: string;
-    ocr_ticket_data?: any;
+    vendor_url: string;
+    user_profile: any;
+    ocr_ticket_data: any;
+    raw_text: string;
     model?: string;
     temperature?: number;
     max_steps?: number;
     timeout_minutes?: number;
     llm_provider?: string;
+    browser_mode?: 'browserbase' | 'local';
   }): Promise<BrowserTaskResponse> {
-    // Normalize the request - handle both 'prompt' and 'task' parameters
+    // Normalize the request - optimized structure without duplicate data
     const normalizedRequest = {
-      prompt: request.prompt || request.task,
       vendor_url: request.vendor_url,
+      user_profile: request.user_profile,
       ocr_ticket_data: request.ocr_ticket_data,
+      raw_text: request.raw_text,
       model: request.model || 'gpt-4o-mini',
       temperature: request.temperature || 0.7,
       max_steps: request.max_steps || 30,
-      timeout_minutes: request.timeout_minutes || 30
+      timeout_minutes: request.timeout_minutes || 30,
+      browser_mode: request.browser_mode || 'browserbase'
     };
 
     const response = await apiClient.post('/tasks/browser-use', normalizedRequest);

@@ -1,17 +1,16 @@
 /**
- * Simple Polling Service for Task Updates
+ * Real WebSocket Service for Task Updates
  * 
- * This service provides real-time-like updates by polling the API endpoints
- * instead of using WebSockets, eliminating connection complexity and failures.
+ * This service provides real-time updates using actual WebSocket connections
+ * to the backend, enabling immediate URL delivery and real-time task monitoring.
  * 
- * @file purpose: Real-time task monitoring without WebSocket dependencies
+ * @file purpose: Real-time task monitoring with WebSocket connections
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-const POLLING_INTERVAL = parseInt(process.env.NEXT_PUBLIC_POLLING_INTERVAL || '2000'); // 2 seconds
+const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8000';
 
 export interface TaskUpdate {
-  type: 'step_update' | 'status_change' | 'error' | 'task_completed' | 'task_start' | 'task_error' | 'log_update';
+  type: 'step_update' | 'status_change' | 'error' | 'task_completed' | 'task_start' | 'task_error' | 'log_update' | 'url_generated' | 'session_created' | 'live_view_ready' | 'automation_progress';
   task_id?: string;
   session_id?: string;
   data?: any;
@@ -30,10 +29,15 @@ export interface StatusChangeData {
   error_message?: string;
 }
 
-export class PollingService {
-  private pollingIntervals: Map<string, NodeJS.Timeout> = new Map();
+export class WebSocketService {
+  private ws: WebSocket | null = null;
   private listeners: Map<string, Function[]> = new Map();
-  private isPolling = false;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectDelay = 1000;
+  private isConnecting = false;
+  private isConnected = false;
+  private connectionUrl: string = '';
 
   constructor() {
     this.setupEventListeners();
@@ -48,228 +52,195 @@ export class PollingService {
     this.listeners.set('task_start', []);
     this.listeners.set('task_error', []);
     this.listeners.set('log_update', []);
+    this.listeners.set('url_generated', []);
+    this.listeners.set('session_created', []);
+    this.listeners.set('live_view_ready', []);
+    this.listeners.set('automation_progress', []);
+    this.listeners.set('connection_status', []);
+    this.listeners.set('connection', []);
+    this.listeners.set('pong', []);
   }
 
   /**
-   * Start polling for task updates
+   * Connect to WebSocket server
    */
-  async startPolling(taskId: string): Promise<boolean> {
-    if (this.pollingIntervals.has(taskId)) {
-      console.log(`Already polling for task ${taskId}`);
-      return true;
+  async connect(sessionId?: string): Promise<boolean> {
+    if (this.isConnecting || this.isConnected) {
+      return this.isConnected;
     }
 
-    console.log(`Starting polling for task ${taskId}`);
+    this.isConnecting = true;
     
-    // Start polling immediately
-    await this.pollTaskStatus(taskId);
-    
-    // Set up interval for continuous polling
-    const interval = setInterval(async () => {
-      await this.pollTaskStatus(taskId);
-    }, POLLING_INTERVAL);
-
-    this.pollingIntervals.set(taskId, interval);
-    this.isPolling = true;
-    
-    return true;
-  }
-
-  /**
-   * Start polling for browser agent session updates
-   */
-  async startBrowserAgentPolling(sessionId: string): Promise<boolean> {
-    if (this.pollingIntervals.has(sessionId)) {
-      console.log(`Already polling for session ${sessionId}`);
-      return true;
-    }
-
-    console.log(`Starting browser agent polling for session ${sessionId}`);
-    
-    // Start polling immediately
-    await this.pollBrowserAgentStatus(sessionId);
-    
-    // Set up interval for continuous polling
-    const interval = setInterval(async () => {
-      await this.pollBrowserAgentStatus(sessionId);
-    }, POLLING_INTERVAL);
-
-    this.pollingIntervals.set(sessionId, interval);
-    this.isPolling = true;
-    
-    return true;
-  }
-
-  /**
-   * Poll task status from API
-   */
-  private async pollTaskStatus(taskId: string) {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/tasks/browser-use/${taskId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.getAuthToken()}`
-        }
+      // Construct WebSocket URL with session ID if provided
+      const wsUrl = sessionId 
+        ? `${WS_BASE_URL}/api/v1/browser-agent/ws?sessionId=${sessionId}`
+        : `${WS_BASE_URL}/api/v1/browser-agent/ws`;
+      
+      this.connectionUrl = wsUrl;
+      
+      return new Promise((resolve, reject) => {
+        this.ws = new WebSocket(wsUrl);
+        
+        this.ws.onopen = () => {
+          console.log('🔗 WebSocket connected successfully');
+          this.isConnected = true;
+          this.isConnecting = false;
+          this.reconnectAttempts = 0;
+          
+          // Send initial ping
+          this.ping();
+          
+          // Emit connection status
+          this.emit('connection_status', {
+            type: 'connection_status',
+            data: {
+              connected: true,
+              sessionId: sessionId,
+              timestamp: new Date().toISOString()
+            }
+          });
+          
+          resolve(true);
+        };
+        
+        this.ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            this.handleMessage(message);
+          } catch (error) {
+            console.error('❌ Failed to parse WebSocket message:', error);
+          }
+        };
+        
+        this.ws.onclose = (event) => {
+          console.log('🔌 WebSocket connection closed:', event.code, event.reason);
+          this.isConnected = false;
+          this.isConnecting = false;
+          
+          // Emit connection status
+          this.emit('connection_status', {
+            type: 'connection_status',
+            data: {
+              connected: false,
+              sessionId: sessionId,
+              timestamp: new Date().toISOString()
+            }
+          });
+          
+          // Attempt reconnection if not manually closed
+          if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
+            this.attemptReconnect();
+          }
+        };
+        
+        this.ws.onerror = (error) => {
+          console.error('❌ WebSocket error:', error);
+          this.isConnecting = false;
+          reject(error);
+        };
+        
+        // Set connection timeout
+        setTimeout(() => {
+          if (!this.isConnected) {
+            this.isConnecting = false;
+            reject(new Error('WebSocket connection timeout'));
+          }
+        }, 10000);
       });
-
-      if (response.ok) {
-        const taskData = await response.json();
-        this.processTaskUpdate(taskId, taskData);
-      } else {
-        console.warn(`Failed to fetch task ${taskId}: ${response.status}`);
-      }
+      
     } catch (error) {
-      console.error(`Error polling task ${taskId}:`, error);
+      this.isConnecting = false;
+      console.error('❌ Failed to create WebSocket connection:', error);
+      throw error;
     }
   }
 
   /**
-   * Poll browser agent status from API
+   * Attempt to reconnect to WebSocket server
    */
-  private async pollBrowserAgentStatus(sessionId: string) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/browser-agent-realtime?sessionId=${sessionId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.getAuthToken()}`
-        }
-      });
-
-      if (response.ok) {
-        const sessionData = await response.json();
-        this.processBrowserAgentUpdate(sessionId, sessionData);
-      } else {
-        console.warn(`Failed to fetch session ${sessionId}: ${response.status}`);
+  private async attemptReconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.log('❌ Max reconnection attempts reached');
+      return;
+    }
+    
+    this.reconnectAttempts++;
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+    
+    console.log(`🔄 Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    
+    setTimeout(async () => {
+      try {
+        await this.connect();
+      } catch (error) {
+        console.error('❌ Reconnection failed:', error);
       }
-    } catch (error) {
-      console.error(`Error polling session ${sessionId}:`, error);
-    }
+    }, delay);
   }
 
   /**
-   * Process task update and emit events
+   * Handle incoming WebSocket messages
    */
-  private processTaskUpdate(taskId: string, taskData: any) {
-    // Emit status change if status has changed
-    if (taskData.status) {
-      this.emit('status_change', {
-        type: 'status_change',
-        task_id: taskId,
-        data: {
-          status: taskData.status,
-          error_message: taskData.error_message,
-          timestamp: new Date().toISOString()
-        }
-      });
-    }
-
-    // Emit task completion if completed
-    if (taskData.status === 'completed') {
-      this.emit('task_completed', {
-        type: 'task_completed',
-        task_id: taskId,
-        data: taskData.result,
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // Emit task error if failed
-    if (taskData.status === 'failed') {
-      this.emit('task_error', {
-        type: 'task_error',
-        task_id: taskId,
-        data: {
-          error: taskData.error_message || 'Task failed',
-          timestamp: new Date().toISOString()
-        }
-      });
-    }
-
-    // Emit log updates if available
-    if (taskData.logs && taskData.logs.length > 0) {
-      this.emit('log_update', {
-        type: 'log_update',
-        task_id: taskId,
-        data: {
-          logs: taskData.logs,
-          timestamp: new Date().toISOString()
-        }
-      });
-    }
+  private handleMessage(message: any) {
+    console.log('📨 WebSocket message received:', message.type);
+    
+    // Emit the message to all listeners
+    this.emit(message.type, message);
   }
 
   /**
-   * Process browser agent update and emit events
+   * Send message to WebSocket server
    */
-  private processBrowserAgentUpdate(sessionId: string, sessionData: any) {
-    // Emit connection status
-    this.emit('connection_status', {
-      type: 'connection_status',
-      session_id: sessionId,
-      data: {
-        connected: true,
-        sessionId: sessionId,
-        timestamp: new Date().toISOString()
+  send(type: string, data: any = {}) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      try {
+        const message = {
+          type,
+          data,
+          timestamp: new Date().toISOString()
+        };
+        this.ws.send(JSON.stringify(message));
+      } catch (error) {
+        console.error('❌ Failed to send WebSocket message:', error);
       }
-    });
-
-    // Emit task updates if available
-    if (sessionData.current_task) {
-      this.emit('task_start', {
-        type: 'task_start',
-        session_id: sessionId,
-        data: sessionData.current_task,
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    // Emit log updates if available
-    if (sessionData.logs && sessionData.logs.length > 0) {
-      this.emit('log_update', {
-        type: 'log_update',
-        session_id: sessionId,
-        data: {
-          logs: sessionData.logs,
-          timestamp: new Date().toISOString()
-        }
-      });
+    } else {
+      console.warn('⚠️ WebSocket not connected, cannot send message');
     }
   }
 
   /**
-   * Get authentication token from localStorage
+   * Send ping to keep connection alive
    */
-  private getAuthToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-    }
-    return null;
+  ping() {
+    this.send('ping', { timestamp: new Date().toISOString() });
   }
 
   /**
-   * Stop polling for a specific task or session
+   * Subscribe to task updates
    */
-  stopPolling(identifier: string): void {
-    const interval = this.pollingIntervals.get(identifier);
-    if (interval) {
-      clearInterval(interval);
-      this.pollingIntervals.delete(identifier);
-      console.log(`Stopped polling for ${identifier}`);
-    }
+  subscribeToTask(taskId: string) {
+    this.send('subscribe_task', { taskId });
   }
 
   /**
-   * Stop all polling
+   * Unsubscribe from task updates
    */
-  stopAllPolling(): void {
-    this.pollingIntervals.forEach((interval, identifier) => {
-      clearInterval(interval);
-      console.log(`Stopped polling for ${identifier}`);
-    });
-    this.pollingIntervals.clear();
-    this.isPolling = false;
+  unsubscribeFromTask(taskId: string) {
+    this.send('unsubscribe_task', { taskId });
+  }
+
+  /**
+   * Disconnect from WebSocket server
+   */
+  disconnect() {
+    if (this.ws) {
+      this.ws.close(1000, 'Client disconnect');
+      this.ws = null;
+      this.isConnected = false;
+      this.isConnecting = false;
+      console.log('🔌 WebSocket disconnected');
+    }
   }
 
   /**
@@ -312,22 +283,49 @@ export class PollingService {
   }
 
   /**
-   * Get polling status
+   * Get connection status
    */
   get isActive(): boolean {
-    return this.isPolling;
+    return this.isConnected;
   }
 
   /**
-   * Get active polling tasks/sessions
+   * Get connection details
    */
-  get activePolling(): string[] {
-    return Array.from(this.pollingIntervals.keys());
+  get connectionInfo() {
+    return {
+      isConnected: this.isConnected,
+      isConnecting: this.isConnecting,
+      reconnectAttempts: this.reconnectAttempts,
+      maxReconnectAttempts: this.maxReconnectAttempts,
+      connectionUrl: this.connectionUrl
+    };
+  }
+
+  /**
+   * Legacy compatibility methods for existing code
+   */
+  async startPolling(taskId: string): Promise<boolean> {
+    // For backward compatibility, subscribe to task updates
+    this.subscribeToTask(taskId);
+    return true;
+  }
+
+  async startBrowserAgentPolling(sessionId: string): Promise<boolean> {
+    // For backward compatibility, connect to WebSocket
+    return this.connect(sessionId);
+  }
+
+  stopPolling(identifier: string): void {
+    // For backward compatibility, unsubscribe from task
+    this.unsubscribeFromTask(identifier);
+  }
+
+  stopAllPolling(): void {
+    // For backward compatibility, disconnect
+    this.disconnect();
   }
 }
 
 // Export singleton instance
-export const pollingService = new PollingService();
-
-// Legacy compatibility - export the same interface
-export const websocketService = pollingService; 
+export const websocketService = new WebSocketService(); 

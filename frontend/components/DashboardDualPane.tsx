@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Zap, Monitor, Activity, ExternalLink, RefreshCw } from 'lucide-react'
+import { Zap, Monitor, Activity, ExternalLink, RefreshCw, Copy, Check, X, Cloud } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { websocketService } from '@/services/websocket'
 import ApiService from '@/services/api'
 import { LiveViewPane } from './LiveViewPane'
+import { BrowserModeSwitch } from '@/components/ui/browser-mode-switch'
 import { tokenManager } from '@/utils/tokenManager'
 import { toast } from 'react-toastify'
 
@@ -45,6 +46,79 @@ interface TicketData {
   'Register_Station_Terminal': string
   'Payment_Type': string
   'Card_Last_4_Digits': string
+}
+
+// Copy Button Component
+interface CopyButtonProps {
+  value: string
+  className?: string
+  size?: 'sm' | 'default'
+}
+
+function CopyButton({ value, className = '', size = 'sm' }: CopyButtonProps) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    if (!value) return
+    
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      toast.success('Copied to clipboard!')
+      
+      // Reset copied state after 2 seconds
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+      toast.error('Failed to copy to clipboard')
+    }
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size={size}
+      onClick={handleCopy}
+      disabled={!value}
+      className={`h-6 w-6 p-0 hover:bg-gray-100 ${className}`}
+      title="Copy to clipboard"
+    >
+      {copied ? (
+        <Check className="h-3 w-3 text-green-600" />
+      ) : (
+        <Copy className="h-3 w-3 text-gray-500 hover:text-gray-700" />
+      )}
+    </Button>
+  )
+}
+
+// Field with Copy Button Component
+interface FieldWithCopyProps {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+  className?: string
+  fullWidth?: boolean
+}
+
+function FieldWithCopy({ label, value, onChange, placeholder, className = '', fullWidth = false }: FieldWithCopyProps) {
+  return (
+    <div className={`bg-gray-50 border border-red-200 rounded-lg p-2 ${fullWidth ? 'col-span-2' : ''} ${className}`}>
+      <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          className="flex-1 h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          placeholder={placeholder}
+        />
+        <CopyButton value={value} />
+      </div>
+    </div>
+  )
 }
 
 export function DashboardDualPane({
@@ -92,6 +166,9 @@ export function DashboardDualPane({
   
   // Add new state for task feedback
   const [taskMessage, setTaskMessage] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
+  
+  // Add browser mode state
+  const [browserMode, setBrowserMode] = useState<'browserbase' | 'local'>('browserbase')
   
   // Function to clear task message after delay
   const clearTaskMessage = (delay: number = 5000) => {
@@ -286,17 +363,18 @@ export function DashboardDualPane({
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Update live view URL when taskState changes
+  // Update live view URL when taskState changes - only when there's a new URL from task
   useEffect(() => {
-    if (taskState.liveViewUrl !== currentLiveViewUrl) {
-      console.log('🔄 Live view URL updated:', {
+    // Only update if there's a new live view URL from the task (not null)
+    if (taskState.liveViewUrl && taskState.liveViewUrl !== currentLiveViewUrl) {
+      console.log('🔄 Live view URL updated from task:', {
         from: currentLiveViewUrl,
         to: taskState.liveViewUrl,
         taskId: taskState.taskId
       })
       setCurrentLiveViewUrl(taskState.liveViewUrl)
     }
-  }, [taskState.liveViewUrl, currentLiveViewUrl, taskState.taskId])
+  }, [taskState.liveViewUrl, taskState.taskId])
 
   // Log when currentLiveViewUrl changes for debugging
   useEffect(() => {
@@ -312,82 +390,96 @@ export function DashboardDualPane({
     }
   }, [currentLiveViewUrl])
 
-  // WebSocket connection for real-time updates
+  // Real-time WebSocket connection for immediate URL delivery
   useEffect(() => {
     if (taskState.taskId && taskState.status !== 'idle') {
-      // Connect to WebSocket for this specific task
+      // Connect to real WebSocket for this specific task
       const connectWebSocket = async () => {
         try {
-          await websocketService.startPolling(taskState.taskId!)
-          console.log(`📡 WebSocket connected for task: ${taskState.taskId}`)
+          console.log(`🔗 DashboardDualPane: Connecting to WebSocket for task: ${taskState.taskId}`)
+          const connected = await websocketService.connect(taskState.taskId!)
+          if (connected) {
+            websocketService.subscribeToTask(taskState.taskId!)
+            console.log(`✅ DashboardDualPane: WebSocket connected and subscribed to task: ${taskState.taskId}`)
+          }
         } catch (error) {
-          console.error(`❌ Failed to connect WebSocket for task ${taskState.taskId}:`, error)
+          console.error(`❌ DashboardDualPane: Failed to connect WebSocket for task ${taskState.taskId}:`, error)
         }
       }
       
       connectWebSocket()
       
-      const handleTaskUpdate = (data: any) => {
+      // Enhanced event handlers for real-time URL delivery
+      const handleSessionCreated = (data: any) => {
+        console.log('📡 DashboardDualPane: Session created event:', data)
         if (data.taskId === taskState.taskId) {
-          console.log('📡 Received WebSocket task update:', data)
-          
-          // Extract session information from the update
-          const sessionId = data.sessionId || data.session_id || taskState.sessionId
-          const liveViewUrl = data.liveViewUrl || data.live_view_url || taskState.liveViewUrl
-          const status = data.status || taskState.status
-          
-          console.log('🔗 Processing WebSocket update:', { sessionId, liveViewUrl, status })
-          
-          // Update task state with new information
-          setTaskState(prev => ({
-            ...prev,
-            status: status as TaskState['status'],
-            sessionId: sessionId || prev.sessionId,
-            liveViewUrl: liveViewUrl || prev.liveViewUrl
-          }))
-          
-          // If we got the live view URL, update the current URL
-          if (liveViewUrl && liveViewUrl !== currentLiveViewUrl) {
-            console.log('🎯 Live view URL received via WebSocket:', liveViewUrl)
-            setCurrentLiveViewUrl(liveViewUrl)
+          const sessionId = data.sessionId || data.session_id
+          if (sessionId) {
+            setTaskState(prev => ({
+              ...prev,
+              sessionId: sessionId
+            }))
+            console.log('🔗 DashboardDualPane: Session ID updated:', sessionId)
           }
         }
       }
       
-      // Listen for task updates using the correct event name
-      websocketService.on('taskUpdate', handleTaskUpdate)
+      const handleLiveViewReady = (data: any) => {
+        console.log('📡 DashboardDualPane: Live view ready event:', data)
+        if (data.taskId === taskState.taskId) {
+          const liveViewUrl = data.liveViewUrl || data.live_view_url
+          if (liveViewUrl) {
+            setTaskState(prev => ({
+              ...prev,
+              liveViewUrl: liveViewUrl,
+              status: 'running'
+            }))
+            setCurrentLiveViewUrl(liveViewUrl)
+            console.log('🎯 DashboardDualPane: Live view URL updated via WebSocket:', liveViewUrl)
+          }
+        }
+      }
+      
+      const handleUrlGenerated = (data: any) => {
+        console.log('📡 DashboardDualPane: URL generated event:', data)
+        if (data.taskId === taskState.taskId) {
+          const url = data.url || data.liveViewUrl || data.live_view_url
+          if (url && url !== currentLiveViewUrl) {
+            setCurrentLiveViewUrl(url)
+            console.log('🌐 DashboardDualPane: URL updated from URL generated event:', url)
+          }
+        }
+      }
+      
+      const handleAutomationProgress = (data: any) => {
+        console.log('📡 DashboardDualPane: Automation progress event:', data)
+        if (data.taskId === taskState.taskId) {
+          // Update status to running if we receive progress
+          setTaskState(prev => ({
+            ...prev,
+            status: 'running'
+          }))
+        }
+      }
+      
+      // Set up real-time WebSocket event listeners
+      websocketService.on('session_created', handleSessionCreated)
+      websocketService.on('live_view_ready', handleLiveViewReady)
+      websocketService.on('url_generated', handleUrlGenerated)
+      websocketService.on('automation_progress', handleAutomationProgress)
       
       // Cleanup function
       return () => {
-        websocketService.off('taskUpdate', handleTaskUpdate)
+        websocketService.off('session_created', handleSessionCreated)
+        websocketService.off('live_view_ready', handleLiveViewReady)
+        websocketService.off('url_generated', handleUrlGenerated)
+        websocketService.off('automation_progress', handleAutomationProgress)
         websocketService.stopPolling(taskState.taskId!)
       }
     }
   }, [taskState.taskId])
 
-  const handleTaskCreated = async (taskId: string) => {
-    try {
-      // Set initial state
-      setTaskState({
-        taskId,
-        sessionId: null,
-        liveViewUrl: null,
-        status: 'connecting'
-      })
-
-      console.log('🚀 Task created, waiting for WebSocket session updates...')
-      console.log('📡 Task ID:', taskId)
-      console.log('⏳ Status: connecting - waiting for backend to create session and generate live view URL')
-
-      // Callback for parent component
-      if (onTaskSubmit) {
-        onTaskSubmit(taskId)
-      }
-    } catch (error) {
-      console.error('❌ Error handling task creation:', error)
-      setTaskState(prev => ({ ...prev, status: 'failed' }))
-    }
-  }
+  // handleTaskCreated method removed - now handled directly in handleStartAgentTask with real-time WebSocket events
 
   const handleTakeoverRequest = () => {
     console.log('Takeover requested for task:', taskState.taskId)
@@ -403,15 +495,6 @@ export function DashboardDualPane({
     if (currentLiveViewUrl) {
       console.log('Live view URL updated:', currentLiveViewUrl)
       // Force re-render of iframe
-      setCurrentLiveViewUrl('')
-      setTimeout(() => setCurrentLiveViewUrl(currentLiveViewUrl), 100)
-    }
-  }
-
-  const handleRefreshLiveView = () => {
-    if (currentLiveViewUrl) {
-      console.log('Refreshing live view...')
-      // Force iframe refresh by temporarily clearing and restoring URL
       const tempUrl = currentLiveViewUrl
       setCurrentLiveViewUrl('')
       setTimeout(() => setCurrentLiveViewUrl(tempUrl), 100)
@@ -432,37 +515,16 @@ export function DashboardDualPane({
     try {
       setIsStartingAgent(true);
       
-      // Combine all details into one comprehensive prompt
-      const combinedPrompt = `${vendorUrl}
-
-USER INFORMATION:
-- Company/Name: ${userProfile?.company_name || (userProfile?.first_name && userProfile?.last_name ? `${userProfile.first_name} ${userProfile.last_name}` : 'Not available')}
-- RFC: ${userProfile?.rfc || 'Not available'}
-- Address: ${userProfile?.address || (userProfile?.street && userProfile?.city ? `${userProfile.street}, ${userProfile.city}, ${userProfile.state}` : 'Not available')}
-
-TICKET DETAILS:
-- Store/Comercio: ${ticketData.Comercio || 'Not available'}
-- Date/Fecha: ${ticketData.Fecha || 'Not available'}
-- Total Amount: ${ticketData.Total || 'Not available'}
-- TC Number: ${ticketData['TC#'] || 'Not available'}
-- TR Number: ${ticketData['TR#'] || 'Not available'}
-- ID: ${ticketData.ID || 'Not available'}
-- Folio Venta: ${ticketData['Fol_Vta'] || 'Not available'}
-- Ticket ID: ${ticketData['ID_Ticket'] || 'Not available'}
-- Mesa/Folio: ${ticketData['Mesa_Folio'] || 'Not available'}
-- Store/Branch/Plaza: ${ticketData['Store_Branch_Plaza'] || 'Not available'}
-- Register/Station/Terminal: ${ticketData['Register_Station_Terminal'] || 'Not available'}
-- Payment Type: ${ticketData['Payment_Type'] || 'Not available'}
-- Card Last 4 Digits: ${ticketData['Card_Last_4_Digits'] || 'Not available'}
-
-RAW OCR TEXT: ${rawText}`;
-
-      console.log('🚀 Starting browser agent task with prompt:', combinedPrompt);
-
-      // Use the browser-use API that actually executes browser_agent.py
+      // Send ONLY the corrected, structured data - NO duplicate text prompt
       const response = await ApiService.createBrowserUseTask({
-        task: combinedPrompt,
-        vendor_url: vendorUrl
+        vendor_url: vendorUrl,
+        browser_mode: browserMode,
+        user_profile: userProfile,        // Send user profile directly
+        ocr_ticket_data: ticketData,     // Send corrected OCR data directly
+        raw_text: rawText,               // Send raw text directly
+        model: 'gpt-4o-mini',           // Default model
+        max_steps: 30,                   // Default max steps
+        temperature: 0.7                 // Default temperature
       });
 
       console.log('✅ Browser agent task created successfully:', response);
@@ -470,9 +532,20 @@ RAW OCR TEXT: ${rawText}`;
       if (response.success && response.data?.task_id) {
         toast.success('Browser agent task started successfully!');
         
+        console.log('🚀 DashboardDualPane: Task created, WebSocket will deliver URLs in real-time');
+        console.log('📡 DashboardDualPane: Waiting for WebSocket events for task:', response.data.task_id);
+        
+        // Set initial task state - WebSocket will update with URLs
+        setTaskState({
+          taskId: response.data.task_id,
+          sessionId: null,
+          liveViewUrl: null,
+          status: 'connecting'
+        });
+        
         // Call the parent callback if provided
         if (onTaskSubmit) {
-          onTaskSubmit(response.data.task_id);
+          onTaskSubmit(response.data.task_id)
         }
       } else {
         throw new Error('Failed to create browser agent task');
@@ -494,12 +567,18 @@ RAW OCR TEXT: ${rawText}`;
           <div className="text-center text-gray-500">
             <Monitor className="w-12 h-12 mx-auto mb-3 text-gray-400" />
             <h3 className="text-lg font-medium mb-2">No Live View Available</h3>
-            <p className="text-sm mb-3">Waiting for task to start and generate live view URL...</p>
+            <p className="text-sm mb-3">
+              {browserMode === 'local' 
+                ? 'Local browser mode - no live view available' 
+                : 'Waiting for task to start and generate live view URL...'
+              }
+            </p>
             <div className="p-2 bg-blue-50 rounded border border-blue-200">
               <p className="text-xs text-blue-700 font-medium">Debug Info:</p>
               <p className="text-xs text-blue-600">Task ID: {taskState.taskId || 'None'}</p>
               <p className="text-xs text-blue-600">Status: {taskState.status}</p>
               <p className="text-xs text-blue-600">Session ID: {taskState.sessionId || 'None'}</p>
+              <p className="text-xs text-blue-600">Browser Mode: {browserMode}</p>
               <p className="text-xs text-blue-600">Live View URL: {currentLiveViewUrl || 'Not set'}</p>
             </div>
           </div>
@@ -507,7 +586,25 @@ RAW OCR TEXT: ${rawText}`;
       )
     }
 
-    // Validate URL format
+    // For local mode, show a different message since there's no live view
+    if (browserMode === 'local') {
+      return (
+        <div className="h-full flex items-center justify-center bg-green-50 rounded-lg border-2 border-dashed border-green-300">
+          <div className="text-center text-green-600">
+            <Monitor className="w-16 h-16 mx-auto mb-4 text-green-400" />
+            <h3 className="text-lg font-medium mb-2">Local Browser Mode Active</h3>
+            <p className="text-sm mb-3">Task is running in your local browser</p>
+            <div className="mt-4 p-3 bg-green-100 rounded border border-green-200">
+              <p className="text-xs text-green-700 font-medium">Local Mode Info:</p>
+              <p className="text-xs text-green-600">No live view available for local browser</p>
+              <p className="text-xs text-green-600">Check your local browser for automation progress</p>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Validate URL format for Browserbase mode
     const isValidBrowserbaseUrl = currentLiveViewUrl.includes('browserbase.com/devtools/inspector.html')
     
     if (!isValidBrowserbaseUrl) {
@@ -557,10 +654,9 @@ RAW OCR TEXT: ${rawText}`;
             src={currentLiveViewUrl}
             sandbox="allow-same-origin allow-scripts"
             allow="clipboard-read; clipboard-write"
-            style={{ pointerEvents: 'none' }}
             className="w-full h-full border-0"
             title="Live Browser View"
-            onLoad={() => console.log('✅ Live view iframe loaded successfully')}
+            onLoad={() => console.log('✅ Live view iframe loaded successfully:', currentLiveViewUrl)}
             onError={(e) => console.error('❌ Live view iframe error:', e)}
           />
         </div>
@@ -789,174 +885,126 @@ RAW OCR TEXT: ${rawText}`;
               
               <div className="grid grid-cols-3 gap-2">
                 {/* Mesa/Folio */}
-                <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Mesa/Folio</label>
-                  <input
-                    type="text"
-                    value={ticketData['Mesa_Folio'] || ''}
-                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': e.target.value }))}
-                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Enter Mesa/Folio"
-                  />
-                </div>
+                <FieldWithCopy
+                  label="Mesa/Folio"
+                  value={ticketData['Mesa_Folio'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': value }))}
+                  placeholder="Enter Mesa/Folio"
+                />
                 
                 {/* Fecha */}
-                <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Fecha</label>
-                  <input
-                    type="text"
-                    value={ticketData['Fecha'] || ''}
-                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Fecha': e.target.value }))}
-                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Enter Fecha"
-                  />
-                </div>
+                <FieldWithCopy
+                  label="Fecha"
+                  value={ticketData['Fecha'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Fecha': value }))}
+                  placeholder="Enter Fecha"
+                />
                 
                 {/* ID Ticket */}
-                <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">ID Ticket</label>
-                  <input
-                    type="text"
-                    value={ticketData['ID_Ticket'] || ''}
-                    onChange={(e) => setTicketData(prev => ({ ...prev, 'ID_Ticket': e.target.value }))}
-                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Enter ID Ticket"
-                  />
-                </div>
+                <FieldWithCopy
+                  label="ID Ticket"
+                  value={ticketData['ID_Ticket'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'ID_Ticket': value }))}
+                  placeholder="Enter ID Ticket"
+                />
                 
                 {/* Total */}
-                <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Total</label>
-                  <input
-                    type="text"
-                    value={ticketData['Total'] || ''}
-                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Total': e.target.value }))}
-                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Enter Total"
-                  />
-                </div>
+                <FieldWithCopy
+                  label="Total"
+                  value={ticketData['Total'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Total': value }))}
+                  placeholder="Enter Total"
+                />
                 
                 {/* Store/Branch/Plaza */}
-                <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Store/Branch/Plaza</label>
-                  <input
-                    type="text"
-                    value={ticketData['Store_Branch_Plaza'] || ''}
-                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': e.target.value }))}
-                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Enter Store/Branch/Plaza"
-                  />
-                </div>
+                <FieldWithCopy
+                  label="Store/Branch/Plaza"
+                  value={ticketData['Store_Branch_Plaza'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': value }))}
+                  placeholder="Enter Store/Branch/Plaza"
+                />
                 
                 {/* Register/Station/Terminal */}
-                <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Register/Station/Terminal</label>
-                  <input
-                    type="text"
-                    value={ticketData['Register_Station_Terminal'] || ''}
-                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': e.target.value }))}
-                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Enter Register/Station/Terminal"
-                  />
-                </div>
+                <FieldWithCopy
+                  label="Register/Station/Terminal"
+                  value={ticketData['Register_Station_Terminal'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': value }))}
+                  placeholder="Enter Register/Station/Terminal"
+                />
                 
                 {/* Payment Type */}
-                <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Payment Type</label>
-                  <input
-                    type="text"
-                    value={ticketData['Payment_Type'] || ''}
-                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Payment_Type': e.target.value }))}
-                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Enter Payment Type"
-                  />
-                </div>
+                <FieldWithCopy
+                  label="Payment Type"
+                  value={ticketData['Payment_Type'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Payment_Type': value }))}
+                  placeholder="Enter Payment Type"
+                />
                 
                 {/* Last 4 digits of card */}
-                <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Card Last 4 Digits</label>
-                  <input
-                    type="text"
-                    value={ticketData['Card_Last_4_Digits'] || ''}
-                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': e.target.value }))}
-                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Enter Card Last 4 Digits"
-                  />
-                </div>
+                <FieldWithCopy
+                  label="Card Last 4 Digits"
+                  value={ticketData['Card_Last_4_Digits'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': value }))}
+                  placeholder="Enter Card Last 4 Digits"
+                />
                 
                 {/* TC# */}
-                <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">TC#</label>
-                  <input
-                    type="text"
-                    value={ticketData['TC#'] || ''}
-                    onChange={(e) => setTicketData(prev => ({ ...prev, 'TC#': e.target.value }))}
-                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Enter TC#"
-                  />
-                </div>
+                <FieldWithCopy
+                  label="TC#"
+                  value={ticketData['TC#'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'TC#': value }))}
+                  placeholder="Enter TC#"
+                />
                 
                 {/* TR# */}
-                <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">TR#</label>
-                  <input
-                    type="text"
-                    value={ticketData['TR#'] || ''}
-                    onChange={(e) => setTicketData(prev => ({ ...prev, 'TR#': e.target.value }))}
-                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Enter TR#"
-                  />
-                </div>
+                <FieldWithCopy
+                  label="TR#"
+                  value={ticketData['TR#'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'TR#': value }))}
+                  placeholder="Enter TR#"
+                />
                 
                 {/* ID */}
-                <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">ID</label>
-                  <input
-                    type="text"
-                    value={ticketData['ID'] || ''}
-                    onChange={(e) => setTicketData(prev => ({ ...prev, 'ID': e.target.value }))}
-                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Enter ID"
-                  />
-                </div>
+                <FieldWithCopy
+                  label="ID"
+                  value={ticketData['ID'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'ID': value }))}
+                  placeholder="Enter ID"
+                />
                 
                 {/* Fol_Vta */}
-                <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Fol_Vta</label>
-                  <input
-                    type="text"
-                    value={ticketData['Fol_Vta'] || ''}
-                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Fol_Vta': e.target.value }))}
-                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Enter Fol_Vta"
-                  />
-                </div>
+                <FieldWithCopy
+                  label="Fol_Vta"
+                  value={ticketData['Fol_Vta'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Fol_Vta': value }))}
+                  placeholder="Enter Fol_Vta"
+                />
                 
                 {/* Comercio - Full width */}
-                <div className="bg-gray-50 border border-red-200 rounded-lg p-2 col-span-3">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Comercio</label>
-                  <input
-                    type="text"
-                    value={ticketData['Comercio'] || ''}
-                    onChange={(e) => setTicketData(prev => ({ ...prev, 'Comercio': e.target.value }))}
-                    className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Enter Comercio"
-                  />
-                </div>
+                <FieldWithCopy
+                  label="Comercio"
+                  value={ticketData['Comercio'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Comercio': value }))}
+                  placeholder="Enter Comercio"
+                  fullWidth={true}
+                />
               </div>
               
               {/* Full Raw Text Display - New Component */}
               <div className="flex-1 min-h-0 flex flex-col">
                 <div className="bg-gray-50 border border-red-200 rounded-lg p-2 flex-1 flex flex-col">
                   <label className="block text-xs font-medium text-gray-700 mb-1 flex-shrink-0">Full Raw Text</label>
-                  <div className="flex-1 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
-                    {rawText ? (
-                      <pre className="whitespace-pre-wrap text-xs leading-relaxed">
-                        {rawText}
-                      </pre>
-                    ) : (
-                      <span className="text-gray-300 italic">No raw text available</span>
-                    )}
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
+                      {rawText ? (
+                        <pre className="whitespace-pre-wrap text-xs leading-relaxed">
+                          {rawText}
+                        </pre>
+                      ) : (
+                        <span className="text-gray-300 italic">No raw text available</span>
+                      )}
+                    </div>
+                    <CopyButton value={rawText} />
                   </div>
                 </div>
               </div>
@@ -965,30 +1013,14 @@ RAW OCR TEXT: ${rawText}`;
             </CardContent>
           </Card>
 
-          {/* Live View URL Input */}
-          <Card className="flex-shrink-0">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-semibold flex items-center gap-2">
-                  <ExternalLink className="w-4 h-4" />
-                  Live View URL
-                </h3>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={handleRefreshLiveView}
-                  disabled={!currentLiveViewUrl}
-                  className="h-7 px-2 text-xs"
-                >
-                  <RefreshCw className="w-3 h-3 mr-1" />
-                  Refresh
-                </Button>
-              </div>
-              <div className="space-y-2">
+          {/* Live View URL Input - Only show when no backend URL */}
+          {!taskState.liveViewUrl && (
+            <Card className="flex-shrink-0">
+              <CardContent className="p-3">
                 <div className="flex gap-2">
                   <Input
                     type="url"
-                    placeholder="Enter live view URL (e.g., https://browserbase.com/devtools/inspector.html?wss=...)"
+                    placeholder="Paste Browserbase live view URL here..."
                     value={currentLiveViewUrl || ''}
                     onChange={(e) => setCurrentLiveViewUrl(e.target.value)}
                     className="flex-1 text-xs h-8"
@@ -996,7 +1028,12 @@ RAW OCR TEXT: ${rawText}`;
                   <Button 
                     size="sm" 
                     variant="default"
-                    onClick={handleUpdateLiveViewUrl}
+                    onClick={() => {
+                      // Force iframe refresh
+                      const tempUrl = currentLiveViewUrl
+                      setCurrentLiveViewUrl('')
+                      setTimeout(() => setCurrentLiveViewUrl(tempUrl), 100)
+                    }}
                     disabled={!currentLiveViewUrl}
                     className="h-8 px-2 text-xs"
                   >
@@ -1005,53 +1042,18 @@ RAW OCR TEXT: ${rawText}`;
                   <Button 
                     size="sm" 
                     variant="outline"
-                    onClick={() => {
-                      setCurrentLiveViewUrl('')
-                      console.log('Live view URL cleared')
-                    }}
+                    onClick={() => setCurrentLiveViewUrl('')}
                     className="h-8 px-2 text-xs"
                   >
                     Clear
                   </Button>
                 </div>
-                
-                {/* URL Validation and Help */}
-                {currentLiveViewUrl && (
-                  <div className="space-y-2">
-                    <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                      <strong>Current URL:</strong> 
-                      <span className="ml-2 break-all">{currentLiveViewUrl}</span>
-                    </div>
-                    
-                    {/* URL Format Validation */}
-                    <div className="p-2 rounded border text-xs">
-                      {currentLiveViewUrl.startsWith('https://www.browserbase.com/devtools/inspector.html') ? (
-                        <div className="text-green-700 bg-green-50 border-green-200">
-                          ✅ Valid Browserbase DevTools URL format detected
-                        </div>
-                      ) : currentLiveViewUrl.startsWith('https://') ? (
-                        <div className="text-yellow-700 bg-yellow-50 border-yellow-200">
-                          ⚠️ HTTPS URL detected but not in expected Browserbase DevTools format
-                        </div>
-                      ) : (
-                        <div className="text-red-700 bg-red-50 border-red-200">
-                          ❌ Invalid URL format - must start with https://
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                
-                <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded border border-blue-200">
-                  <strong>Expected Format:</strong> The live view URL should be automatically generated by the backend when a task starts. 
-                  It should look like: <code className="bg-white px-1 rounded">https://www.browserbase.com/devtools/inspector.html?wss=connect.browserbase.com/debug/{'{session_id}'}/devtools/page/{'{page_id}'}?debug=true</code>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Browser View Section - Only show when task is active */}
-          {taskState.status !== 'idle' && (
+          {/* Browser View Section - Show when task is active OR manual URL is present */}
+          {(taskState.status !== 'idle' || currentLiveViewUrl) && (
             <Card className="flex-1 min-h-0 border-2 border-slate-200/60 shadow-lg bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden">
               <CardHeader className="pb-2 bg-gradient-to-r from-pink-50 to-rose-50 border-b border-slate-200/40 flex-shrink-0">
                 <CardTitle className="flex items-center space-x-2 text-base">
@@ -1063,6 +1065,18 @@ RAW OCR TEXT: ${rawText}`;
               </CardHeader>
               <CardContent className="p-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                 {/* Status Indicators for Mobile */}
+                {currentLiveViewUrl && taskState.status === 'idle' && (
+                  <div className="mb-3 p-2 bg-purple-50 rounded-lg border border-purple-200">
+                    <div className="flex items-center gap-2 text-purple-700">
+                      <ExternalLink className="w-3 h-3" />
+                      <span className="text-xs font-medium">Manual URL Input Active</span>
+                    </div>
+                    <p className="text-xs text-purple-600 mt-1">
+                      Displaying manually entered live view URL
+                    </p>
+                  </div>
+                )}
+                
                 {taskState.status === 'connecting' && (
                   <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
                     <div className="flex items-center gap-2 text-blue-700">
@@ -1372,174 +1386,126 @@ RAW OCR TEXT: ${rawText}`;
                     
                     <div className="grid grid-cols-2 gap-2 flex-shrink-0 mb-4">
                       {/* Mesa/Folio */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Mesa/Folio</label>
-                        <input
-                          type="text"
-                          value={ticketData['Mesa_Folio'] || ''}
-                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': e.target.value }))}
-                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          placeholder="Enter Mesa/Folio"
-                        />
-                      </div>
+                      <FieldWithCopy
+                        label="Mesa/Folio"
+                        value={ticketData['Mesa_Folio'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': value }))}
+                        placeholder="Enter Mesa/Folio"
+                      />
                       
                       {/* Fecha */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Fecha</label>
-                        <input
-                          type="text"
-                          value={ticketData['Fecha'] || ''}
-                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Fecha': e.target.value }))}
-                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          placeholder="Enter Fecha"
-                        />
-                      </div>
+                      <FieldWithCopy
+                        label="Fecha"
+                        value={ticketData['Fecha'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Fecha': value }))}
+                        placeholder="Enter Fecha"
+                      />
                       
                       {/* ID Ticket */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">ID Ticket</label>
-                        <input
-                          type="text"
-                          value={ticketData['ID_Ticket'] || ''}
-                          onChange={(e) => setTicketData(prev => ({ ...prev, 'ID_Ticket': e.target.value }))}
-                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          placeholder="Enter ID Ticket"
-                        />
-                      </div>
+                      <FieldWithCopy
+                        label="ID Ticket"
+                        value={ticketData['ID_Ticket'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'ID_Ticket': value }))}
+                        placeholder="Enter ID Ticket"
+                      />
                       
                       {/* Total */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Total</label>
-                        <input
-                          type="text"
-                          value={ticketData['Total'] || ''}
-                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Total': e.target.value }))}
-                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          placeholder="Enter Total"
-                        />
-                      </div>
+                      <FieldWithCopy
+                        label="Total"
+                        value={ticketData['Total'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Total': value }))}
+                        placeholder="Enter Total"
+                      />
                       
                       {/* Store/Branch/Plaza */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Store/Branch/Plaza</label>
-                        <input
-                          type="text"
-                          value={ticketData['Store_Branch_Plaza'] || ''}
-                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': e.target.value }))}
-                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          placeholder="Enter Store/Branch/Plaza"
-                        />
-                      </div>
+                      <FieldWithCopy
+                        label="Store/Branch/Plaza"
+                        value={ticketData['Store_Branch_Plaza'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': value }))}
+                        placeholder="Enter Store/Branch/Plaza"
+                      />
                       
                       {/* Register/Station/Terminal */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Register/Station/Terminal</label>
-                        <input
-                          type="text"
-                          value={ticketData['Register_Station_Terminal'] || ''}
-                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': e.target.value }))}
-                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          placeholder="Enter Register/Station/Terminal"
-                        />
-                      </div>
+                      <FieldWithCopy
+                        label="Register/Station/Terminal"
+                        value={ticketData['Register_Station_Terminal'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': value }))}
+                        placeholder="Enter Register/Station/Terminal"
+                      />
                       
                       {/* Payment Type */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Payment Type</label>
-                        <input
-                          type="text"
-                          value={ticketData['Payment_Type'] || ''}
-                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Payment_Type': e.target.value }))}
-                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          placeholder="Enter Payment Type"
-                        />
-                      </div>
+                      <FieldWithCopy
+                        label="Payment Type"
+                        value={ticketData['Payment_Type'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Payment_Type': value }))}
+                        placeholder="Enter Payment Type"
+                      />
                       
                       {/* Last 4 digits of card */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Card Last 4 Digits</label>
-                        <input
-                          type="text"
-                          value={ticketData['Card_Last_4_Digits'] || ''}
-                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': e.target.value }))}
-                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          placeholder="Enter Card Last 4 Digits"
-                        />
-                      </div>
+                      <FieldWithCopy
+                        label="Card Last 4 Digits"
+                        value={ticketData['Card_Last_4_Digits'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': value }))}
+                        placeholder="Enter Card Last 4 Digits"
+                      />
                       
                       {/* TC# */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">TC#</label>
-                        <input
-                          type="text"
-                          value={ticketData['TC#'] || ''}
-                          onChange={(e) => setTicketData(prev => ({ ...prev, 'TC#': e.target.value }))}
-                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          placeholder="Enter TC#"
-                        />
-                      </div>
+                      <FieldWithCopy
+                        label="TC#"
+                        value={ticketData['TC#'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'TC#': value }))}
+                        placeholder="Enter TC#"
+                      />
                       
                       {/* TR# */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">TR#</label>
-                        <input
-                          type="text"
-                          value={ticketData['TR#'] || ''}
-                          onChange={(e) => setTicketData(prev => ({ ...prev, 'TR#': e.target.value }))}
-                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          placeholder="Enter TR#"
-                        />
-                      </div>
+                      <FieldWithCopy
+                        label="TR#"
+                        value={ticketData['TR#'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'TR#': value }))}
+                        placeholder="Enter TR#"
+                      />
                       
                       {/* ID */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">ID</label>
-                        <input
-                          type="text"
-                          value={ticketData['ID'] || ''}
-                          onChange={(e) => setTicketData(prev => ({ ...prev, 'ID': e.target.value }))}
-                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          placeholder="Enter ID"
-                        />
-                      </div>
+                      <FieldWithCopy
+                        label="ID"
+                        value={ticketData['ID'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'ID': value }))}
+                        placeholder="Enter ID"
+                      />
                       
                       {/* Fol_Vta */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Fol_Vta</label>
-                        <input
-                          type="text"
-                          value={ticketData['Fol_Vta'] || ''}
-                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Fol_Vta': e.target.value }))}
-                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          placeholder="Enter Fol_Vta"
-                        />
-                      </div>
+                      <FieldWithCopy
+                        label="Fol_Vta"
+                        value={ticketData['Fol_Vta'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Fol_Vta': value }))}
+                        placeholder="Enter Fol_Vta"
+                      />
                       
                       {/* Comercio - Full width */}
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-2 col-span-2">
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Comercio</label>
-                        <input
-                          type="text"
-                          value={ticketData['Comercio'] || ''}
-                          onChange={(e) => setTicketData(prev => ({ ...prev, 'Comercio': e.target.value }))}
-                          className="h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 w-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                          placeholder="Enter Comercio"
-                        />
-                      </div>
+                      <FieldWithCopy
+                        label="Comercio"
+                        value={ticketData['Comercio'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Comercio': value }))}
+                        placeholder="Enter Comercio"
+                        fullWidth={true}
+                      />
                     </div>
                     
                     {/* Full Raw Text Display - New Component */}
                     <div className="flex-1 min-h-0 flex flex-col">
                       <div className="bg-gray-50 border border-red-200 rounded-lg p-2 flex-1 flex flex-col">
                         <label className="block text-xs font-medium text-gray-700 mb-1 flex-shrink-0">Full Raw Text</label>
-                        <div className="flex-1 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
-                          {rawText ? (
-                            <pre className="whitespace-pre-wrap text-xs leading-relaxed">
-                              {rawText}
-                            </pre>
-                          ) : (
-                            <span className="text-gray-500 italic">No raw text available</span>
-                          )}
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
+                            {rawText ? (
+                              <pre className="whitespace-pre-wrap text-xs leading-relaxed">
+                                {rawText}
+                              </pre>
+                            ) : (
+                              <span className="text-gray-500 italic">No raw text available</span>
+                            )}
+                          </div>
+                          <CopyButton value={rawText} />
                         </div>
                       </div>
                     </div>
@@ -1558,88 +1524,169 @@ RAW OCR TEXT: ${rawText}`;
               <div className="h-full p-3 bg-gradient-to-b from-white to-slate-50/30 overflow-hidden">
                 <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden">
                   <div className="h-full flex flex-col">
-                    {/* Live View URL Input Header */}
+                    {/* Browser Mode Switch Header */}
                     <div className="p-3 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-base font-semibold flex items-center gap-2">
-                          <ExternalLink className="w-4 h-4" />
-                          Live View URL
-                        </h3>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={handleRefreshLiveView}
-                          disabled={!currentLiveViewUrl}
-                          className="h-7 px-2 text-xs"
-                        >
-                          <RefreshCw className="w-3 h-3 mr-1" />
-                          Refresh
-                        </Button>
-                      </div>
-                      <div className="flex gap-2">
-                        <Input
-                          type="url"
-                          placeholder="Enter live view URL (e.g., https://browserbase.com/devtools/inspector.html?wss=...)"
-                          value={currentLiveViewUrl || ''}
-                          onChange={(e) => setCurrentLiveViewUrl(e.target.value)}
-                          className="flex-1 text-xs h-8"
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-base font-semibold">Browser Mode</h3>
+                        <BrowserModeSwitch 
+                          value={browserMode}
+                          onChange={setBrowserMode}
+                          disabled={taskState.status === 'running' || taskState.status === 'connecting'}
                         />
-                        <Button 
-                          size="sm" 
-                          variant="default"
-                          onClick={handleUpdateLiveViewUrl}
-                          disabled={!currentLiveViewUrl}
-                          className="h-8 px-2 text-xs"
-                        >
-                          Update
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => {
-                            setCurrentLiveViewUrl('')
-                            console.log('Live view URL cleared')
-                          }}
-                          className="h-8 px-2 text-xs"
-                        >
-                          Clear
-                        </Button>
                       </div>
-                      {currentLiveViewUrl && (
-                        <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded mt-2">
-                          <strong>Current URL:</strong> {currentLiveViewUrl}
+                      
+                      {/* Mode-specific Information */}
+                      {browserMode === 'browserbase' && (
+                        <div className="p-2 bg-blue-50 rounded border border-blue-200">
+                          <div className="flex items-center gap-2 text-blue-700">
+                            <Cloud className="w-4 h-4" />
+                            <span className="text-sm font-medium">Cloud Mode (Browserbase)</span>
+                          </div>
+                          <p className="text-xs text-blue-600 mt-1">
+                            Uses remote cloud browser with live view capability
+                          </p>
+                        </div>
+                      )}
+                      
+                      {browserMode === 'local' && (
+                        <div className="p-2 bg-green-50 rounded border border-green-200">
+                          <div className="flex items-center gap-2 text-green-700">
+                            <Monitor className="w-4 h-4" />
+                            <span className="text-sm font-medium">Local Mode</span>
+                          </div>
+                          <p className="text-xs text-green-600 mt-1">
+                            Uses your local browser (faster, no live view)
+                          </p>
                         </div>
                       )}
                     </div>
                     
-                    {/* Live View Iframe */}
+                    {/* Live View URL Input - Only show when no backend URL */}
+                    {!taskState.liveViewUrl && (
+                      <div className="p-3 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+                        <div className="flex gap-2">
+                          <Input
+                            type="url"
+                            placeholder="Paste Browserbase live view URL here..."
+                            value={currentLiveViewUrl || ''}
+                            onChange={(e) => setCurrentLiveViewUrl(e.target.value)}
+                            className="flex-1 text-xs h-8"
+                          />
+                          <Button 
+                            size="sm" 
+                            variant="default"
+                            onClick={() => {
+                              // Force iframe refresh
+                              const tempUrl = currentLiveViewUrl
+                              setCurrentLiveViewUrl('')
+                              setTimeout(() => setCurrentLiveViewUrl(tempUrl), 100)
+                            }}
+                            disabled={!currentLiveViewUrl}
+                            className="h-8 px-2 text-xs"
+                          >
+                            Update
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setCurrentLiveViewUrl('')}
+                            className="h-8 px-2 text-xs"
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Live View Content */}
                     <div className="flex-1 p-3 overflow-hidden">
-                       {/* Status Indicator */}
-                       {taskState.status === 'connecting' && (
-                         <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                           <div className="flex items-center gap-2 text-blue-700">
-                             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700"></div>
-                             <span className="text-xs font-medium">Connecting to Browserbase...</span>
-                           </div>
-                           <p className="text-xs text-blue-600 mt-1">
-                             Creating session and generating live view URL. Waiting for WebSocket updates...
-                           </p>
-                         </div>
-                       )}
-                       
-                       {taskState.status === 'running' && !currentLiveViewUrl && (
-                         <div className="mb-3 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
-                           <div className="flex items-center gap-2 text-yellow-700">
-                             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-700"></div>
-                             <span className="text-xs font-medium">Task Running - Waiting for Live View URL</span>
-                           </div>
-                           <p className="text-xs text-yellow-600 mt-1">
-                             The task is executing. Live view URL will be received via WebSocket shortly...
-                           </p>
-                         </div>
-                       )}
-                      
-                      {renderLiveView()}
+                      {browserMode === 'browserbase' ? (
+                        <>
+                          {/* Status Indicators for Browserbase mode */}
+                          {taskState.status === 'connecting' && (
+                            <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                              <div className="flex items-center gap-2 text-blue-700">
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-700"></div>
+                                <span className="text-xs font-medium">Connecting to Browserbase...</span>
+                              </div>
+                              <p className="text-xs text-blue-600 mt-1">
+                                Creating session and generating live view URL. Waiting for WebSocket updates...
+                              </p>
+                            </div>
+                          )}
+                          
+                          {taskState.status === 'running' && !currentLiveViewUrl && (
+                            <div className="mb-3 p-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                              <div className="flex items-center gap-2 text-yellow-700">
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-700"></div>
+                                <span className="text-xs font-medium">Task Running - Waiting for Live View URL</span>
+                              </div>
+                              <p className="text-xs text-yellow-600 mt-1">
+                                The task is executing. Live view URL will be received via WebSocket shortly...
+                              </p>
+                            </div>
+                          )}
+                          
+                          {renderLiveView()}
+                        </>
+                      ) : (
+                        /* Local Browser Mode Content */
+                        <div className="h-full flex items-center justify-center">
+                          <div className="text-center max-w-md">
+                            <Monitor className="mx-auto h-16 w-16 text-green-600 mb-4" />
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                              Local Browser Mode
+                            </h3>
+                            <p className="text-sm text-gray-600 mb-4">
+                              Task will run on your local machine using your system browser. 
+                              No live view available, but execution is typically faster.
+                            </p>
+                            
+                            {/* Status for local mode */}
+                            {taskState.status === 'connecting' && (
+                              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                                <div className="flex items-center justify-center gap-2 text-green-700">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-700"></div>
+                                  <span className="text-sm font-medium">Initializing Local Browser...</span>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {taskState.status === 'running' && (
+                              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                                <div className="flex items-center justify-center gap-2 text-green-700">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-700"></div>
+                                  <span className="text-sm font-medium">Task Running Locally...</span>
+                                </div>
+                                <p className="text-xs text-green-600 mt-2">
+                                  Check your system for the browser window that opened automatically.
+                                </p>
+                              </div>
+                            )}
+                            
+                            {taskState.status === 'completed' && (
+                              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                                <div className="flex items-center justify-center gap-2 text-green-700">
+                                  <Check className="h-4 w-4" />
+                                  <span className="text-sm font-medium">Task Completed Successfully!</span>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {taskState.status === 'failed' && (
+                              <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                                <div className="flex items-center justify-center gap-2 text-red-700">
+                                  <X className="h-4 w-4" />
+                                  <span className="text-sm font-medium">Task Failed</span>
+                                </div>
+                                <p className="text-xs text-red-600 mt-2">
+                                  Check the console logs for more details.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

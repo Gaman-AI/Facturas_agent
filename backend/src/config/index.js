@@ -43,7 +43,8 @@ const config = {
   // Task Configuration
   tasks: {
     maxConcurrent: parseInt(process.env.MAX_CONCURRENT_TASKS) || 5,
-    timeoutMinutes: parseInt(process.env.TASK_TIMEOUT_MINUTES) || 30,
+    timeoutMinutes: parseInt(process.env.TASK_TIMEOUT_MINUTES) || 5, // Reduced to 5 minutes
+    maxSteps: parseInt(process.env.MAX_STEPS) || 100, // Increased max steps
   },
 
   // Python Service Configuration
@@ -52,7 +53,7 @@ const config = {
     executable: process.env.PYTHON_EXECUTABLE || 'python',
     browserUsePath: './browser-use',
     timeout: parseInt(process.env.PYTHON_TASK_TIMEOUT) || 300000, // 5 minutes default
-    sessionTimeout: parseInt(process.env.PYTHON_SESSION_TIMEOUT) || 120000, // 2 minutes default for session creation
+    sessionTimeout: parseInt(process.env.PYTHON_SESSION_TIMEOUT) || 300000, // 5 minutes for session creation
     maxRetries: parseInt(process.env.PYTHON_MAX_RETRIES) || 3,
   },
 

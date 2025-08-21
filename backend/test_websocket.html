@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test - Real-time URL Delivery</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .connecting { background-color: #fff3cd; color: #856404; }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+        .log-info { color: #0066cc; }
+        .log-success { color: #28a745; }
+        .log-error { color: #dc3545; }
+        .log-warning { color: #ffc107; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        .url-display {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            word-break: break-all;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 WebSocket Test - Real-time URL Delivery</h1>
+        <p>This test page verifies the WebSocket connection and real-time URL delivery system.</p>
+        
+        <div class="status" id="connectionStatus">Disconnected</div>
+        
+        <div>
+            <button id="connectBtn" onclick="connect()">Connect to WebSocket</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+            <button id="testTaskBtn" onclick="testTask()" disabled>Test Task Creation</button>
+        </div>
+        
+        <h3>📊 Connection Info</h3>
+        <div id="connectionInfo">Not connected</div>
+        
+        <h3>🔗 Real-time Events</h3>
+        <div id="events" class="log"></div>
+        
+        <h3>📈 Automation Progress</h3>
+        <div id="progressContainer" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div id="progressText">0% - Initializing...</div>
+        </div>
+        
+        <h3>🌐 Generated URLs</h3>
+        <div id="urls"></div>
+        
+        <h3>📝 Log</h3>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        let isConnected = false;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateConnectionStatus(status, message) {
+            const statusDiv = document.getElementById('connectionStatus');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${status}`;
+            
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const testTaskBtn = document.getElementById('testTaskBtn');
+            
+            if (status === 'connected') {
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                testTaskBtn.disabled = false;
+            } else {
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                testTaskBtn.disabled = true;
+            }
+        }
+        
+        function updateConnectionInfo(info) {
+            const infoDiv = document.getElementById('connectionInfo');
+            infoDiv.innerHTML = `
+                <strong>Status:</strong> ${info.status}<br>
+                <strong>URL:</strong> ${info.url}<br>
+                <strong>Attempts:</strong> ${info.attempts}<br>
+                <strong>Timestamp:</strong> ${info.timestamp}
+            `;
+        }
+        
+        function addEvent(type, data) {
+            const eventsDiv = document.getElementById('events');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry log-info';
+            entry.innerHTML = `<strong>[${timestamp}] ${type}:</strong> ${JSON.stringify(data, null, 2)}`;
+            eventsDiv.appendChild(entry);
+            eventsDiv.scrollTop = eventsDiv.scrollHeight;
+        }
+        
+        function updateProgress(progress) {
+            const container = document.getElementById('progressContainer');
+            const fill = document.getElementById('progressFill');
+            const text = document.getElementById('progressText');
+            
+            container.style.display = 'block';
+            fill.style.width = `${progress.progress}%`;
+            text.textContent = `${progress.progress}% - ${progress.message}`;
+        }
+        
+        function addUrl(type, url, metadata = {}) {
+            const urlsDiv = document.getElementById('urls');
+            const timestamp = new Date().toLocaleTimeString();
+            const urlDiv = document.createElement('div');
+            urlDiv.className = 'url-display';
+            urlDiv.innerHTML = `
+                <strong>${type} (${timestamp}):</strong><br>
+                <a href="${url}" target="_blank">${url}</a><br>
+                <small>Metadata: ${JSON.stringify(metadata)}</small>
+            `;
+            urlsDiv.appendChild(urlDiv);
+        }
+        
+        function connect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                log('Already connected', 'warning');
+                return;
+            }
+            
+            log('Connecting to WebSocket server...', 'info');
+            updateConnectionStatus('connecting', 'Connecting...');
+            
+            try {
+                // Connect to the WebSocket server
+                ws = new WebSocket('ws://localhost:8000/api/v1/browser-agent/ws');
+                
+                ws.onopen = function() {
+                    log('✅ WebSocket connected successfully', 'success');
+                    isConnected = true;
+                    reconnectAttempts = 0;
+                    updateConnectionStatus('connected', 'Connected');
+                    
+                    updateConnectionInfo({
+                        status: 'Connected',
+                        url: 'ws://localhost:8000/api/v1/browser-agent/ws',
+                        attempts: reconnectAttempts,
+                        timestamp: new Date().toLocaleTimeString()
+                    });
+                    
+                    // Send initial ping
+                    ws.send(JSON.stringify({
+                        type: 'ping',
+                        data: { timestamp: new Date().toISOString() }
+                    }));
+                };
+                
+                ws.onmessage = function(event) {
+                    try {
+                        const message = JSON.parse(event.data);
+                        log(`📨 Received: ${message.type}`, 'info');
+                        addEvent(message.type, message);
+                        
+                        // Handle specific message types
+                        switch (message.type) {
+                            case 'pong':
+                                log('🏓 Pong received', 'success');
+                                break;
+                                
+                            case 'session_created':
+                                log(`🔗 Session created: ${message.data?.sessionId}`, 'success');
+                                break;
+                                
+                            case 'live_view_ready':
+                                log(`👀 Live view ready: ${message.data?.liveViewUrl}`, 'success');
+                                if (message.data?.liveViewUrl) {
+                                    addUrl('Live View', message.data.liveViewUrl, {
+                                        sessionId: message.data.sessionId,
+                                        browserMode: message.data.browserMode
+                                    });
+                                }
+                                break;
+                                
+                            case 'automation_progress':
+                                log(`📊 Progress: ${message.data?.message} (${message.data?.progress}%)`, 'info');
+                                updateProgress(message.data);
+                                break;
+                                
+                            case 'url_generated':
+                                log(`🌐 URL generated: ${message.data?.url}`, 'success');
+                                if (message.data?.url) {
+                                    addUrl('Generated URL', message.data.url, message.data);
+                                }
+                                break;
+                                
+                            default:
+                                log(`📨 Unhandled message type: ${message.type}`, 'warning');
+                        }
+                    } catch (error) {
+                        log(`❌ Failed to parse message: ${error.message}`, 'error');
+                    }
+                };
+                
+                ws.onclose = function(event) {
+                    log(`🔌 WebSocket closed: ${event.code} - ${event.reason}`, 'warning');
+                    isConnected = false;
+                    updateConnectionStatus('disconnected', 'Disconnected');
+                    
+                    // Attempt reconnection if not manually closed
+                    if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
+                        reconnectAttempts++;
+                        const delay = Math.pow(2, reconnectAttempts) * 1000;
+                        log(`🔄 Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`, 'warning');
+                        
+                        setTimeout(() => {
+                            if (!isConnected) {
+                                connect();
+                            }
+                        }, delay);
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    log(`❌ WebSocket error: ${error}`, 'error');
+                    updateConnectionStatus('disconnected', 'Connection Error');
+                };
+                
+            } catch (error) {
+                log(`❌ Failed to create WebSocket: ${error.message}`, 'error');
+                updateConnectionStatus('disconnected', 'Connection Failed');
+            }
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close(1000, 'Client disconnect');
+                ws = null;
+                isConnected = false;
+                updateConnectionStatus('disconnected', 'Disconnected');
+                log('🔌 WebSocket disconnected', 'info');
+            }
+        }
+        
+        function testTask() {
+            if (!isConnected) {
+                log('❌ Not connected to WebSocket', 'error');
+                return;
+            }
+            
+            log('🧪 Testing task creation...', 'info');
+            
+            // Simulate subscribing to a task
+            const testTaskId = `test_task_${Date.now()}`;
+            ws.send(JSON.stringify({
+                type: 'subscribe_task',
+                data: { taskId: testTaskId }
+            }));
+            
+            log(`📝 Subscribed to test task: ${testTaskId}`, 'info');
+        }
+        
+        // Auto-connect on page load
+        window.onload = function() {
+            log('🚀 Page loaded, ready to test WebSocket connection', 'info');
+            updateConnectionStatus('disconnected', 'Ready to Connect');
+        };
+        
+        // Cleanup on page unload
+        window.onbeforeunload = function() {
+            if (ws) {
+                disconnect();
+            }
+        };
+    </script>
+</body>
+</html>

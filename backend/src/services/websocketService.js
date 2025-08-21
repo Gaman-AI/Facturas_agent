@@ -293,6 +293,82 @@ class WebSocketService {
   }
 
   /**
+   * Send URL generation event for real-time URL delivery
+   * @param {string} taskId - Task ID
+   * @param {Object} data - URL data including type, url, and metadata
+   */
+  sendUrlUpdate(taskId, data = {}) {
+    try {
+      this.broadcastToTask(taskId, {
+        type: 'url_generated',
+        taskId: taskId,
+        timestamp: new Date().toISOString(),
+        ...data
+      })
+      console.log(`🔗 WebSocket URL update sent for task ${taskId}:`, data)
+    } catch (error) {
+      console.error(`❌ Failed to send WebSocket URL update for task ${taskId}:`, error)
+    }
+  }
+
+  /**
+   * Send session creation event
+   * @param {string} taskId - Task ID
+   * @param {Object} data - Session data including sessionId and browserMode
+   */
+  sendSessionCreated(taskId, data = {}) {
+    try {
+      this.broadcastToTask(taskId, {
+        type: 'session_created',
+        taskId: taskId,
+        timestamp: new Date().toISOString(),
+        ...data
+      })
+      console.log(`🔗 WebSocket session created event sent for task ${taskId}:`, data)
+    } catch (error) {
+      console.error(`❌ Failed to send WebSocket session created event for task ${taskId}:`, error)
+    }
+  }
+
+  /**
+   * Send live view ready event
+   * @param {string} taskId - Task ID
+   * @param {Object} data - Live view data including liveViewUrl and sessionId
+   */
+  sendLiveViewReady(taskId, data = {}) {
+    try {
+      this.broadcastToTask(taskId, {
+        type: 'live_view_ready',
+        taskId: taskId,
+        timestamp: new Date().toISOString(),
+        ...data
+      })
+      console.log(`👀 WebSocket live view ready event sent for task ${taskId}:`, data)
+    } catch (error) {
+      console.error(`❌ Failed to send WebSocket live view ready event for task ${taskId}:`, error)
+    }
+  }
+
+  /**
+   * Send automation progress event
+   * @param {string} taskId - Task ID
+   * @param {Object} data - Progress data including step, message, and progress percentage
+   */
+  sendAutomationProgress(taskId, data = {}) {
+    try {
+      this.broadcastToTask(taskId, {
+        type: 'automation_progress',
+        taskId: taskId,
+        timestamp: new Date().toISOString(),
+        ...data
+      })
+      console.log(`📊 WebSocket automation progress sent for task ${taskId}:`, data)
+    } catch (error) {
+      console.error(`❌ Failed to send WebSocket automation progress for task ${taskId}:`, error)
+    }
+  }
+
+  /**
    * Send task error notification
    * @param {string} taskId - Task ID
    * @param {string} error - Error message

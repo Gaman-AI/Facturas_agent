@@ -99,7 +99,7 @@ export const schemas = {
       task_description: z.string().min(10, 'Task description must be at least 10 characters').optional(),
       model: z.string().optional(),
       llm_provider: z.enum(['openai', 'anthropic', 'google']).default('openai').optional(),
-      timeout_minutes: z.number().int().min(5).max(60).default(30).optional()
+      timeout_minutes: z.number().int().min(1).max(300).default(5).optional() // Allow up to 5 hours, default 5 minutes
     }).refine((data) => {
       // Ensure either 'task' or 'task_description' is provided
       return data.task || data.task_description;
@@ -166,7 +166,7 @@ export const schemas = {
         llm_provider: z.enum(['openai', 'anthropic', 'google']).default('openai'),
         model: z.string().optional(),
         max_retries: z.number().int().min(1).max(5).default(3),
-        timeout_minutes: z.number().int().min(5).max(60).default(30)
+        timeout_minutes: z.number().int().min(1).max(300).default(5) // Allow up to 5 hours, default 5 minutes
       }).optional()
     })
   }
