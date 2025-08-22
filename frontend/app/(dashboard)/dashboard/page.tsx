@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, User, Building2, FileText, CloudUpload, Link as LinkIcon } from 'lucide-react';
+import { User, Building2, FileText, CloudUpload, Link as LinkIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,12 +11,10 @@ import { useAuth, useUserProfile } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
 import { DashboardDualPane } from '@/components/DashboardDualPane';
-import { TaskStats } from '@/components/TaskStats';
-import { TaskProgressList } from '@/components/TaskProgressIndicator';
-import { ApiService } from '@/services/api';
 import { Input } from '@/components/ui/input';
 import { tokenManager } from '@/utils/tokenManager';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ProfileDropdown } from '@/components/ProfileDropdown';
 
 export default function DashboardPage() {
   return (
@@ -27,13 +25,11 @@ export default function DashboardPage() {
 }
 
 function DashboardContent() {
-  const { logout, loading, user } = useAuth();
+  const { user } = useAuth();
   const { profile, getDisplayName, getRFCMasked, getFullAddress, isPersonaFisica } = useUserProfile();
   const { t } = useLanguage();
   const router = useRouter();
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [loadingTasks, setLoadingTasks] = useState(false);
+
   const [useDualPane, setUseDualPane] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [vendorUrl, setVendorUrl] = useState<string>('');
@@ -46,13 +42,7 @@ function DashboardContent() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
+
 
   const handleResetToUpload = () => {
     setUseDualPane(false);
@@ -136,29 +126,7 @@ function DashboardContent() {
     router.push('/profile/edit');
   };
 
-  const handleRefreshData = () => {
-    setRefreshTrigger(prev => prev + 1);
-    fetchActiveTasks();
-  };
 
-  // Fetch active tasks for progress display
-  const fetchActiveTasks = async () => {
-    try {
-      setLoadingTasks(true);
-      const fetchedTasks = await ApiService.getTasks(0, 20);
-      setTasks(fetchedTasks);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-      // Set empty tasks instead of leaving undefined
-      setTasks([]);
-    } finally {
-      setLoadingTasks(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchActiveTasks();
-  }, []);
 
   // Show dashboard even without profile (profile is optional now)
   const displayName = profile ? getDisplayName() : 'User'
@@ -167,7 +135,7 @@ function DashboardContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-slate-200/50">
+      <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-slate-200/50 relative z-[9998]">
         <div className="w-full mx-auto px-2 sm:px-4 lg:px-6">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
@@ -183,24 +151,7 @@ function DashboardContent() {
             </div>
             
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 bg-white/60 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-200/50">
-                <div className="w-8 h-8 bg-gradient-to-r from-pink-400 to-rose-400 rounded-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-                <span className="text-sm font-medium text-slate-700">
-                  {displayName}
-                </span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                disabled={loading}
-                className="border-slate-200 hover:bg-slate-50"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                {t('auth.logout')}
-              </Button>
+              <ProfileDropdown />
             </div>
           </div>
         </div>
@@ -349,149 +300,7 @@ function DashboardContent() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-          {/* User Profile Card */}
-          <Card className="lg:col-span-2 border-0 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
-            <CardHeader className="pb-4">
-                              <CardTitle className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-                    <User className="w-5 h-5 text-white" />
-                  </div>
-                  <span>{t('profile.title')}</span>
-                </CardTitle>
-                <CardDescription>
-                  {hasProfile ? t('profile.companyInfo') : 'Complete your profile to unlock advanced features'}
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {hasProfile ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                                        <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">{t('auth.email')}</label>
-                      <p className="text-slate-900 font-medium">{user?.email || 'Not provided'}</p>
-                    </div>
-                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">RFC</label>
-                      <div className="flex items-center space-x-2">
-                        <p className="text-slate-900 font-medium">{getRFCMasked()}</p>
-                        <Badge variant={isPersonaFisica() ? "default" : "secondary"} className="bg-gradient-to-r from-pink-500 to-rose-500">
-                          {isPersonaFisica() ? t('common.personaFisica') : t('common.personaMoral')}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                                        <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">{t('register.companyName.label')}</label>
-                      <p className="text-slate-900 font-medium">{profile.company_name}</p>
-                    </div>
-                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">{t('register.addressInfo')}</label>
-                      <p className="text-slate-900 font-medium">{getFullAddress()}</p>
-                    </div>
-                  </div>
-                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">{t('register.taxRegime.label')}</label>
-                      <p className="text-slate-900 font-medium">{profile.tax_regime}</p>
-                    </div>
-                    <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg p-4">
-                      <label className="text-sm font-semibold text-slate-700 mb-1 block">{t('register.cfdiUse.label')}</label>
-                      <p className="text-slate-900 font-medium">{profile.cfdi_use}</p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-20 h-20 bg-gradient-to-r from-slate-200 to-slate-300 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <User className="w-10 h-10 text-slate-400" />
-                  </div>
-                                    <h3 className="text-lg font-semibold text-slate-900 mb-2">{t('profile.noProfile')}</h3>
-                  <p className="text-slate-600 mb-6 max-w-md mx-auto">
-                    {t('profile.basicFunctions')}
-                  </p>
-                  <Button onClick={handleUpdateProfile} className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600">
-                    <User className="w-4 h-4 mr-2" />
-                    {t('profile.edit')}
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions & Stats */}
-          <div className="space-y-6">
-            {/* Edit Profile Only */}
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-                    <User className="w-5 h-5 text-white" />
-                  </div>
-                  <span>Profile Management</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  variant="outline" 
-                  className="w-full border-slate-200 hover:bg-slate-50" 
-                  onClick={handleUpdateProfile}
-                >
-                  <User className="w-4 h-4 mr-2" />
-                  {t('profile.edit')}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Active Tasks Progress - Mobile Only */}
-            <div className="lg:hidden">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Active Tasks</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!loadingTasks && tasks.length > 0 ? (
-                    <TaskProgressList 
-                      tasks={tasks}
-                      maxTasks={3}
-                      variant="compact"
-                    />
-                  ) : (
-                    <p className="text-sm text-gray-600">No active tasks</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          {/* Right Column - Task Management */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Task Statistics */}
-            <TaskStats refreshTrigger={refreshTrigger} />
-
-            {/* Active Tasks Progress - Desktop Only */}
-            <div className="hidden lg:block">
-              {!loadingTasks && tasks.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Tasks in Progress</CardTitle>
-                    <CardDescription>
-                      Real-time monitoring of active tasks
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <TaskProgressList 
-                      tasks={tasks}
-                      maxTasks={5}
-                      variant="compact"
-                    />
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </div>
-        </div>
+        
       </main>
     </div>
   );
