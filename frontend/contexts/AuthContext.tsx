@@ -18,6 +18,7 @@ export interface AuthContextType {
   register: (registerData: RegisterData) => Promise<void>
   logout: () => Promise<void>
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>
+  refreshProfile: () => Promise<void>
   refreshSession: () => Promise<void>
   clearError: () => void
 }
@@ -246,6 +247,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, safeSetError, safeSetLoading, safeSetProfile])
 
+  const refreshProfile = useCallback(async () => {
+    if (!supabase) {
+      const error = new Error('Supabase client not initialized. Please check your environment variables.')
+      setError(error.message)
+      throw error
+    }
+    
+    if (!user) throw new Error('No authenticated user')
+
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      if (error && error.code !== 'PGRST116') {
+        throw error
+      }
+
+      if (data) {
+        safeSetProfile(data)
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to refresh profile'
+      safeSetError(message)
+      throw err
+    }
+  }, [user, safeSetError, safeSetProfile])
+
   const refreshSession = useCallback(async () => {
     if (!supabase) {
       const error = new Error('Supabase client not initialized. Please check your environment variables.')
@@ -300,6 +331,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     register,
     logout,
     updateProfile,
+    refreshProfile,
     refreshSession,
     clearError,
   }

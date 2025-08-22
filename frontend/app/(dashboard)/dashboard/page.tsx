@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, User, Building2, FileText, BarChart3, Zap, Plus, Monitor, Globe, Activity, TrendingUp, CheckCircle, Clock, AlertCircle, CloudUpload, Link as LinkIcon } from 'lucide-react';
+import { LogOut, User, Building2, FileText, CloudUpload, Link as LinkIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
 import { DashboardDualPane } from '@/components/DashboardDualPane';
 import { TaskStats } from '@/components/TaskStats';
-import { TaskList } from '@/components/TaskList';
 import { TaskProgressList } from '@/components/TaskProgressIndicator';
 import { ApiService } from '@/services/api';
 import { Input } from '@/components/ui/input';
@@ -55,10 +54,6 @@ function DashboardContent() {
     }
   };
 
-  const handleNewTask = () => {
-    router.push('/browser-agent-realtime');
-  };
-
   const handleResetToUpload = () => {
     setUseDualPane(false);
     setExtractedTicketData(null);
@@ -66,10 +61,6 @@ function DashboardContent() {
     setSelectedFile(null);
     setVendorUrl('');
     setUploadError(null);
-  };
-
-  const handleSimpleTask = () => {
-    router.push('/task/submit');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,14 +132,8 @@ function DashboardContent() {
     router.push(`/task/monitor/${taskId}`);
   };
 
-  const handleViewHistory = () => {
-    // TODO: Implement dedicated task history page
-    console.log('Navigate to task history');
-  };
-
   const handleUpdateProfile = () => {
-    // TODO: Implement profile update page
-    console.log('Navigate to profile update');
+    router.push('/profile/edit');
   };
 
   const handleRefreshData = () => {
@@ -237,7 +222,7 @@ function DashboardContent() {
               </div>
               <div className="hidden md:block">
                 <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
-                  <Zap className="w-10 h-10 text-white" />
+                  <CloudUpload className="w-10 h-10 text-white" />
                 </div>
               </div>
             </div>
@@ -437,38 +422,17 @@ function DashboardContent() {
 
           {/* Quick Actions & Stats */}
           <div className="space-y-6">
-            {/* Quick Actions */}
+            {/* Edit Profile Only */}
             <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
               <CardHeader className="pb-4">
-                                                 <CardTitle className="flex items-center space-x-2">
+                <CardTitle className="flex items-center space-x-2">
                   <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-                    <Zap className="w-5 h-5 text-white" />
+                    <User className="w-5 h-5 text-white" />
                   </div>
-                  <span>{t('dashboard.quickActions')}</span>
+                  <span>Profile Management</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                                                 <Button 
-                  className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg" 
-                  onClick={handleSimpleTask}
-                >
-                  <Zap className="w-4 h-4 mr-2" />
-                  {t('tasks.create')}
-                </Button>
-                <Button 
-                  className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg" 
-                  onClick={handleNewTask}
-                >
-                  <Monitor className="w-4 h-4 mr-2" />
-                  Advanced Task
-                </Button>
-                <Button 
-                  className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg" 
-                  onClick={handleViewHistory}
-                >
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  {t('dashboard.viewHistory')}
-                </Button>
+              <CardContent>
                 <Button 
                   variant="outline" 
                   className="w-full border-slate-200 hover:bg-slate-50" 
@@ -477,85 +441,6 @@ function DashboardContent() {
                   <User className="w-4 h-4 mr-2" />
                   {t('profile.edit')}
                 </Button>
-              </CardContent>
-            </Card>
-
-            {/* System Status */}
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
-              <CardHeader className="pb-4">
-                                                 <CardTitle className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-                    <CheckCircle className="w-5 h-5 text-white" />
-                  </div>
-                  <span>{t('dashboard.systemStatus')}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                                 <div className="flex items-center justify-between p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
-                   <div className="flex items-center space-x-3">
-                     <div className="w-3 h-3 bg-pink-500 rounded-full animate-pulse"></div>
-                     <span className="text-sm font-medium text-slate-700">AI Agent</span>
-                   </div>
-                   <Badge variant="default" className="bg-pink-500">Online</Badge>
-                 </div>
-                 <div className="flex items-center justify-between p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
-                   <div className="flex items-center space-x-3">
-                     <div className="w-3 h-3 bg-pink-500 rounded-full animate-pulse"></div>
-                     <span className="text-sm font-medium text-slate-700">Browser Automation</span>
-                   </div>
-                   <Badge variant="default" className="bg-pink-500">Ready</Badge>
-                 </div>
-                 <div className="flex items-center justify-between p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
-                   <div className="flex items-center space-x-3">
-                     <div className="w-3 h-3 bg-pink-500 rounded-full animate-pulse"></div>
-                     <span className="text-sm font-medium text-slate-700">WebSocket</span>
-                   </div>
-                   <Badge variant="default" className="bg-pink-500">Connected</Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Recent Activity */}
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm hover:shadow-2xl transition-all duration-300">
-              <CardHeader className="pb-4">
-                                 <CardTitle className="flex items-center space-x-2">
-                   <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-                     <Activity className="w-5 h-5 text-white" />
-                   </div>
-                   <span>Recent Activity</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                                 <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
-                   <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center">
-                     <CheckCircle className="w-4 h-4 text-white" />
-                   </div>
-                   <div className="flex-1">
-                     <p className="text-sm font-medium text-slate-900">Task completed</p>
-                     <p className="text-xs text-slate-500">Google search automation</p>
-                   </div>
-                   <span className="text-xs text-slate-400">2m ago</span>
-                 </div>
-                 <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
-                   <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center">
-                     <Clock className="w-4 h-4 text-white" />
-                   </div>
-                   <div className="flex-1">
-                     <p className="text-sm font-medium text-slate-900">Task started</p>
-                     <p className="text-xs text-slate-500">Weather check automation</p>
-                   </div>
-                   <span className="text-xs text-slate-400">5m ago</span>
-                 </div>
-                 <div className="flex items-center space-x-3 p-3 bg-gradient-to-r from-pink-50 to-rose-50 rounded-lg">
-                   <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center">
-                     <TrendingUp className="w-4 h-4 text-white" />
-                   </div>
-                   <div className="flex-1">
-                     <p className="text-sm font-medium text-slate-900">System updated</p>
-                     <p className="text-xs text-slate-500">New features available</p>
-                   </div>
-                   <span className="text-xs text-slate-400">1h ago</span>
-                </div>
               </CardContent>
             </Card>
 
@@ -605,15 +490,6 @@ function DashboardContent() {
                 </Card>
               )}
             </div>
-
-            {/* Recent Tasks */}
-            <TaskList 
-              maxTasks={6}
-              showHeader={true}
-              showFilters={true}
-              showPagination={false}
-              showProgress={true}
-            />
           </div>
         </div>
       </main>

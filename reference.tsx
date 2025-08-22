@@ -550,10 +550,10 @@ const Dashboard: React.FC = () => {
                                 marginLeft: '-10px',
                               }}
                             />
-                            <span style={{ opacity: 0 }}>Extraer Datos del Ticket</span>
+                            <span style={{ opacity: 0 }}>Extraer Ticket Data</span>
                           </Box>
                         ) : (
-                          'Extraer Datos del Ticket'
+                          'Extraer Ticket Data'
                         )}
                       </Button>
                     </Box>
@@ -575,7 +575,7 @@ const Dashboard: React.FC = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
                 <DescriptionOutlined sx={{ color: '#00BFA6', mr: 1 }} />
                 <Typography variant="h6" color="primary">
-                  Datos del Ticket
+                  Ticket Data
                 </Typography>
               </Box>
               {showWarning && (
