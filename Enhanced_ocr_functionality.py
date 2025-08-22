@@ -1,3 +1,5 @@
+# Enhanced OCR Functionality
+
 import os
 import re
 import sys

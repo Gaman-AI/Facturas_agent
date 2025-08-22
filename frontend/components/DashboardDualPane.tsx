@@ -751,7 +751,7 @@ export function DashboardDualPane({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <span>Datos del Ticket</span>
+                <span>Ticket Data</span>
               </CardTitle>
               <CardDescription className="text-slate-600 text-sm">
                 Ingrese los datos del ticket en los campos correspondientes.
@@ -841,9 +841,6 @@ export function DashboardDualPane({
                       <Zap className="w-4 h-4 text-blue-600" />
                       Start Agent Task
                     </h4>
-                    <p className="text-xs text-gray-600 mb-3">
-                      Execute the browser automation agent with the extracted ticket data and vendor URL
-                    </p>
                     
                     {/* Agent Configuration */}
                     <div className="grid grid-cols-2 gap-2 mb-3">
@@ -952,7 +949,7 @@ export function DashboardDualPane({
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span className="text-xs font-medium">All fields are editable. Edit any values before starting the agent task.</span>
+                  <span className="text-xs font-medium">Verify and validate extracted details, update if neccessary</span>
                 </div>
               </div>
               
@@ -1166,7 +1163,7 @@ export function DashboardDualPane({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                       </div>
-                      <h3 className="text-base font-semibold text-gray-800">Datos del Ticket</h3>
+                      <h3 className="text-base font-semibold text-gray-800">Ticket Data</h3>
                     </div>
                   </div>
                   
@@ -1201,9 +1198,6 @@ export function DashboardDualPane({
                             <Zap className="w-4 h-4 text-blue-600" />
                             Start Agent Task
                           </h4>
-                          <p className="text-xs text-gray-600 mb-3">
-                            Execute the browser automation agent with the extracted ticket data and vendor URL
-                          </p>
                           
                           {/* Vendor URL Display - Desktop */}
                           <div className="mb-3">
@@ -1338,7 +1332,7 @@ export function DashboardDualPane({
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span className="text-xs font-medium">All fields are editable. Edit any values before starting the agent task.</span>
+                        <span className="text-xs font-medium">Verify and validate extracted details, update if neccessary</span>
                       </div>
                     </div>
                     

@@ -347,6 +347,7 @@ const en: Translations = {
   'validation.state.minLength': 'State must be at least {min} characters',
   'validation.taxRegime.required': 'Tax regime is required',
   'validation.cfdiUse.required': 'CFDI use is required',
+  'validation.phoneNumber.required': 'Phone number is required',
 
   // Error Messages
   'error.registrationFailed': 'Registration failed. Please try again.',

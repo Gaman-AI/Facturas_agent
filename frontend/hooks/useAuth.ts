@@ -51,7 +51,7 @@ export const useAuthActions = () => {
  * Hook for user profile utilities - updated for full CFDI schema
  */
 export const useUserProfile = () => {
-  const { profile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   
   const getDisplayName = () => {
     if (!profile) return '';
@@ -106,6 +106,7 @@ export const useUserProfile = () => {
   
   return {
     profile,
+    refreshProfile,
     getDisplayName,
     getRFCMasked,
     getFullAddress,
