@@ -10,10 +10,53 @@ import { Zap, Monitor, Activity, ExternalLink, RefreshCw, Copy, Check, X, Cloud 
 import { useLanguage } from '@/contexts/LanguageContext'
 import { websocketService } from '@/services/websocket'
 import ApiService from '@/services/api'
+import { AVAILABLE_MODELS, getModelsByProvider, getDefaultModel, getModelLabel } from '@/constants/models'
 import { LiveViewPane } from './LiveViewPane'
 import { BrowserModeSwitch } from '@/components/ui/browser-mode-switch'
 import { tokenManager } from '@/utils/tokenManager'
 import { toast } from 'react-toastify'
+
+// Fullscreen Modal Component
+interface FullscreenModalProps {
+  isOpen: boolean
+  onClose: () => void
+  url: string
+  title?: string
+}
+
+function FullscreenModal({ isOpen, onClose, url, title = 'Live Browser View' }: FullscreenModalProps) {
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center">
+      <div className="relative w-full h-full max-w-full max-h-full bg-white rounded-lg overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 bg-gray-50 border-b">
+          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">
+              Press ESC to exit fullscreen
+            </span>
+            <Button size="sm" variant="outline" onClick={onClose}>
+              ✕ Close
+            </Button>
+          </div>
+        </div>
+
+        {/* Iframe Content */}
+        <div className="w-full h-full" style={{ height: 'calc(100vh - 80px)' }}>
+          <iframe
+            src={url}
+            sandbox="allow-same-origin allow-scripts"
+            allow="clipboard-read; clipboard-write"
+            className="w-full h-full border-0"
+            title={title}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export interface DashboardDualPaneProps {
   onTaskSubmit?: (taskId: string) => void
@@ -166,9 +209,16 @@ export function DashboardDualPane({
   
   // Add new state for task feedback
   const [taskMessage, setTaskMessage] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
-  
+
   // Add browser mode state
   const [browserMode, setBrowserMode] = useState<'browserbase' | 'local'>('browserbase')
+
+  // Add viewport resize state
+  const [isResizing, setIsResizing] = useState(false)
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
+
+  // Add fullscreen modal state
+  const [isFullscreenModal, setIsFullscreenModal] = useState(false)
   
   // Function to clear task message after delay
   const clearTaskMessage = (delay: number = 5000) => {
@@ -475,6 +525,83 @@ export function DashboardDualPane({
     }
   }, [currentLiveViewUrl])
 
+  // Handle viewport resize events for better responsiveness
+  useEffect(() => {
+    const handleResizeStart = () => {
+      setIsResizing(true)
+    }
+
+    const handleResizeEnd = () => {
+      setIsResizing(false)
+      // Update viewport size after resize
+      const updateViewportSize = () => {
+        const viewport = document.querySelector('[data-viewport="live-view"]')
+        if (viewport) {
+          const rect = viewport.getBoundingClientRect()
+          setViewportSize({ width: rect.width, height: rect.height })
+        }
+      }
+      // Use setTimeout to ensure DOM has updated
+      setTimeout(updateViewportSize, 100)
+    }
+
+    // Add resize event listeners to the resizable panels
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        if (entry.target.closest('[data-panel="live-view"]')) {
+          const { width, height } = entry.contentRect
+          setViewportSize({ width, height })
+        }
+      }
+    })
+
+    // Observe the live view container
+    const liveViewContainer = document.querySelector('[data-panel="live-view"]')
+    if (liveViewContainer) {
+      resizeObserver.observe(liveViewContainer)
+    }
+
+    // Add panel resize event listeners
+    const panels = document.querySelectorAll('[data-panel-resize-handle]')
+    panels.forEach(panel => {
+      panel.addEventListener('mousedown', handleResizeStart)
+      panel.addEventListener('touchstart', handleResizeStart)
+      panel.addEventListener('mouseup', handleResizeEnd)
+      panel.addEventListener('touchend', handleResizeEnd)
+    })
+
+    return () => {
+      resizeObserver.disconnect()
+      panels.forEach(panel => {
+        panel.removeEventListener('mousedown', handleResizeStart)
+        panel.removeEventListener('touchstart', handleResizeStart)
+        panel.removeEventListener('mouseup', handleResizeEnd)
+        panel.removeEventListener('touchend', handleResizeEnd)
+      })
+    }
+  }, [currentLiveViewUrl])
+
+  // Handle keyboard events for fullscreen modal
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isFullscreenModal) {
+        setIsFullscreenModal(false)
+      }
+    }
+
+    if (isFullscreenModal) {
+      document.addEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = 'hidden' // Prevent body scroll
+    } else {
+      document.body.style.overflow = 'auto'
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = 'auto'
+    }
+  }, [isFullscreenModal])
+
   // Real-time WebSocket connection for immediate URL delivery
   useEffect(() => {
     if (taskState.taskId && taskState.status !== 'idle') {
@@ -602,7 +729,7 @@ export function DashboardDualPane({
       setIsStartingAgent(true);
       
       // Send ONLY the corrected, structured data - NO duplicate text prompt
-      const response = await ApiService.createBrowserUseTask({
+              const response = await ApiService.createDashboardTask({
         vendor_url: vendorUrl,
         browser_mode: browserMode,
         user_profile: userProfile,        // Send user profile directly
@@ -717,20 +844,38 @@ export function DashboardDualPane({
             <Button size="sm" variant="outline" onClick={handleRefreshView}>
               🔄 Refresh
             </Button>
+            <Button size="sm" variant="outline" onClick={() => setIsFullscreenModal(true)} disabled={!currentLiveViewUrl}>
+              ⛶ Fullscreen
+            </Button>
+            {viewportSize.width > 0 && viewportSize.height > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {Math.round(viewportSize.width)}×{Math.round(viewportSize.height)}
+              </Badge>
+            )}
           </div>
         </div>
         
 
         
-        <div className="flex-1 relative overflow-hidden" style={{ minHeight: '500px' }}>
+        <div className="flex-1 relative overflow-hidden flex flex-col" style={{ minHeight: '500px' }}>
+          {isResizing && (
+            <div className="absolute top-2 right-2 z-10 bg-blue-500 text-white text-xs px-2 py-1 rounded shadow-lg">
+              Resizing...
+            </div>
+          )}
           <iframe
             src={currentLiveViewUrl}
             sandbox="allow-same-origin allow-scripts"
             allow="clipboard-read; clipboard-write"
-            className="w-full h-full border-0"
+            className={`w-full h-full border-0 flex-1 transition-opacity duration-200 ${isResizing ? 'opacity-70' : 'opacity-100'}`}
             title="Live Browser View"
             onLoad={() => console.log('✅ Live view iframe loaded successfully:', currentLiveViewUrl)}
             onError={(e) => console.error('❌ Live view iframe error:', e)}
+            style={{
+              minHeight: '400px',
+              maxHeight: '100%',
+              width: '100%'
+            }}
           />
         </div>
       </div>
@@ -1105,6 +1250,14 @@ export function DashboardDualPane({
               </CardContent>
             </Card>
           )}
+
+          {/* Fullscreen Modal */}
+          <FullscreenModal
+            isOpen={isFullscreenModal}
+            onClose={() => setIsFullscreenModal(false)}
+            url={currentLiveViewUrl}
+            title="Live Browser View - Fullscreen"
+          />
         </div>
       </div>
     )
@@ -1217,11 +1370,19 @@ export function DashboardDualPane({
                               </label>
                               <select 
                                 className="w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                defaultValue="gpt-4o-mini"
+                                defaultValue="gpt-5-nano-2025-08-07"
                               >
-                                <option value="gpt-4o-mini">GPT-4o Mini</option>
-                                <option value="gpt-4o">GPT-4o</option>
-                                <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                                {getModelsByProvider('openai').filter(m => m.category === 'latest' || m.category === 'standard').map(model => (
+                                  <option key={model.value} value={model.value}>
+                                    {model.label}
+                                    {model.isRecommended ? ' (Recomendado)' : ''}
+                                  </option>
+                                ))}
+                                {getModelsByProvider('anthropic').filter(m => m.category === 'latest' || m.category === 'standard').slice(0, 2).map(model => (
+                                  <option key={model.value} value={model.value}>
+                                    {model.label}
+                                  </option>
+                                ))}
                               </select>
                             </div>
                             <div>
@@ -1230,11 +1391,12 @@ export function DashboardDualPane({
                               </label>
                               <select 
                                 className="w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                defaultValue="30"
+                                defaultValue="100"
                               >
                                 <option value="20">20</option>
-                                <option value="30">30</option>
                                 <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="150">150</option>
                               </select>
                             </div>
                           </div>
@@ -1469,13 +1631,13 @@ export function DashboardDualPane({
               </div>
             </ResizablePanel>
 
-            <ResizableHandle withHandle className="w-2 bg-gradient-to-b from-pink-100 to-rose-100 hover:bg-gradient-to-b hover:from-pink-200 hover:to-rose-200 transition-all duration-200" />
+            <ResizableHandle withHandle className="w-2 bg-gradient-to-b from-pink-100 to-rose-100 hover:bg-gradient-to-b hover:from-pink-200 hover:to-rose-200 transition-all duration-200" data-panel-resize-handle />
 
             {/* Right Pane - Live View with URL Input (65% default) */}
-            <ResizablePanel defaultSize={65} minSize={50} maxSize={75} className="overflow-hidden">
+            <ResizablePanel defaultSize={65} minSize={50} maxSize={75} className="overflow-hidden" data-panel="live-view">
               <div className="h-full p-3 bg-gradient-to-b from-white to-slate-50/30 overflow-hidden">
                 <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden">
-                  <div className="h-full flex flex-col">
+                  <div className="h-full flex flex-col" data-viewport="live-view">
                     {/* Browser Mode Switch Header */}
                     <div className="p-3 border-b border-gray-200 bg-gray-50 flex-shrink-0">
                       <div className="flex items-center justify-between mb-3">
@@ -1525,6 +1687,14 @@ export function DashboardDualPane({
           </ResizablePanelGroup>
         </CardContent>
       </Card>
+
+      {/* Fullscreen Modal */}
+      <FullscreenModal
+        isOpen={isFullscreenModal}
+        onClose={() => setIsFullscreenModal(false)}
+        url={currentLiveViewUrl}
+        title="Live Browser View - Fullscreen"
+      />
     </div>
   )
 }

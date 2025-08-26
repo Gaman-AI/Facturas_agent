@@ -1,6 +1,282 @@
 CFDI Automation Backend Development Documentation
 ==================================================
 
+## Date: 2024-12-29 - Single Task Type Consolidation & Multi-Model Selection
+
+### Overview
+Consolidated the system to use ONLY ONE task submission method - the Dashboard Dual Pane that passes vendor URL, extracted ticket data, and complete user profile details. Removed all other task forms and types while implementing comprehensive multi-model selection system supporting the latest AI models including GPT-5, GPT-4.1, and O4 models.
+
+### Changes Made
+
+#### 1. **Frontend Model Constants System**
+- **Created `frontend/constants/models.ts`**: Centralized model definitions with metadata
+- **Model Interface**: Defined `ModelOption` interface with provider, category, and description
+- **Helper Functions**: Implemented model filtering and selection utilities
+- **Backward Compatibility**: Maintained legacy model options for existing integrations
+
+#### 2. **Supported Models Added**
+The system now supports all requested models:
+
+**Latest OpenAI Models:**
+- `gpt-5-nano-2025-08-07` - GPT-5 Nano (Latest, Recommended)
+- `gpt-5-mini-2025-08-07` - GPT-5 Mini (Latest)
+- `gpt-4.1-2025-04-14` - GPT-4.1 (Latest)
+- `o4-mini-2025-04-16` - O4 Mini (Latest)
+- `gpt-4o-mini-2024-07-18` - GPT-4o Mini (Standard)
+
+**Standard Models (Maintained for Compatibility):**
+- `gpt-4o` - GPT-4o
+- `gpt-4` - GPT-4 (Legacy)
+- `claude-3-5-sonnet-20241022` - Claude 3.5 Sonnet (Latest)
+- `gemini-2.0-flash` - Gemini 2.0 Flash (Latest)
+
+#### 3. **Frontend Component Consolidation**
+- **REMOVED**: `CFDITaskForm.tsx` - No longer needed (consolidated into Dashboard)
+- **REMOVED**: `SimpleTaskSubmission.tsx` - No longer needed (consolidated into Dashboard)
+- **REMOVED**: `BrowserAgentRealtime.tsx` - No longer needed (consolidated into Dashboard)
+- **UPDATED**: `DashboardDualPane.tsx` - Now the ONLY task submission interface with enhanced model selection
+- **Enhanced UI**: Added model descriptions, recommendations, and category badges
+- **Smart Defaults**: Auto-select recommended models when provider changes
+
+#### 4. **Backend Model Configuration Updates**
+- **browser_agent.py**: Updated default model to `gpt-5-nano-2025-08-07`
+- **browserAgentService.js**: Updated service default model
+- **browserAgent.py (Python Bridge)**: Updated LLM client defaults
+- **config.py files**: Added new models to configuration lists
+- **API routes**: Updated default models across all endpoints
+
+#### 5. **Default Model Migration**
+- **Previous Default**: `gpt-4o-mini` → **New Default**: `gpt-5-nano-2025-08-07`
+- **Reasoning**: Latest GPT-5 Nano provides optimal performance-to-cost ratio
+- **Backward Compatibility**: Existing tasks continue with their current models
+- **Graceful Migration**: New tasks automatically use the latest recommended model
+
+#### 6. **UI/UX Enhancements**
+- **Provider-Based Filtering**: Models automatically filter based on selected provider
+- **Category Organization**: Models grouped by "Latest", "Standard", "Legacy"
+- **Recommendation System**: Highlighted recommended models with badges
+- **Rich Descriptions**: Model descriptions shown in selection dropdowns
+- **Visual Indicators**: "Nuevo" and "Recomendado" badges for better UX
+
+### Technical Implementation
+
+#### **Model Constants Structure**
+```typescript
+export interface ModelOption {
+  value: string;
+  label: string;
+  provider: 'openai' | 'anthropic' | 'google';
+  category: 'latest' | 'standard' | 'legacy';
+  description?: string;
+  isRecommended?: boolean;
+}
+```
+
+#### **Smart Model Selection**
+```typescript
+export const getDefaultModel = (provider: string): string => {
+  const providerModels = getModelsByProvider(provider);
+  const recommendedModel = providerModels.find(model => model.isRecommended);
+  const latestModel = providerModels.find(model => model.category === 'latest');
+  return recommendedModel?.value || latestModel?.value || providerModels[0]?.value;
+};
+```
+
+#### **Backend Integration**
+```python
+# Updated default across all functions
+DEFAULT_MODEL = "gpt-5-nano-2025-08-07"
+
+async def run_local_browser_task(task: str, model: str = DEFAULT_MODEL, ...):
+async def run_browserbase_browser_task(task: str, model: str = DEFAULT_MODEL, ...):
+```
+
+### Benefits
+
+1. **Latest AI Capabilities**: Access to cutting-edge GPT-5 and GPT-4.1 models
+2. **Cost Optimization**: GPT-5 Nano provides better performance-to-cost ratio
+3. **Enhanced UX**: Intuitive model selection with descriptions and recommendations
+4. **Provider Flexibility**: Seamless switching between OpenAI, Anthropic, and Google models
+5. **Future-Proof Architecture**: Easy addition of new models through constants file
+6. **Zero Disruption**: Existing system continues working without interruption
+7. **Smart Defaults**: Automatic selection of optimal models for each provider
+
+### Files Modified
+- `frontend/constants/models.ts` - New model constants file
+- `frontend/components/DashboardDualPane.tsx` - Now the ONLY task submission interface
+- `frontend/services/api.ts` - Simplified to support only Dashboard Dual Pane tasks
+- `backend/browser_agent.py` - Updated function defaults
+- `backend/src/services/browserAgentService.js` - Updated service default
+- `backend/src/python-bridge/browserAgent.py` - Updated LLM client defaults
+- `backend/src/utils/config.py` - Added new models to configuration
+- `backend/src/utils/utils/config.py` - Added new models to configuration
+- `backend/src/routes/tasks.js` - Updated API route defaults
+
+### Files Removed
+- `frontend/components/CFDITaskForm.tsx` - Consolidated into Dashboard Dual Pane
+- `frontend/components/SimpleTaskSubmission.tsx` - Consolidated into Dashboard Dual Pane
+- `frontend/components/BrowserAgentRealtime.tsx` - Consolidated into Dashboard Dual Pane
+
+### Task Type Consolidation
+- **Single Interface**: Only Dashboard Dual Pane remains for task submission
+- **Unified Data Flow**: All tasks now use the same data structure (vendor URL + ticket data + user profile)
+- **Simplified Architecture**: Removed duplicate task submission methods
+- **Consistent Experience**: All users now use the same interface with enhanced model selection
+
+### Migration Strategy
+- **Immediate Effect**: New tasks use GPT-5 Nano by default
+- **Existing Tasks**: Continue with their current model settings
+- **User Choice**: Users can manually select any supported model from the dropdown
+- **Graceful Fallback**: System falls back to available models if selection unavailable
+- **Zero Disruption**: Dashboard Dual Pane functionality remains exactly the same
+
+This implementation consolidates the system to use only one task submission method while providing users with access to the latest AI models and ensuring no disruption to the current working system.
+
+---
+
+## Date: 2024-12-29 - Vision Priority Configuration Update
+
+### Overview
+Updated the browser agent configuration to set vision priority to "medium" and enabled vision mode for both local and Browserbase browser tasks.
+
+### Changes Made
+
+#### 1. **Local Browser Task Configuration**
+- Modified `run_local_browser_task()` function in `browser_agent.py`
+- Set `use_vision=True` to enable vision mode
+- Added `vision_priority="medium"` parameter for balanced vision processing
+- Updated comment to reflect vision mode is now enabled
+
+#### 2. **Browserbase Browser Task Configuration**
+- Modified `run_automation_task()` function in `browser_agent.py`
+- Changed `use_vision=False` to `use_vision=True` to enable vision mode
+- Added `vision_priority="medium"` parameter for consistent vision handling
+- Maintained all other agent parameters for Browserbase sessions
+
+#### 3. **Vision Priority Benefits**
+- **Medium Priority**: Balances cost and accuracy for vision processing
+- **Consistent Behavior**: Both local and remote browser modes now use same vision settings
+- **Cost Optimization**: Medium priority provides good accuracy without excessive API costs
+- **Better OCR Integration**: Enhanced visual understanding for ticket data processing
+
+### Agent Parameters Available
+
+The Agent class supports the following parameters:
+
+#### **Core Parameters**
+- `task`: The automation task description
+- `llm`: Language model instance (ChatOpenAI)
+- `browser_session`: Browser session for remote execution
+- `use_vision`: Boolean to enable/disable vision capabilities
+- `vision_priority`: Vision processing priority ("low", "medium", "high")
+
+#### **Memory and Learning**
+- `enable_memory`: Boolean to enable agent memory across sessions
+- `override_system_message`: Custom system message for specialized behavior
+
+#### **Execution Control**
+- `max_steps`: Maximum number of automation steps
+- `max_failures`: Maximum allowed failures before stopping
+- `retry_delay`: Delay between retry attempts (seconds)
+- `max_actions_per_step`: Maximum actions per automation step
+
+#### **Browser Profile Settings**
+- `keep_alive`: Whether to keep browser session alive
+- `wait_between_actions`: Delay between browser actions (seconds)
+- `default_timeout`: Default timeout for browser operations (ms)
+- `default_navigation_timeout`: Navigation timeout (ms)
+
+### Usage Examples
+
+```python
+# Local browser with medium vision priority
+agent = Agent(
+    task="Navigate to website and fill form",
+    llm=ChatOpenAI(model="gpt-4o"),
+    use_vision=True,
+    vision_priority="medium"
+)
+
+# Browserbase with enhanced configuration
+agent = Agent(
+    task="Complete automation task",
+    llm=ChatOpenAI(model="gpt-5-nano-2025-08-07"),
+    browser_session=browser_session,
+    use_vision=True,
+    vision_priority="medium",
+    enable_memory=True,
+    max_failures=5,
+    retry_delay=5,
+    max_actions_per_step=1
+)
+```
+
+### Files Modified
+- `backend/browser_agent.py` - Updated Agent configuration for both local and Browserbase modes
+
+This update ensures consistent vision processing across all browser automation modes while maintaining cost efficiency through medium priority settings.
+
+---
+
+## Date: 2024-12-19 - Flexible Viewport Implementation
+
+### Overview
+Implemented a flexible viewport system for the browser automation dashboard that automatically adjusts to pane size changes while providing fullscreen viewing options.
+
+### Changes Made
+
+#### 1. **Responsive Iframe Container**
+- Modified the iframe container in `DashboardDualPane.tsx` to use flexbox layout
+- Added `flex-1` class and proper CSS styling for automatic resizing
+- Set minimum height constraints and 100% width/height for responsive behavior
+
+#### 2. **Resize Event Handling**
+- Added `ResizeObserver` to monitor viewport size changes
+- Implemented resize event listeners for panel drag operations
+- Added visual feedback during resizing with opacity transitions
+- Real-time viewport size tracking and display
+
+#### 3. **Fullscreen Modal Component**
+- Created `FullscreenModal` component for immersive viewing experience
+- Added keyboard support (ESC to exit)
+- Modal prevents body scrolling and provides better user experience
+- Integrated with existing task state management
+
+#### 4. **User Interface Enhancements**
+- Added "⛶ Fullscreen" button in live view header
+- Added viewport size indicator badge showing current dimensions
+- Added "Resizing..." indicator during panel adjustments
+- Improved button states and accessibility
+
+#### 5. **Technical Implementation Details**
+- Used `ResizeObserver` API for efficient size monitoring
+- Implemented debounced resize handling to prevent performance issues
+- Added data attributes for targeted event handling
+- Maintained backward compatibility with existing functionality
+
+### Benefits
+
+1. **Automatic Responsiveness**: Viewport now automatically adjusts when users resize the panes
+2. **Better User Experience**: Fullscreen modal provides distraction-free viewing
+3. **Visual Feedback**: Users can see current viewport dimensions and resize status
+4. **Performance Optimized**: Debounced resize handling prevents excessive re-renders
+5. **Accessible**: Keyboard navigation and proper ARIA attributes
+
+### Usage
+
+- **Resize Panels**: Drag the handle between left and right panes to adjust viewport size
+- **Fullscreen View**: Click the "⛶ Fullscreen" button for immersive viewing
+- **Exit Fullscreen**: Press ESC key or click "✕ Close" button
+- **Monitor Size**: View current viewport dimensions in the header badge
+
+### Files Modified
+- `frontend/components/DashboardDualPane.tsx` - Main implementation
+- No backend changes required
+
+This implementation provides the best of both worlds: automatic responsiveness for everyday use and fullscreen viewing for detailed work.
+
+---
+
 ## Date: 2024-12-29 - Redis Removal and In-Memory Queue Implementation
 
 ### Changes Made:

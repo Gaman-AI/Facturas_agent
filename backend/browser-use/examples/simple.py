@@ -19,7 +19,7 @@ llm = ChatOpenAI(
 )
 
 
-task = 'Find the founders of browser-use'
+task = 'go to chatgpt and write about a poem about winter'
 agent = Agent(task=task, llm=llm)
 
 
