@@ -119,7 +119,7 @@ export function SimpleTaskSubmissionPane({
     switch (status) {
       case 'running': return 'bg-green-500'
       case 'paused': return 'bg-yellow-500'
-      case 'completed': return 'bg-blue-500'
+      case 'completed': return 'bg-theme-600'
       case 'failed': return 'bg-red-500'
       case 'connecting': return 'bg-orange-500'
       default: return 'bg-slate-500'
@@ -150,8 +150,8 @@ export function SimpleTaskSubmissionPane({
               </div>
             )}
             {status === 'completed' && (
-              <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-8 h-8 text-blue-600" />
+              <div className="w-16 h-16 mx-auto mb-4 bg-theme-100 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 text-theme-600" />
               </div>
             )}
             {status === 'failed' && (
@@ -171,7 +171,7 @@ export function SimpleTaskSubmissionPane({
             {getStatusText()}
           </h3>
 
-          <p className="text-slate-600 mb-6 text-center text-sm">
+          <p className="text-theme-600 mb-6 text-center text-sm">
             {status === 'running' && 'Your browser automation task is running. Watch the progress in the browser view.'}
             {status === 'completed' && 'Your task has been completed successfully!'}
             {status === 'failed' && 'Your task encountered an error and could not complete.'}
@@ -183,17 +183,17 @@ export function SimpleTaskSubmissionPane({
             <CardContent className="p-4">
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Task ID:</span>
+                  <span className="text-theme-600">Task ID:</span>
                   <span className="font-mono">{taskId.slice(0, 8)}...</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Status:</span>
+                  <span className="text-theme-600">Status:</span>
                   <Badge variant="outline" className={`text-xs ${getStatusColor()}`}>
                     {getStatusText()}
                   </Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Provider:</span>
+                  <span className="text-theme-600">Provider:</span>
                   <span className="capitalize">{llmProvider}</span>
                 </div>
               </div>
@@ -227,7 +227,7 @@ export function SimpleTaskSubmissionPane({
             className="min-h-[120px] resize-none"
             disabled={isSubmitting}
           />
-          <div className="flex justify-between text-xs text-slate-500">
+          <div className="flex justify-between text-xs text-theme-600">
             <span>
               {t('tasks.form.hint', 'Be specific about what you want the AI to do')}
             </span>
@@ -261,7 +261,7 @@ export function SimpleTaskSubmissionPane({
               </SelectItem>
               <SelectItem value="google">
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                  <div className="w-4 h-4 bg-theme-600 rounded"></div>
                   Google Gemini
                 </div>
               </SelectItem>
@@ -289,7 +289,7 @@ export function SimpleTaskSubmissionPane({
           <Button 
             type="submit" 
             disabled={isSubmitting || !task.trim() || task.length > characterLimit}
-            className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+            className="w-full bg-gradient-to-r from-theme-500 to-theme-600 hover:from-theme-600 hover:to-theme-700"
           >
             {isSubmitting ? (
               <>
@@ -306,7 +306,7 @@ export function SimpleTaskSubmissionPane({
         </div>
 
         {/* Help Text */}
-        <div className="text-xs text-slate-500 text-center">
+        <div className="text-xs text-theme-600 text-center">
           {t('tasks.form.help', 'Your task will be executed in a secure browser environment')}
         </div>
       </form>

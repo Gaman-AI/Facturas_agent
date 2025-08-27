@@ -13,7 +13,7 @@ export default function TaskSubmitPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-theme-50">
         {/* Header */}
         <header className="bg-white shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -27,7 +27,7 @@ export default function TaskSubmitPage() {
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 {t('common.back', 'Back')}
               </Button>
-              <h1 className="text-xl font-semibold text-slate-900">
+              <h1 className="text-xl font-semibold text-theme-800">
                 {t('tasks.simple.pageTitle', 'Create New Task')}
               </h1>
             </div>
@@ -37,10 +37,10 @@ export default function TaskSubmitPage() {
         {/* Main Content */}
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">
+            <h2 className="text-2xl font-bold text-theme-800 mb-2">
               {t('tasks.simple.welcomeTitle', 'What would you like to automate?')}
             </h2>
-            <p className="text-slate-600">
+            <p className="text-theme-600">
               {t('tasks.simple.welcomeDescription', 'Describe your task in plain language and let our AI browser agent handle the rest.')}
             </p>
           </div>
@@ -48,7 +48,7 @@ export default function TaskSubmitPage() {
           <SimpleTaskSubmission showRedirect={true} />
 
           {/* Help Section */}
-          <div className="mt-8 bg-white rounded-lg p-6 shadow-sm border">
+          <div className="mt-8 bg-white rounded-lg p-6 shadow-sm border border-theme-200/60">
             <h3 className="text-lg font-semibold mb-4">
               {t('tasks.simple.helpTitle', 'How it works')}
             </h3>
@@ -60,7 +60,7 @@ export default function TaskSubmitPage() {
                 <h4 className="font-medium mb-2">
                   {t('tasks.simple.step1Title', 'Describe Your Task')}
                 </h4>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-theme-600">
                   {t('tasks.simple.step1Description', 'Tell us what you want to accomplish in natural language')}
                 </p>
               </div>
@@ -71,7 +71,7 @@ export default function TaskSubmitPage() {
                 <h4 className="font-medium mb-2">
                   {t('tasks.simple.step2Title', 'AI Agent Executes')}
                 </h4>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-theme-600">
                   {t('tasks.simple.step2Description', 'Our browser agent navigates and performs actions automatically')}
                 </p>
               </div>
@@ -82,7 +82,7 @@ export default function TaskSubmitPage() {
                 <h4 className="font-medium mb-2">
                   {t('tasks.simple.step3Title', 'Get Results')}
                 </h4>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-theme-600">
                   {t('tasks.simple.step3Description', 'Monitor progress in real-time and receive your results')}
                 </p>
               </div>
@@ -90,32 +90,32 @@ export default function TaskSubmitPage() {
           </div>
 
           {/* Example Tasks */}
-          <div className="mt-8 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
-            <h3 className="text-lg font-semibold mb-4 text-blue-900">
+          <div className="mt-8 bg-gradient-to-r from-theme-50 to-theme-100 rounded-lg p-6 border border-theme-200">
+            <h3 className="text-lg font-semibold mb-4 text-theme-900">
               {t('tasks.simple.examplesTitle', 'Example Tasks')}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                <p className="text-sm text-blue-800">
+                <div className="w-2 h-2 bg-theme-500 rounded-full mt-2"></div>
+                <p className="text-sm text-theme-800">
                   {t('tasks.simple.example1', 'Search for product reviews and compare prices across e-commerce sites')}
                 </p>
               </div>
               <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                <p className="text-sm text-blue-800">
+                <div className="w-2 h-2 bg-theme-500 rounded-full mt-2"></div>
+                <p className="text-sm text-theme-800">
                   {t('tasks.simple.example2', 'Gather contact information from business directories')}
                 </p>
               </div>
               <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                <p className="text-sm text-blue-800">
+                <div className="w-2 h-2 bg-theme-500 rounded-full mt-2"></div>
+                <p className="text-sm text-theme-800">
                   {t('tasks.simple.example3', 'Fill out forms and submit applications automatically')}
                 </p>
               </div>
               <div className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                <p className="text-sm text-blue-800">
+                <div className="w-2 h-2 bg-theme-500 rounded-full mt-2"></div>
+                <p className="text-sm text-theme-800">
                   {t('tasks.simple.example4', 'Monitor websites for changes and updates')}
                 </p>
               </div>

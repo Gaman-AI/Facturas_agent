@@ -66,7 +66,7 @@ export const ProfileDropdown = () => {
         className="flex items-center space-x-2 bg-white/60 backdrop-blur-sm hover:bg-white/80 border border-slate-200/50 px-3 py-2 h-auto"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <div className="w-8 h-8 bg-gradient-to-r from-pink-400 to-rose-400 rounded-full flex items-center justify-center">
+        <div className="w-8 h-8 bg-gradient-to-r from-theme-400 to-theme-500 rounded-full flex items-center justify-center">
           <User className="w-4 h-4 text-white" />
         </div>
         <span className="text-sm font-medium text-slate-700">

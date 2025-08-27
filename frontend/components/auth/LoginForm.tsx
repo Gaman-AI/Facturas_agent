@@ -96,7 +96,7 @@ useEffect(() => {
           type="email"
           placeholder={t('login.emailPlaceholder')}
           {...register('email')}
-          className={`${errors.email ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-pink-500'} focus:ring-pink-500/20`}
+          className={`${errors.email ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-theme-500'} focus:ring-theme-500/20`}
         />
         {errors.email && (
           <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -111,7 +111,7 @@ useEffect(() => {
             type={showPassword ? 'text' : 'password'}
             placeholder={t('login.passwordPlaceholder')}
             {...register('password')}
-            className={`${errors.password ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-pink-500'} focus:ring-pink-500/20 pr-10`}
+            className={`${errors.password ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-theme-500'} focus:ring-theme-500/20 pr-10`}
           />
           <Button
             type="button"
@@ -134,8 +134,8 @@ useEffect(() => {
 
       <Button
         type="submit"
-        className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-medium py-2.5 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
         disabled={isLoading}
+        className="w-full bg-gradient-to-r from-theme-500 to-theme-600 hover:from-theme-600 hover:to-theme-700 text-white font-medium py-2.5 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
       >
         {isLoading ? (
           <>

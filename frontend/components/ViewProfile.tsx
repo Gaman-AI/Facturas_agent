@@ -60,7 +60,7 @@ export function ViewProfile() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-theme-50 via-theme-100 to-theme-200 flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="text-center">
@@ -69,7 +69,7 @@ export function ViewProfile() {
               <p className="text-slate-600 mb-4">
                 You need to complete your profile first. Click the button below to create your profile.
               </p>
-              <Button onClick={handleEditProfile} className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600">
+              <Button onClick={handleEditProfile} className="bg-gradient-to-r from-theme-500 to-theme-600 hover:from-theme-600 hover:to-theme-700">
                 <Edit className="w-4 h-4 mr-2" />
                 Create Profile
               </Button>
@@ -84,18 +84,18 @@ export function ViewProfile() {
   const userEmail = user?.email || '';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100">
+    <div className="min-h-screen bg-gradient-to-br from-theme-50 via-theme-100 to-theme-200">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-slate-200/50">
+      <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-theme-200/50">
         <div className="w-full mx-auto px-2 sm:px-4 lg:px-6">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 bg-gradient-to-r from-theme-500 to-theme-600 rounded-xl flex items-center justify-center shadow-lg">
                 <User className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-900">My Profile</h1>
-                <p className="text-sm text-slate-500">View your company and tax information</p>
+                <h1 className="text-xl font-bold text-theme-800">My Profile</h1>
+                <p className="text-sm text-theme-600">View your company and tax information</p>
               </div>
             </div>
             
@@ -104,7 +104,7 @@ export function ViewProfile() {
                 variant="outline"
                 size="sm"
                 onClick={handleBackToDashboard}
-                className="border-slate-200 hover:bg-slate-50"
+                className="border-theme-200 hover:bg-theme-50"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Dashboard
@@ -112,7 +112,7 @@ export function ViewProfile() {
               
               <Button
                 onClick={handleEditProfile}
-                className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+                className="bg-gradient-to-r from-theme-500 to-theme-600 hover:from-theme-600 hover:to-theme-700"
               >
                 <Edit className="w-4 h-4 mr-2" />
                 Edit Profile
@@ -129,13 +129,13 @@ export function ViewProfile() {
           <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <User className="w-5 h-5 text-pink-500" />
+                <User className="w-5 h-5 text-theme-500" />
                 <span>Personal Information</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-gradient-to-r from-pink-400 to-rose-400 rounded-full flex items-center justify-center">
+                <div className="w-16 h-16 bg-gradient-to-r from-theme-400 to-theme-500 rounded-full flex items-center justify-center">
                   <User className="w-8 h-8 text-white" />
                 </div>
                 <div>
@@ -153,7 +153,7 @@ export function ViewProfile() {
           <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <Building2 className="w-5 h-5 text-pink-500" />
+                <Building2 className="w-5 h-5 text-theme-500" />
                 <span>Company Information</span>
               </CardTitle>
             </CardHeader>
@@ -191,7 +191,7 @@ export function ViewProfile() {
           <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <MapPin className="w-5 h-5 text-pink-500" />
+                <MapPin className="w-5 h-5 text-theme-500" />
                 <span>Address Information</span>
               </CardTitle>
             </CardHeader>
@@ -248,7 +248,7 @@ export function ViewProfile() {
           <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <FileText className="w-5 h-5 text-pink-500" />
+                <FileText className="w-5 h-5 text-theme-500" />
                 <span>Tax Information</span>
               </CardTitle>
             </CardHeader>
@@ -280,7 +280,7 @@ export function ViewProfile() {
             <Button
               onClick={handleEditProfile}
               size="lg"
-              className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 px-8"
+              className="bg-gradient-to-r from-theme-500 to-theme-600 hover:from-theme-600 hover:to-theme-700 px-8"
             >
               <Edit className="w-5 h-5 mr-2" />
               Edit Profile

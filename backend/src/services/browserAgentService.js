@@ -102,7 +102,7 @@ class BrowserAgentService {
       rawText: taskData.raw_text || null,
       
       // LLM settings
-      model: taskData.model || 'gpt-4.1-mini',
+      model: taskData.model || 'gpt-5-nano-2025-08-07',
       temperature: taskData.temperature || 1.0,
       maxSteps: taskData.max_steps || config.tasks.maxSteps || 100,
       

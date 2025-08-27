@@ -1,3 +1,29 @@
+2025-08-25 (cont.)
+- Homepage copy/layout cleanup:
+  - Login CTA label hardcoded to "Login".
+  - Removed hero subtitle and features section title/description; retained three concise feature cards.
+  - Adjusted spacing to keep visual balance.
+2025-08-25 (cont.)
+- Home page UX tweaks:
+  - Removed "Try Demo" CTA; only `Register` and `Login` remain.
+  - Removed duplicate feature labels under the hero.
+  - Feature cards now use headings per brand guidelines with concise 4–7 word descriptions.
+  - No backend changes.
+2025-08-25  
+- Frontend brand theme alignment to aosenuma brandbook:  
+  - Updated `app/globals.css` CSS variables to use brand primary HSL (approx. #3D52A0) for `--primary` and `--ring`, and a complementary `--accent`.  
+  - Corrected and standardized `theme` color scale in `tailwind.config.ts` to aosenuma palette and fixed a typo in the previous `100` shade.  
+  - Replaced legacy pink/rose/slate/blue utility usages with the new `theme` palette across key pages and components:  
+    - `components/auth/LoginForm.tsx` (focus ring/border to `theme-500`).  
+    - `app/(auth)/register/page.tsx` (background gradient to theme).  
+    - `components/ViewProfile.tsx` and `components/EditProfile.tsx` (gradients, buttons, icon colors to theme).  
+    - `components/DashboardDualPane.tsx` (header gradients and badges to theme).  
+    - `app/task/submit/page.tsx` (page bg, headings, help cards, example sections to theme).  
+    - `app/page.tsx` (loading states and hero icon wrapper to theme).  
+    - `components/SimpleTaskSubmissionPane.tsx` and `components/TaskAnalytics.tsx` (texts, borders, badges to theme).  
+  - No API/schema changes. No backend impact.  
+  - Ran lint checks; zero errors.  
+  - Next steps: if the brandbook provides exact secondary/neutral scales, map them to CSS vars (`--secondary`, `--muted`, etc.) and refine shades in the `theme` scale.
 # Development Documentation
 
 ## Latest Update: 2025-01-03 21:20:00 UTC
@@ -4893,6 +4919,151 @@ OPENAI_API_KEY=your_openai_api_key_here
 4. Validate that no console errors appear from removed components
 5. Check that dashboard maintains proper visual hierarchy
 6. Ensure mobile responsiveness is maintained
+
+### 2025-01-27 23:15 - UI Layout Improvements: Moved Back to Upload Button and Removed Dashboard Overview
+
+**Date & Time**: 2025-01-27 23:15
+
+**Issue**: User requested to move the "Back to Upload" button to the right side of the dual pane monitor container and remove the "Dashboard Overview" section.
+
+**Root Cause**: The "Back to Upload" button was positioned above the dual pane container, and there was an unnecessary "Dashboard Overview" section below it.
+
+**Solution Implemented**:
+
+1. **Moved Back to Upload Button**:
+   - Relocated the "Back to Upload" button from above the dual pane container to the right side of the DashboardDualPane header
+   - Positioned it next to the task status elements for better visual balance
+   - Added `onResetToUpload` prop to DashboardDualPaneProps interface
+
+2. **Removed Dashboard Overview Section**:
+   - Eliminated the entire "Dashboard Overview" section that was displayed below the dual pane
+   - Cleaned up the visual separator and decorative elements
+   - Simplified the layout for better focus on the main functionality
+
+3. **Updated Component Interface**:
+   - Added `onResetToUpload?: () => void` to DashboardDualPaneProps
+   - Updated DashboardDualPane component to accept and use the new prop
+   - Modified dashboard page to pass the reset function to the dual pane component
+
+**Technical Changes**:
+- `frontend/components/DashboardDualPane.tsx`: 
+  - Added onResetToUpload prop to interface
+  - Moved "Back to Upload" button to CardHeader right side
+  - Positioned button alongside task status elements
+- `frontend/app/(dashboard)/dashboard/page.tsx`:
+  - Removed "Back to Upload" button from above dual pane
+  - Removed entire "Dashboard Overview" section
+  - Added onResetToUpload prop to DashboardDualPane component
+
+**UI Improvements**:
+- Better visual hierarchy with the reset button integrated into the dual pane header
+- Cleaner layout without unnecessary decorative elements
+- More intuitive button placement for users to return to upload form
+- Consistent styling with other header elements
+
+**Testing Status**: Ready for testing - the "Back to Upload" button should now appear on the right side of the dual pane header, and the "Dashboard Overview" section should be completely removed.
+
+### 2025-01-27 23:30 - Increased Container Size and Improved Layout Spacing
+
+**Date & Time**: 2025-01-27 23:30
+
+**Issue**: User requested to increase the container size for better usability and more spacious layout.
+
+**Root Cause**: The dual pane container was limited to 750px height and had tight spacing, making it feel cramped.
+
+**Solution Implemented**:
+
+1. **Increased Container Height**:
+   - Changed dual pane container height from `h-[750px]` to `h-[1000px]`
+   - Provides 250px additional vertical space for better content visibility
+
+2. **Improved Layout Spacing**:
+   - Increased main content padding from `px-2 sm:px-4 lg:px-6 py-8` to `px-4 sm:px-8 lg:px-12 py-10`
+   - Increased welcome section margin from `mb-6` to `mb-8`
+   - Increased dual pane section margin from `mb-4` to `mb-6`
+
+3. **Enhanced Panel Proportions**:
+   - Increased left pane default size from 35% to 40% for better ticket data visibility
+   - Adjusted minimum size from 25% to 30% and maximum from 50% to 55%
+   - Increased internal padding from `p-3` to `p-4` throughout the left pane
+
+**Technical Changes**:
+- `frontend/app/(dashboard)/dashboard/page.tsx`: 
+  - Increased container height from 750px to 1000px
+  - Enhanced main content padding and margins
+- `frontend/components/DashboardDualPane.tsx`:
+  - Adjusted left pane sizing from 35% to 40% default
+  - Increased internal padding from p-3 to p-4
+  - Improved panel size constraints for better resizing
+
+**UI Improvements**:
+- More spacious dual pane interface with 33% height increase
+- Better content visibility and reduced scrolling
+- Improved panel proportions for ticket data display
+- Enhanced overall layout breathing room
+- More comfortable user experience for complex workflows
+
+**Testing Status**: Ready for testing - the dual pane container should now be significantly larger with better spacing and improved panel proportions.
+
+### 2025-01-27 23:45 - Implemented New Blue-to-Lavender Color Theme Across All Pages
+
+**Date & Time**: 2025-01-27 23:45
+
+**Issue**: User requested to keep a consistent color theme across all pages, specifically referencing the 4th attached image which showed a beautiful blue-to-lavender color palette.
+
+**Root Cause**: The application was using a mix of pink/rose colors and slate colors, lacking visual consistency and the professional blue-to-lavender aesthetic requested.
+
+**Solution Implemented**:
+
+1. **Added Custom Color Palette to Tailwind Config**:
+   - Added new `theme` color palette with 10 shades from light lavender to dark blue
+   - Colors range from `#EDE8F5` (lightest) to `#0B0D17` (darkest)
+   - Based on the 4th image color scheme: `3D52A0`, `7091E6`, `8697C4`, `ADBBDDA`, `EDE8F5`
+
+2. **Updated All Page Components**:
+   - **Main Landing Page**: Changed from slate colors to theme colors for backgrounds, text, and buttons
+   - **Dashboard Page**: Updated from pink/rose gradient to theme gradient with proper contrast
+   - **Login Page**: Redesigned with theme color scheme and improved layout
+   - **Profile Components**: Updated ViewProfile and EditProfile with consistent theme colors
+   - **Dual Pane Components**: Updated DashboardDualPane with theme color scheme
+
+3. **Comprehensive Color Replacement**:
+   - Backgrounds: `from-pink-50 via-rose-50 to-pink-100` → `from-theme-50 via-theme-100 to-theme-200`
+   - Primary buttons: `from-pink-500 to-rose-500` → `from-theme-500 to-theme-600`
+   - Text colors: `text-slate-600` → `text-theme-600`, `text-pink-500` → `text-theme-500`
+   - Borders: `border-pink-300` → `border-theme-300`, `border-slate-200` → `border-theme-200`
+   - Hover states: `hover:bg-pink-50` → `hover:bg-theme-50`
+
+**Technical Changes**:
+- `frontend/tailwind.config.ts`: Added custom theme color palette
+- `frontend/app/page.tsx`: Updated landing page colors and layout
+- `frontend/app/(dashboard)/dashboard/page.tsx`: Updated dashboard color scheme
+- `frontend/app/(auth)/login/page.tsx`: Redesigned login page with theme colors
+- `frontend/components/DashboardDualPane.tsx`: Updated dual pane color scheme
+- `frontend/components/ViewProfile.tsx`: Updated profile view colors
+- `frontend/components/EditProfile.tsx`: Updated profile edit colors
+- `frontend/components/ProfileDropdown.tsx`: Updated dropdown colors
+- `frontend/components/SimpleTaskSubmissionPane.tsx`: Updated task submission colors
+- `frontend/components/LiveViewPane.tsx`: Updated live view colors
+
+**Color Palette Implementation**:
+- **Theme 50**: `#EDE8F5` - Lightest lavender (backgrounds)
+- **Theme 100**: `#ADBBDDA` - Light lavender (subtle backgrounds)
+- **Theme 200**: `#8697C4` - Medium lavender (borders, subtle elements)
+- **Theme 300**: `#7091E6` - Light blue (hover states, secondary elements)
+- **Theme 400**: `#5A7BD8` - Medium blue (accent elements)
+- **Theme 500**: `#3D52A0` - Primary blue (main buttons, icons)
+- **Theme 600**: `#2E3D7A` - Darker blue (hover states, emphasis)
+- **Theme 700-900**: Darker shades for text and deep accents
+
+**UI Improvements**:
+- Consistent professional blue-to-lavender color scheme across all pages
+- Better visual hierarchy with cohesive color relationships
+- Improved accessibility with proper contrast ratios
+- Modern, clean aesthetic that matches the requested design
+- Unified brand identity throughout the application
+
+**Testing Status**: Ready for testing - all pages should now display with the new blue-to-lavender color theme, providing a consistent and professional visual experience.
 
 ---
 

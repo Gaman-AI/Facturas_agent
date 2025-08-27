@@ -158,7 +158,7 @@ class BrowserAgent:
                 if not api_key:
                     raise ValueError("OPENAI_API_KEY not found in environment")
                 return ChatOpenAI(
-                    model=model or "gpt-4o-mini", 
+                    model=model or "gpt-5-nano-2025-08-07", 
                     api_key=api_key,
                     temperature=0.1
                 )
@@ -186,7 +186,7 @@ class BrowserAgent:
                 if not api_key:
                     raise ValueError("OPENAI_API_KEY not found in environment")
                 return ChatOpenAI(
-                    model=model or "gpt-4o-mini",
+                    model=model or "gpt-5-nano-2025-08-07",
                     api_key=api_key,
                     temperature=0.1
                 )

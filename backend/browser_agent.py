@@ -237,7 +237,7 @@ def create_browser_profile() -> BrowserProfile:
     )
 
 
-async def run_local_browser_task(task: str, model: str = "gpt-4o-mini", max_steps: int = 100, user_profile: dict = None, ocr_ticket_data: dict = None):
+async def run_local_browser_task(task: str, model: str = "gpt-5-nano-2025-08-07", max_steps: int = 100, user_profile: dict = None, ocr_ticket_data: dict = None):
     """
     Run a browser automation task using local Playwright browser (simple approach)
     
@@ -294,7 +294,9 @@ async def run_local_browser_task(task: str, model: str = "gpt-4o-mini", max_step
         agent = Agent(
             task=task, 
             llm=llm,
-            override_system_message=custom_system_message  # Use our custom system message
+            use_vision=True,  # Enable vision mode with medium priority
+            vision_priority="medium",  # Set vision priority to medium
+            # override_system_message=custom_system_message  # Use our custom system message
         )
         
         # Execute task
@@ -307,7 +309,7 @@ async def run_local_browser_task(task: str, model: str = "gpt-4o-mini", max_step
         raise
 
 
-async def run_browserbase_browser_task(task: str, model: str = "gpt-4o", max_steps: int = 20, user_profile: dict = None, ocr_ticket_data: dict = None):
+async def run_browserbase_browser_task(task: str, model: str = "gpt-5-nano-2025-08-07", max_steps: int = 20, user_profile: dict = None, ocr_ticket_data: dict = None):
     """
     Run a browser automation task using Browserbase cloud browser with session management
     
@@ -356,7 +358,7 @@ async def run_browserbase_browser_task(task: str, model: str = "gpt-4o", max_ste
         raise
 
 
-async def run_automation_task(browser_session, task: str, model: str = "gpt-4o", max_steps: int = 20, user_profile: dict = None, ocr_ticket_data: dict = None):
+async def run_automation_task(browser_session, task: str, model: str = "gpt-5-nano-2025-08-07", max_steps: int = 20, user_profile: dict = None, ocr_ticket_data = None):
     """Helper function to run automation task with given browser session"""
     llm = ChatOpenAI(model=model, temperature=0.0)
     
@@ -391,11 +393,13 @@ async def run_automation_task(browser_session, task: str, model: str = "gpt-4o",
         task=task,
         llm=llm,
         browser_session=browser_session,
-        enable_memory=False,
+        enable_memory=True,
         max_failures=5,
         retry_delay=5,
         max_actions_per_step=1,
-        override_system_message=custom_system_message,  # Use our custom system message
+        use_vision=True,  # Enable vision mode with medium priority
+        vision_priority="medium",  # Set vision priority to medium
+        # override_system_message=custom_system_message,  # Use our custom system message
     )
     
     try:
@@ -468,7 +472,7 @@ def generate_task_from_data(vendor_url: str, user_profile: dict = None, ocr_tick
     return ". ".join(task_parts)
 
 
-async def run_agent_on_existing_session(session_connect_url: str, task: str, model: str = "gpt-4o", max_steps: int = 20, user_profile: dict = None, ocr_ticket_data: dict = None):
+async def run_agent_on_existing_session(session_connect_url: str, task: str, model: str = "gpt-5-nano-2025-08-07", max_steps: int = 20, user_profile: dict = None, ocr_ticket_data: dict = None):
     """
     Run agent automation on an existing Browserbase session
     
@@ -542,7 +546,7 @@ async def main():
         browser_mode = task_data.get('browser_mode', 'local')
         
         # Optional parameters
-        model = task_data.get('model', 'gpt-4o-mini')
+        model = task_data.get('model', 'gpt-5-nano-2025-08-07')
         max_steps = task_data.get('max_steps', 100)
         
         # Debug: Log the execution mode and key data

@@ -111,7 +111,7 @@ router.post('/', validateCreateTask, asyncHandler(async (req, res) => {
     // Create task using browserAgentService for proper storage and execution
     const taskData = {
       prompt: task,
-      model: model || 'gpt-4o-mini',
+      model: model || 'gpt-5-nano-2025-08-07',
       llm_provider: llm_provider || 'openai',
       max_steps: 50,
       timeout_minutes: timeout_minutes || 30
@@ -310,7 +310,7 @@ router.post('/execute', validateCreateTask, asyncHandler(async (req, res) => {
       started_at: startTime,
       completed_at: null,
       execution_time_ms: null,
-      model: model || 'gpt-4o-mini',
+      model: model || 'gpt-5-nano-2025-08-07',
       max_steps: config.tasks.maxSteps || 100,
       result: null,
       error: null,
@@ -321,7 +321,7 @@ router.post('/execute', validateCreateTask, asyncHandler(async (req, res) => {
     // Prepare simplified task data
     const taskData = {
       task,
-      model: model || 'gpt-4o-mini',
+      model: model || 'gpt-5-nano-2025-08-07',
       llm_provider: llm_provider || 'openai',
       timeout_minutes: timeout_minutes || 30
     }
@@ -936,7 +936,7 @@ router.get('/browser-use/:taskId', validateTaskParams, asyncHandler(async (req, 
           started_at: new Date().toISOString(),
           completed_at: new Date().toISOString(),
           execution_time_ms: null,
-          model: 'gpt-4o-mini',
+          model: 'gpt-5-nano-2025-08-07',
           max_steps: config.tasks.maxSteps || 100,
           result: 'Task executed via /execute endpoint',
           error: null,

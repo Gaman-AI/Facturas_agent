@@ -141,8 +141,8 @@ export function TaskAnalytics({
 
   const getPerformanceLevel = (score: number) => {
     if (score >= 80) return { level: 'Excellent', color: 'text-green-600', bg: 'bg-green-100' }
-    if (score >= 60) return { level: 'Good', color: 'text-blue-600', bg: 'bg-blue-100' }
-    if (score >= 40) return { level: 'Fair', color: 'text-yellow-600', bg: 'bg-yellow-100' }
+    if (score >= 60) return { level: 'Good', color: 'text-theme-600', bg: 'bg-theme-100' }
+    if (score >= 40) return { level: 'Fair', color: 'text-amber-600', bg: 'bg-amber-100' }
     return { level: 'Poor', color: 'text-red-600', bg: 'bg-red-100' }
   }
 
@@ -226,24 +226,24 @@ export function TaskAnalytics({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* Key Metrics */}
             <div className="text-center">
-              <div className="text-2xl font-bold text-slate-900">{formatDuration(metrics.totalExecutionTime)}</div>
-              <div className="text-xs text-slate-600 flex items-center justify-center gap-1">
+              <div className="text-2xl font-bold text-theme-800">{formatDuration(metrics.totalExecutionTime)}</div>
+              <div className="text-xs text-theme-600 flex items-center justify-center gap-1">
                 <Clock className="w-3 h-3" />
                 Total Time
               </div>
             </div>
             
             <div className="text-center">
-              <div className="text-2xl font-bold text-slate-900">{metrics.stepsCompleted}</div>
-              <div className="text-xs text-slate-600 flex items-center justify-center gap-1">
+              <div className="text-2xl font-bold text-theme-800">{metrics.stepsCompleted}</div>
+              <div className="text-xs text-theme-600 flex items-center justify-center gap-1">
                 <Target className="w-3 h-3" />
                 Steps Done
               </div>
             </div>
             
             <div className="text-center">
-              <div className="text-2xl font-bold text-slate-900">{metrics.successRate.toFixed(1)}%</div>
-              <div className="text-xs text-slate-600 flex items-center justify-center gap-1">
+              <div className="text-2xl font-bold text-theme-800">{metrics.successRate.toFixed(1)}%</div>
+              <div className="text-xs text-theme-600 flex items-center justify-center gap-1">
                 <CheckCircle className="w-3 h-3" />
                 Success Rate
               </div>
@@ -253,7 +253,7 @@ export function TaskAnalytics({
               <div className={`text-2xl font-bold ${performanceLevel.color}`}>
                 {metrics.performanceScore.toFixed(0)}
               </div>
-              <div className="text-xs text-slate-600 flex items-center justify-center gap-1">
+              <div className="text-xs text-theme-600 flex items-center justify-center gap-1">
                 <Gauge className="w-3 h-3" />
                 Performance
               </div>
@@ -284,7 +284,7 @@ export function TaskAnalytics({
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-600">Overall Score</span>
+                    <span className="text-sm text-theme-600">Overall Score</span>
                     <Badge className={`${performanceLevel.bg} ${performanceLevel.color} border-0`}>
                       {performanceLevel.level}
                     </Badge>
@@ -375,8 +375,8 @@ export function TaskAnalytics({
                   return (
                     <div key={type} className="text-center">
                       <div className="text-lg font-bold">{count}</div>
-                      <div className="text-sm text-slate-600 capitalize">{type}</div>
-                      <div className="text-xs text-slate-500">{percentage.toFixed(1)}%</div>
+                      <div className="text-sm text-theme-600 capitalize">{type}</div>
+                      <div className="text-xs text-theme-600/80">{percentage.toFixed(1)}%</div>
                     </div>
                   )
                 })}
@@ -398,7 +398,7 @@ export function TaskAnalytics({
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {timeline.slice(0, 20).map((event, index) => (
                   <div key={index} className="flex items-center space-x-3 p-2 rounded hover:bg-slate-50">
-                    <div className="text-xs text-slate-500 w-16">
+                    <div className="text-xs text-theme-600 w-16">
                       +{formatDuration(event.time)}
                     </div>
                     <Badge variant="outline" className="text-xs">
@@ -410,7 +410,7 @@ export function TaskAnalytics({
                   </div>
                 ))}
                 {timeline.length > 20 && (
-                  <div className="text-center text-sm text-slate-500 py-2">
+                  <div className="text-center text-sm text-theme-600 py-2">
                     + {timeline.length - 20} more events
                   </div>
                 )}

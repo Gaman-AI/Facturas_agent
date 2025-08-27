@@ -62,7 +62,20 @@ const config: Config = {
   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
   				border: 'hsl(var(--sidebar-border))',
   				ring: 'hsl(var(--sidebar-ring))'
-  			}
+  			},
+            // aosenuma brand palette with main color at 500 = #208692
+            theme: {
+                '50': '#E6F4F6',
+                '100': '#CCE9ED',
+                '200': '#99D3DA',
+                '300': '#66BDC8',
+                '400': '#3BA5B3',
+                '500': '#208692',
+                '600': '#1C7681',
+                '700': '#164F5B',
+                '800': '#123E47',
+                '900': '#0D2E35'
+            }
   		},
   		borderRadius: {
   			lg: 'var(--radius)',

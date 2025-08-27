@@ -9,7 +9,7 @@ export default function RegisterPage() {
   const { t } = useLanguage()
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-theme-50 via-theme-100 to-theme-200 p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">{t('register.title')}</CardTitle>
