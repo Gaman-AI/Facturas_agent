@@ -871,7 +871,7 @@ The live view URL was not reaching the frontend because the Python script `brows
 **Solution Implemented:**
 Modified `backend/browser_agent.py` to return session information immediately after creating the Browserbase session:
 
-```python
+```
 # For Browserbase mode, create session first and return immediately
 try:
     # Create Browserbase session with optimal viewport
@@ -1066,7 +1066,7 @@ CHANGES IMPLEMENTED:
    - Updated all method calls to pass viewport settings
 
 3. **Session Creation Now Uses Your Requested Pattern**:
-   ```python
+   ```
    bb = Browserbase(api_key=os.environ["BROWSERBASE_API_KEY"])
    session = bb.sessions.create(
        project_id=os.environ["BROWSERBASE_PROJECT_ID"],
@@ -1089,7 +1089,7 @@ VERIFIED LIVE VIEW URL FLOW:
 2. **Live URL Extraction** → `debug_info.debugger_fullscreen_url` 
 3. **Backend Processing** → `browserAgentService.executeTaskAsync()`
 4. **WebSocket Update** → `websocketService.sendTaskUpdate()` sends:
-   ```javascript
+   ```
    {
      taskId, status: 'running', sessionId, liveViewUrl, browserSessionId
    }
@@ -1122,7 +1122,7 @@ IMPLEMENTATION:
 - **Direct integration** in `handleStartAgentTask` function
 
 CODE IMPLEMENTED:
-```typescript
+```
 // Schedule single fetch after 10 seconds
 setTimeout(async () => {
   try {
@@ -1214,7 +1214,7 @@ The previous implementation was sending the same data **3 times** in different f
 #### **1. FRONTEND (DashboardDualPane.tsx) - OPTIMIZED**
 
 **Before (Redundant):**
-```typescript
+```
 // ❌ OLD: Sending data 3 times
 const combinedPrompt = `${vendorUrl}\n\nUSER PROFILE INFORMATION:\n- Company/Name: ${userProfile?.company_name}...`
 const response = await ApiService.createBrowserUseTask({
@@ -1226,7 +1226,7 @@ const response = await ApiService.createBrowserUseTask({
 ```
 
 **After (Optimized):**
-```typescript
+```
 // ✅ NEW: Send data only once
 const response = await ApiService.createBrowserUseTask({
   vendor_url: vendorUrl,
@@ -1259,7 +1259,7 @@ const response = await ApiService.createBrowserUseTask({
 #### **3. BACKEND (browserAgentService.js) - OPTIMIZED**
 
 **Task Description Generation:**
-```javascript
+```
 // ✅ Generate description from structured data instead of receiving duplicate text
 prompt: this.generateTaskDescription(taskData), // Generate description from structured data
 
@@ -1301,8 +1301,6 @@ generateTaskDescription(taskData) {
     description += `\n`
   }
   
-  description += `Use the complete business profile and receipt details to complete the invoice processing on the vendor website.`
-  
   return description
 }
 ```
@@ -1310,7 +1308,7 @@ generateTaskDescription(taskData) {
 #### **4. PYTHON BRIDGE (browserAgent.py) - OPTIMIZED**
 
 **Structured Data Processing:**
-```python
+```
 # ✅ Generate task description from structured data
 task_description = self.generate_task_description(task_data)
 
@@ -1370,8 +1368,6 @@ def generate_task_description(self, task_data: Dict[str, Any]) -> str:
         if ocr_data.get('Payment_Type'):
             description += f"- Payment: {ocr_data['Payment_Type']}\n"
         description += "\n"
-    
-    description += "Use the complete business profile and receipt details to complete the invoice processing on the vendor website."
     
     return description
 ```
@@ -1503,12 +1499,12 @@ The generated task description included an unnecessary concluding instruction:
 - **Agent autonomy** - The agent already knows its purpose and how to use the provided data
 
 **Before (With Instruction):**
-```javascript
+```
 description += `Use the complete business profile and receipt details to complete the invoice processing on the vendor website.`
 ```
 
 **After (Clean Description):**
-```javascript
+```
 // No concluding instruction - agent knows what to do
 return description
 ```
@@ -3577,7 +3573,7 @@ uv sync
 - `backend/src/routes/tickets.js` - Added `env: process.env` to both execSync calls
 
 **Code Changes**:
-```javascript
+```
 // Before (missing environment variables)
 const result = execSync(pythonCode, { 
   encoding: 'utf8',
@@ -3804,6 +3800,68 @@ Redirected all debug print statements from stdout to stderr by adding `file=sys.
 3. Verify error handling for missing data
 4. Test reset functionality
 5. Confirm proper state management during task lifecycle
+
+---
+
+### 2025-01-27 17:45 - Fixed Missing Vendor URL Input and Added Debug Tools
+
+**Date & Time**: 2025-01-27 17:45
+
+**Objective**: Fix the missing vendor URL input field in desktop view and add debugging tools to identify button state issues.
+
+**Issues Identified**:
+1. **Missing Vendor URL Input in Desktop View**: The desktop layout was missing the vendor URL input field, causing the button to always be disabled
+2. **Button State Debugging**: No visibility into why the button was disabled
+3. **OCR Success State**: Difficulty tracking when OCR success state is set
+
+**Changes Made**:
+
+1. **Updated `frontend/components/DashboardDualPane.tsx`**:
+   - **Added Vendor URL Input to Desktop View**: Added the missing vendor URL input field above the Start Agent button in the desktop layout
+   - **Added Debug Information Display**: Added debug panels showing:
+     - Vendor URL status (Set/Missing)
+     - OCR Success state (True/False)
+     - Task Status
+     - Button Disabled reason
+   - **Added Test Buttons**: Added debugging buttons to manually set OCR success and vendor URL for testing
+   - **Enhanced Console Logging**: Added detailed logging for button state changes and OCR initialization
+   - **Fixed Layout Consistency**: Both mobile and desktop views now have vendor URL inputs and debug information
+
+2. **Debug Tools Added**:
+   - **Debug Info Panel**: Shows real-time state of all button prerequisites
+   - **Test OCR Success Button**: Manually sets OCR success to true for testing
+   - **Test Vendor URL Button**: Manually sets vendor URL for testing
+   - **Console Logging**: Detailed logging of state changes and useEffect triggers
+   - **Button State Tracking**: Real-time visibility into why button is disabled
+
+3. **Vendor URL Input Fix**:
+   - **Desktop View**: Added vendor URL input field above Start Agent button
+   - **Mobile View**: Vendor URL input was already present and working
+   - **Consistent Styling**: Both inputs use the same styling and validation
+   - **Placeholder Text**: Helpful placeholder showing expected URL format
+
+4. **State Management Improvements**:
+   - **useEffect Logging**: Added logging to track when initialTicketData is processed
+   - **Button State Debug**: Real-time logging of button disabled condition
+   - **OCR Success Tracking**: Clear visibility into OCR success state changes
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx`
+
+**Status**: Implementation complete - Vendor URL input now available in both views, debug tools added for troubleshooting button state issues.
+
+**Testing Instructions**:
+1. **Check Debug Info**: Look for the debug panel below the Start Agent button
+2. **Test OCR Success**: Click "Test: Set OCR Success" button to manually enable OCR
+3. **Test Vendor URL**: Click "Test: Set URL" button to manually set vendor URL
+4. **Verify Button State**: Button should become enabled when both OCR success and vendor URL are set
+5. **Check Console**: Open browser console to see detailed state logging
+
+**Next Steps**:
+1. Test the button functionality with the debug tools
+2. Verify OCR data is being passed correctly from dashboard
+3. Test actual OCR upload process to ensure proper state transitions
+4. Remove debug tools once button is working correctly
 
 ---
 
@@ -4661,239 +4719,526 @@ Enhanced the system to pass **ALL** user profile fields from the database to the
 ### Enhanced Context Format
 The Python agent now receives context in this structured format:
 
+
+**Technical Implementation Details**:
+- **Iframe Integration**: Uses standard HTML iframe with proper sandbox attributes
+- **Live View URL Management**: Automatically updates from both props and task response data
+- **Manual URL Input**: Users can manually enter live view URLs in the dashboard
+- **URL Controls**: Update, refresh, and clear functionality for live view management
+- **Responsive Design**: Maintains resizable dual-pane layout with status on left, live view on right
+- **Placeholder State**: Shows informative placeholder when no live view URL is available
+- **Session Controls**: Integrated pause, resume, stop, and restart functionality
+- **Real-time Updates**: Maintains WebSocket/polling integration for live status updates
+
+**Live View URL Input Features**:
+- **Input Field**: URL input with placeholder and validation
+- **Update Button**: Applies the entered URL and refreshes iframe
+- **Refresh Button**: Forces iframe refresh without changing URL
+- **Clear Button**: Removes current live view URL
+- **Current URL Display**: Shows the currently active live view URL
+- **Help Text**: Instructions for users on how to use the feature
+
+**Iframe Configuration**:
+```tsx
+<iframe
+  src={currentLiveViewUrl}
+  sandbox="allow-same-origin allow-scripts"
+  allow="clipboard-read; clipboard-write"
+  style={{ pointerEvents: 'none' }}
+  className="w-full h-full border-0"
+  title="Live Browser View"
+/>
 ```
-COMPREHENSIVE CONTEXT:
-• Company: [Company Name]
-• RFC: [RFC Number]
-• Email: [Email Address]
-• Phone: [Phone Number]
-• Address: [Street], #[Exterior], Int. #[Interior], Col. [Colony], Mun. [Municipality], CP [ZIP], [State], [Country]
-• Tax Regime: [Tax Regime Code]
-• CFDI Use: [CFDI Use Code]
-• Store: [Store Name from OCR]
-• Receipt Total: [Total Amount]
-• Receipt Date: [Date]
-• TC Number: [TC Number]
-• TR Number: [TR Number]
-• Ticket ID: [Ticket ID]
-• Payment Type: [Payment Type]
-• Target Website: [Vendor URL]
-• Raw Receipt Text: [Truncated OCR Text]
+
+**Benefits**:
+- **Simplified Integration**: Direct iframe display without complex component dependencies
+- **Frontend Control**: Frontend can now pass live view URLs when sessions start
+- **Manual Control**: Users can manually enter and manage live view URLs
+- **Real-time Updates**: Live view URL updates automatically from task responses
+- **Better UX**: Clear placeholder state when no live view is available
+- **Session Management**: Integrated controls for managing browser automation tasks
+- **Flexible URL Management**: Support for both automatic and manual URL updates
+
+**Usage**:
+```tsx
+// When you have a live view URL from your session
+<DualPaneMonitor
+  taskId="your-task-id"
+  sessionId="your-session-id"
+  liveViewUrl="https://browserbase.com/sessions/abc123"
+  initialStatus="running"
+/>
+
+// Users can also manually enter URLs in the dashboard
 ```
 
-### Key Benefits
-- **Complete Context**: Agent has access to all user information
-- **Better Automation**: More accurate form filling with full address details
-- **Tax Compliance**: Complete tax regime and CFDI use information
-- **Professional Presentation**: All company details available for invoices
-- **Enhanced Accuracy**: Raw OCR text provides additional context for validation
+**Files Modified**:
+- `frontend/components/DualPaneMonitor.tsx`
 
-### Database Schema Alignment
-The implementation now perfectly aligns with the database schema defined in `create_user_profile_function.sql`, ensuring that every field stored in the database is accessible to the automation agent.
+**Migration Notes**:
+- LiveViewPane component dependency removed
+- Iframe automatically displays when liveViewUrl prop is provided
+- New live view URL input field added for manual URL entry
+- Task status and controls moved to left pane for better organization
+- Activity logs integrated for real-time monitoring
+- URL management controls (Update, Refresh, Clear) added
 
-### Testing Verification
-The system has been tested to confirm that all user profile fields are correctly:
-1. Extracted from the database
-2. Passed through the API layers
-3. Received by the Python script
-4. Formatted into comprehensive context
-5. Available to the browser automation agent
+**Testing**: 
+- ✅ Home page displays in English by default
+- ✅ Dashboard displays in English by default
+- ✅ Language switcher allows switching between English and Spanish
+- ✅ All translation keys properly mapped
+- ✅ No hydration mismatches with new language defaults
 
-This comprehensive integration ensures that the agent has complete information about the user, company, and receipt details, enabling highly accurate and professional automation tasks.
+**Status**: COMPLETE - Frontend UI now defaults to English with full bilingual support
 
-### 2025-01-19 - Browserbase Integration Fixes
+---
 
-**Issue Identified:** The browser mode switching was not working because the Python script was using local browser automation instead of proper Browserbase cloud integration.
+### 2025-08-05 22:00 - Windows Virtual Environment Setup & Path Fixes
 
-**Root Cause:** The original implementation was spawning local Chrome processes instead of connecting to Browserbase cloud sessions, even when 'browserbase' mode was selected.
+**Issue**: Python virtual environment was missing and the Python bridge was using incorrect paths for Windows.
 
-**Fixes Applied:**
+**Root Cause**: The virtual environment (`.venv`) was not created in the `backend/browser-use` directory, and the Python bridge was using Unix-style paths instead of Windows paths.
 
-1. **Complete Browserbase Integration Overhaul (`backend/src/python-bridge/browserAgent.py`):**
-   - Added `ManagedBrowserSession` class for proper lifecycle management
-   - Implemented proper Browserbase session creation using the official SDK
-   - Added `create_browser_profile()` method with optimized settings
-   - Added `run_automation_task()` method using proper Agent integration
-   - Fixed session management to prevent hanging processes
-   - Added proper error handling for browser disconnections
+**Fix Applied**:
+- Created Python virtual environment using `python -m venv .venv`
+- Installed browser-use package in editable mode with all dependencies using `pip install -e .`
+- Updated `backend/src/services/pythonBridge.js` to use correct Windows paths:
+  - Changed Python executable path from `bin/python` to `Scripts/python.exe`
+  - Updated PATH environment variable to use `Scripts` directory and Windows path separator (`;`)
+- All required dependencies installed successfully including `psutil>=7.0.0`, `python-dotenv`, `pydantic`, and all browser-use dependencies
 
-2. **Proper Browserbase SDK Usage:**
-   - Uses `from browserbase import Browserbase` for session creation
-   - Creates sessions with `bb.sessions.create(project_id=project_id)`
-   - Gets debug URLs with `bb.sessions.debug(session.id)`
-   - Connects via CDP using `session.connect_url`
+**Files Modified**:
+- `backend/src/services/pythonBridge.js` - Updated Windows virtual environment paths
+- `backend/browser-use/.venv/` - Created virtual environment with all dependencies
 
-3. **Enhanced Session Management:**
-   - Context manager pattern for automatic cleanup
-   - Proper Playwright instance management
-   - Emergency cleanup procedures
-   - Fallback handling for missing credentials
-
-4. **Environment Configuration:**
-   - Created `env.template` with all required variables
-   - Requires `BROWSERBASE_API_KEY` and `BROWSERBASE_PROJECT_ID`
-   - Fallback to development mode when credentials missing
-
-**Technical Implementation:**
-
-- **ManagedBrowserSession**: Context manager for proper browser lifecycle
-- **Browserbase Integration**: Direct SDK usage instead of local browser spawning
-- **Session Cleanup**: Automatic cleanup of Playwright instances and browser sessions
-- **Error Handling**: Graceful handling of browser disconnections and failures
-
-**Required Environment Variables:**
+**Commands Executed**:
 ```bash
-BROWSERBASE_API_KEY=your_browserbase_api_key_here
-BROWSERBASE_PROJECT_ID=your_browserbase_project_id_here
-OPENAI_API_KEY=your_openai_api_key_here
+cd backend/browser-use
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -e .
 ```
 
-**Result:** Browserbase mode now properly creates cloud sessions and provides live view URLs, while local mode uses local browser automation. The system correctly switches between modes based on user selection.
+**Testing**: 
+- ✅ Virtual environment created successfully
+- ✅ All dependencies installed including psutil, python-dotenv, pydantic, and browser-use
+- ✅ Python bridge configured for Windows paths
+- ✅ browser-use module can be imported successfully
+- ✅ browser_agent.py executes without errors
+
+**Status**: COMPLETE - Python integration is now fully functional
 
 ---
 
-### 2025-01-27 23:30 - Added Stop Button for Agent Task Execution
+### 2025-01-27 - Browser Agent Resource Management Improvement
 
-**Date & Time**: 2025-01-27 23:30
+**Date & Time**: 2025-01-27 (Current Update)
 
-**Objective**: Add a Stop button to kill the session/agent execution in the Start Agent Task section, replacing the current Reset-only functionality with both Stop and Reset options.
+**Objective**: Implement proper browser session lifecycle management in browser_agent.py to prevent resource leaks and ensure reliable session cleanup.
 
-**User Request**: User wanted a Stop button to kill the running session instead of just having a Reset button, providing better control over running agent tasks.
+**Issues Addressed**:
+1. Browser sessions not cleaning up properly, causing hanging processes
+2. Playwright instances not being stopped, leading to resource leaks
+3. Insufficient error handling for browser disconnections
+4. Need for context manager pattern for proper resource management
+
+**Implementation Details**:
+
+1. **Added ManagedBrowserSession Context Manager**:
+   - Created `ManagedBrowserSession` class with proper async context management
+   - Implements `__aenter__` and `__aexit__` for automatic resource cleanup
+   - Handles both normal and emergency cleanup scenarios
+   - Prevents hanging Playwright processes through proper `playwright.stop()` calls
+   - Includes comprehensive error handling for expected browser disconnections
+
+2. **Enhanced Browser Profile Configuration**:
+   - Added `create_browser_profile()` helper function for consistent configuration
+   - Set `keep_alive=False` for proper cleanup (essential for resource management)
+   - Optimized timeout settings: `wait_between_actions=2.0`, `default_timeout=30000`
+   - Enhanced navigation timeout settings for better reliability
+
+3. **Improved Agent Configuration**:
+   - Added agent optimization settings: `enable_memory=False`, `max_failures=5`
+   - Implemented `retry_delay=5` and `max_actions_per_step=1` for controlled execution
+   - Added proper agent cleanup with `del agent` in finally block
+   - Enhanced error handling to distinguish between expected and unexpected disconnections
+
+4. **Better Session Monitoring for Frontend Integration**:
+   - Enhanced session creation logging with multiple URL formats
+   - Added both "Debug URL" and "Live View URL" for frontend iframe integration
+   - Improved session ID logging for monitoring and debugging
+   - Added structured session information output for API integration
+
+5. **Comprehensive Error Handling and Logging**:
+   - Added emoji indicators for better log readability (🚀 🎉 ✅ ❌ 💥 ⚠️ ℹ️ ⏹️ 🏁)
+   - Implemented graceful handling of browser disconnection scenarios
+   - Enhanced error messages with proper context and troubleshooting info
+   - Added keyboard interrupt handling and proper cleanup messaging
+
+6. **Maintained All Existing Functionality**:
+   - **Interactive Mode**: Enhanced with better error handling and cleanup messages
+   - **Simple Text Mode**: Improved with consistent emoji logging and error handling
+   - **JSON API Mode**: Enhanced with structured error responses and proper cleanup
+   - **Multi-argument Mode**: Added proper cleanup and consistent logging
+
+**Technical Changes**:
+- **New Class**: `ManagedBrowserSession` - Context manager for proper browser session lifecycle
+- **Enhanced Functions**: `create_browserbase_session()`, `create_browser_profile()`, `run_browser_task()`
+- **Improved Error Handling**: Comprehensive try-catch blocks with proper cleanup
+- **Better Resource Management**: Automatic Playwright cleanup and session management
+- **Maintained API Compatibility**: All existing modes and parameters preserved
+
+**Files Modified**:
+- `backend/browser_agent.py` - Complete resource management overhaul with context manager pattern
+
+**Key Features**:
+- **Automatic Resource Cleanup**: Context manager ensures proper session and Playwright cleanup
+- **Enhanced Error Handling**: Graceful handling of browser disconnections and failures
+- **Frontend Integration Ready**: Session URLs formatted for iframe integration
+- **Production Quality**: Robust enough for real-world applications with proper error recovery
+- **Backward Compatible**: All existing functionality preserved with improved reliability
+
+**Testing Considerations**:
+- ✅ Browser sessions properly cleaned up after task completion
+- ✅ Playwright processes stopped to prevent hanging
+- ✅ Error scenarios handled gracefully without resource leaks
+- ✅ All three execution modes (interactive, simple text, JSON API) work correctly
+- ✅ Session URLs provided for frontend iframe integration
+- ✅ Proper cleanup messages and status indicators
+
+**Status**: ✅ **COMPLETED** - Browser agent now uses best practices for resource management and provides reliable session cleanup while maintaining all existing functionality.
+
+### 2025-01-27 - Windows Console Unicode Fix (Immediate Follow-up)
+
+**Date & Time**: 2025-01-27 (Immediate Follow-up)
+
+**Objective**: Fix Unicode encoding error on Windows console caused by emoji characters in Python output.
+
+**Issue Identified**: 
+Windows console (cp1252 encoding) was throwing `UnicodeEncodeError` when trying to display emoji characters:
+```
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f3c1' in position 0: character maps to <undefined>
+```
+
+**Root Cause**: 
+The emoji characters (🚀🎉✅❌💥⚠️ℹ️⏹️🏁) added for better log readability were not compatible with Windows console encoding.
+
+**Fix Applied**:
+- Replaced all emoji characters with clear text indicators:
+  - 🚀 → `[STARTING]` / `[RUNNING]`
+  - 🎉 → `[SUCCESS]`
+  - ✅ → `[SUCCESS]` / `[COMPLETE]`
+  - ❌ → `[ERROR]`
+  - 💥 → `[FATAL]` / `[ERROR]`
+  - ⚠️ → `[WARNING]`
+  - ℹ️ → `[INFO]`
+  - ⏹️ → `[INTERRUPTED]`
+  - 🏁 → `[FINISHED]`
+
+**Files Modified**:
+- `backend/browser_agent.py` - Replaced all emoji characters with text indicators
+
+**Benefits**:
+- ✅ Compatible with Windows console encoding (cp1252)
+- ✅ Maintains clear visual distinction in logs
+- ✅ No Unicode encoding errors
+- ✅ All functionality preserved
+- ✅ Cross-platform compatibility improved
+
+**Testing**:
+- ✅ No more UnicodeEncodeError exceptions
+- ✅ All log messages display correctly on Windows
+- ✅ Text indicators provide clear status information
+- ✅ All browser agent functionality works correctly
+
+**Status**: ✅ **COMPLETED** - Windows console compatibility restored, all Unicode issues resolved.
+
+---
+
+### 2025-01-27 22:15 - Full Raw Text Component Addition
+
+**Date & Time**: 2025-01-27 22:15
+
+**Objective**: Add a new "Full Raw Text" component in the left pane below the core fields to display the complete raw OCR text with consistent styling.
+
+**Implementation Details**:
+- **New Component Added**: "Full Raw Text" component positioned below the core fields grid (Mesa/Folio, Fecha, ID Ticket, Total)
+- **Consistent Styling**: Follows the exact same design pattern as core fields components:
+  - Gray background (`bg-gray-50`) with red border (`border-red-200`)
+  - Rounded corners (`rounded-lg`) and consistent padding (`p-3`)
+  - Same label styling (`text-sm font-medium text-gray-700`)
+  - White content area with red border (`bg-white border-red-200`)
+- **Enhanced Display**: 
+  - Minimum height of 120px (`min-h-[120px]`) for better visibility
+  - Scrollable content area (`overflow-y-auto`) for long text
+  - Pre-formatted text with proper whitespace handling (`whitespace-pre-wrap`)
+  - Smaller font size (`text-xs`) with improved line spacing (`leading-relaxed`)
+- **Fallback State**: Shows "No raw text available" message when no raw text is present
+- **Responsive Design**: Component added to both desktop and mobile layouts
+- **Positioning**: Placed strategically between core fields and existing debugging section
+
+**Files Modified**:
+- `frontend/components/DashboardDualPane.tsx` - Added new Full Raw Text component in both desktop and mobile layouts
+
+**Component Structure**:
+```tsx
+{/* Full Raw Text Display - New Component */}
+<div className="mt-4">
+  <div className="bg-gray-50 border border-red-200 rounded-lg p-3">
+    <label className="block text-sm font-medium text-gray-700 mb-2">Full Raw Text</label>
+    <div className="min-h-[120px] px-3 py-2 bg-white border border-red-200 rounded text-sm text-gray-800 overflow-y-auto">
+      {rawText ? (
+        <pre className="whitespace-pre-wrap text-xs leading-relaxed">
+          {rawText}
+        </pre>
+      ) : (
+        <span className="text-gray-500 italic">No raw text available</span>
+      )}
+    </div>
+  </div>
+</div>
+```
+
+**Benefits**:
+- ✅ Provides clear visibility of complete raw OCR text
+- ✅ Maintains visual consistency with existing core fields
+- ✅ Improves debugging and verification capabilities
+- ✅ Better user experience for reviewing extracted data
+- ✅ Responsive design for both desktop and mobile layouts
+
+**Testing**:
+- ✅ Component renders correctly in both desktop and mobile views
+- ✅ Styling matches existing core fields components exactly
+- ✅ Text overflow handled properly with scrollable area
+- ✅ Fallback state displays correctly when no raw text is available
+- ✅ Component integrates seamlessly with existing layout
+
+**Status**: ✅ **COMPLETED** - Full Raw Text component successfully added with consistent styling and responsive design.
+
+---
+
+### 2025-08-05 21:25 - Python Dependencies Fix (psutil Module)
+
+**Issue**: Backend was throwing `ModuleNotFoundError: No module named 'psutil'` when executing browser-use agent tasks.
+
+**Root Cause**: The browser-use Python package requires `psutil>=7.0.0` as a dependency, but the Python environment where the agent was running didn't have the required dependencies installed.
+
+**Fix Applied**:
+- Created a Python virtual environment in `backend/browser-use/.venv` using `uv` package manager
+- Set Python version to 3.11.7 (where `uv` is available) instead of 3.12
+- Installed all dependencies from `pyproject.toml` using `uv sync`
+- Updated `backend/src/services/pythonBridge.js` to use the virtual environment's Python executable
+- Modified the Python process spawn configuration to include virtual environment paths
+
+**Files Modified**:
+- `backend/src/services/pythonBridge.js` - Updated to use virtual environment Python executable
+- `backend/browser-use/.venv/` - Created virtual environment with all dependencies
+
+**Commands Executed**:
+```bash
+cd backend/browser-use
+pyenv local 3.11.7
+uv venv --python 3.11
+source .venv/bin/activate
+uv sync
+```
+
+**Testing**: 
+- Verified `psutil==7.0.0` is installed in virtual environment
+- Confirmed `browser-use` module can be imported successfully
+- Tested Python bridge can spawn processes with virtual environment Python
+
+---
+
+### 2025-08-05 21:20 - Complete Backend Process Import Fix
+
+**Issue**: Backend was throwing `ReferenceError: Cannot access 'process' before initialization` when clicking "Start Task" button.
+
+**Root Cause**: Multiple files were using `process.env` and `process.cwd()` without importing the `process` module in ES modules.
+
+**Fix Applied**:
+- Added `import process from 'process'` to all files using process variables:
+  - `backend/src/services/pythonBridge.js` - Fixed variable naming conflict and added process import
+  - `backend/src/services/browserService.js` - Added process import
+  - `backend/src/index.js`
+
+---
+
+### 2025-08-14 15:45 - OCR Environment Variables Fix
+
+**Issue**: OCR functionality was failing with "Python script returned empty output" error when processing ticket uploads.
+
+**Root Cause**: The Node.js backend was calling Python OCR scripts using `execSync()` but missing the `env: process.env` parameter, causing the Python subprocess to not inherit environment variables including Azure Document Intelligence credentials.
+
+**Symptoms**:
+- Frontend could upload tickets successfully
+- Backend received files and attempted OCR processing
+- Python script executed but couldn't access Azure credentials
+- Script failed silently, returning empty output
+- Node.js interpreted empty output as OCR failure
+
+**Fix Applied**:
+- Added `env: process.env` parameter to both `execSync()` calls in `backend/src/routes/tickets.js`
+- Fixed the main OCR processing function (`runPythonOCR`)
+- Fixed the OCR test endpoint (`/test-ocr`)
+- Ensured Python subprocess inherits all environment variables from Node.js process
+
+**Files Modified**:
+- `backend/src/routes/tickets.js` - Added `env: process.env` to both execSync calls
+
+**Code Changes**:
+```javascript
+// Before (missing environment variables)
+const result = execSync(pythonCode, { 
+  encoding: 'utf8',
+  stdio: ['pipe', 'pipe', 'pipe'],
+  shell: true,
+  cwd: backendDir
+})
+
+// After (with environment variables)
+const result = execSync(pythonCode, { 
+  encoding: 'utf8',
+  stdio: ['pipe', 'pipe', 'pipe'],
+  shell: true,
+  cwd: backendDir,
+  env: process.env // Pass all environment variables to Python subprocess
+})
+```
+
+**Why This Fixes the Issue**:
+- Node.js loads environment variables from `.env` file
+- Python subprocess now inherits these variables
+- Azure Document Intelligence client can access credentials
+- OCR processing completes successfully
+- Frontend receives extracted ticket data
+
+**Testing**:
+- OCR module imports successfully in Python environment
+- Azure credentials are accessible in Python subprocess
+- Ticket uploads should now process through OCR successfully
+- Test endpoint `/api/v1/tickets/test-ocr` should work
+
+**Status**: ✅ **COMPLETED** - Environment variable inheritance fixed for Python OCR subprocesses.
+
+---
+
+### OCR Output Format Fix - August 14, 2025, 16:15 UTC
+
+### Issue Identified
+The Python OCR script was outputting debug messages to stdout along with JSON data, causing Node.js JSON parsing to fail with the error:
+```
+[OCR] JSON parse error: Unexpected token 'E', "[ENHANCED-O"... is not valid JSON
+```
+
+### Root Cause
+The `ocr_functionality.py` file contained multiple `print()` statements with `[ENHANCED-OCR]` prefixes that were being sent to stdout, interfering with the JSON output that Node.js expected.
+
+### Solution Implemented
+Redirected all debug print statements from stdout to stderr by adding `file=sys.stderr` parameter to all `print()` calls in the OCR functionality:
+
+**Files Modified:**
+- `backend/src/services/ocr_functionality.py`
+
+**Changes Made:**
+1. Fixed indentation issues that were introduced during the edit process
+2. Redirected all `[ENHANCED-OCR]` debug messages to stderr
+3. Kept only the final JSON response on stdout
+
+**Key Changes:**
+- `print(f"[ENHANCED-OCR] Processing receipt: {image_path}")` → `print(f"[ENHANCED-OCR] Processing receipt: {image_path}", file=sys.stderr)`
+- `print(f"[ENHANCED-OCR] Extracting total amount")` → `print(f"[ENHANCED-OCR] Extracting total amount", file=sys.stderr)`
+- All other debug prints redirected similarly
+
+### How It Works Now
+1. **Python Script Output:**
+   - **stdout**: Clean JSON response only (e.g., `{"Mesa_Folio": "2194722", ...}`)
+   - **stderr**: All debug messages (e.g., `[ENHANCED-OCR] Processing receipt...`)
+
+2. **Node.js Integration:**
+   - Captures stdout for JSON parsing
+   - Ignores stderr (debug messages)
+   - No more JSON parsing errors
+
+### Testing Results
+- OCR script now outputs clean JSON to stdout
+- Debug messages properly redirected to stderr
+- Node.js can successfully parse the JSON response
+- OCR functionality restored and working
+
+### Benefits
+- **Immediate Fix**: Resolves the JSON parsing error that was breaking OCR uploads
+- **Maintains Debugging**: Debug information is still available in stderr for troubleshooting
+- **Clean Integration**: Node.js receives only the data it needs for processing
+- **No Performance Impact**: Same functionality, just cleaner output separation
+
+### Files Affected
+- `backend/src/services/ocr_functionality.py` - Fixed all print statements
+- `backend/src/services/run_ocr.py` - Already properly configured (no changes needed)
+
+### Status
+✅ **COMPLETED** - OCR output format fixed and tested
+✅ **WORKING** - JSON parsing now successful
+✅ **READY** - OCR upload functionality restored
+
+---
+
+### 2025-01-27 15:45 - Database Schema Update: Added Missing Email and Phone Number Columns
+
+**Date & Time**: 2025-01-27 15:45
+
+**Summary**: Resolved critical database schema mismatch by adding missing `email` and `phone_number` columns to the `user_profiles` table, making `phone_number` mandatory. This fixes the user registration issues caused by schema misalignment.
+
+**Root Causes Identified**:
+1. **Missing Database Columns**: The `user_profiles` table was missing `email` and `phone_number` columns that the application code expected
+2. **Schema Drift**: Multiple schema files existed with conflicting definitions
+3. **Type Mismatches**: TypeScript types included fields that didn't exist in the actual database
+4. **Function Parameter Mismatch**: Database function was called with parameters for non-existent columns
 
 **Changes Made**:
 
-1. **Updated `frontend/components/DashboardDualPane.tsx`**:
-   - **Added `handleStopTask` function**: New async function that calls `ApiService.stopTask()` to stop the running task
-   - **Enhanced Task Control UI**: Added a Stop button alongside the existing Reset button when task is running
-   - **Improved Button Layout**: Changed from single Reset button to flex layout with both Stop and Reset buttons
-   - **Added User Feedback**: Stop button shows success/error messages with auto-clear functionality
-   - **Better Error Handling**: Proper error handling with status rollback on failure
-   - **Visual Improvements**: Stop button uses destructive variant with stop emoji for clear identification
+1. **Updated Database Schema** (`supabase_schema.sql`):
+   - Added `email VARCHAR(255) NOT NULL` column
+   - Added `phone_number VARCHAR(20) NOT NULL` column
+   - Updated `get_user_profile` function to include new columns
+   - Added proper column comments
 
-2. **Button Functionality**:
-   - **Stop Button**: Calls `ApiService.stopTask(taskId)` to terminate the running task
-   - **Visual State**: Updates task status to 'idle' when stop is successful
-   - **User Feedback**: Shows success message with abbreviated task ID
-   - **Error Recovery**: Rolls back to 'running' status if stop operation fails
-   - **Message Management**: Auto-clears success messages after 5 seconds, errors after 8 seconds
+2. **Created Migration Script** (`migration_add_email_phone.sql`):
+   - Adds missing columns to existing databases
+   - Populates email from auth.users table for existing records
+   - Provides guidance for making phone_number NOT NULL
 
-3. **Updated `backend/src/routes/tasks.js`**:
-   - **Added Stop Endpoint**: New `PUT /api/v1/tasks/:taskId/stop` route handler
-   - **Consistent API Pattern**: Follows same structure as pause/resume endpoints
-   - **Proper Response Format**: Returns standardized JSON response with task_id and status
-   - **Documentation**: Added comprehensive JSDoc comments for the new endpoint
-   - **Task Management**: Placeholder for real implementation with proper task stopping logic
+3. **Created Database Function** (`create_user_profile_function.sql`):
+   - Complete function that matches the new schema
+   - Includes proper error handling and validation
+   - Returns all profile fields including new columns
+   - Has proper security permissions
 
-4. **UI/UX Improvements**:
-   - **Two-Button Layout**: Stop (destructive red) and Reset (outline) buttons side by side
-   - **Clear Visual Hierarchy**: Stop button is more prominent for immediate action
-   - **Consistent Messaging**: Success/error messages match existing pattern
-   - **Responsive Design**: Button layout works on both desktop and mobile views
-   - **User Guidance**: Clear visual cues about button actions
-
-**Technical Implementation**:
-- **Frontend State Management**: Proper task state updates with rollback on errors
-- **API Integration**: Uses existing `ApiService.stopTask()` method
-- **Error Handling**: Comprehensive try-catch with user feedback
-- **Message System**: Leverages existing task message infrastructure
-- **Button States**: Proper disabled states and loading indicators
+4. **Updated Frontend Components**:
+   - **RegisterForm.tsx**: Made phone_number mandatory in validation schema, added required asterisk
+   - **auth.ts**: Removed optional handling for phone_number parameter
+   - **supabase.ts**: Made phone_number non-nullable in TypeScript types
+   - **auth.ts types**: Made phone_number mandatory in interfaces
 
 **Files Modified**:
-- `frontend/components/DashboardDualPane.tsx`
-- `backend/src/routes/tasks.js`
+- `supabase_schema.sql` - Added missing columns
+- `frontend/components/auth/RegisterForm.tsx` - Made phone_number mandatory
+- `frontend/services/auth.ts` - Removed optional phone_number handling
+- `frontend/lib/supabase.ts` - Updated TypeScript types
+- `frontend/types/auth.ts` - Made phone_number mandatory
 
-**Status**: Implementation complete - Stop button successfully added to agent task execution UI with proper backend endpoint support.
+**Files Created**:
+- `migration_add_email_phone.sql` - Database migration script
+- `create_user_profile_function.sql` - Updated database function
+- `SCHEMA_UPDATE_README.md` - Comprehensive implementation guide
 
-**Update**: Fixed Stop button visibility issue - now appears for both 'connecting' and 'running' states, with debug information to track task status.
+**Benefits**:
+- **Resolves Registration Issues**: Users can now register successfully
+- **Data Completeness**: Phone number is now mandatory and stored
+- **Type Safety**: TypeScript types match the actual database schema
+- **Consistency**: All form fields now properly align with database columns
+- **Validation**: Proper client-side validation for mandatory fields
 
-**Testing Required**:
-1. Verify Stop button appears when task is connecting or running
-2. Test stop functionality calls correct API endpoint
-3. Verify proper state management after stop operation
-4. Test error handling for failed stop operations
-5. Confirm button layout and styling on different screen sizes
-6. Validate success/error message display and auto-clearing
-7. Check debug section shows correct task status information
-
-**Clean Implementation Features**:
-- Single, clean Stop button that appears for both 'connecting' and 'running' states
-- Enhanced console logging to track status changes
-- Better error recovery with original status restoration
-- Implemented comprehensive session termination following Browserbase best practices
-
-**Session Termination Implementation**:
-- Multi-step termination process: API stop, Browserbase session termination, WebSocket disconnection
-- Added backend endpoint `POST /api/v1/sessions/:sessionId/terminate` for proper session cleanup
-- Follows Browserbase session management guidelines for graceful termination
-- Comprehensive error handling with Promise.allSettled for parallel operations
-- Complete state cleanup including task state, session ID, and live view URL
-
----
-
-### 2025-01-27 23:45 - Removed Dashboard Components as Requested
-
-**Date & Time**: 2025-01-27 23:45
-
-**Objective**: Remove specific dashboard components and containers as requested by the user to clean up the dashboard interface.
-
-**User Request**: User wanted to remove the following components from the dashboard:
-- Recent Activity section
-- System Status section  
-- Recent Tasks section
-- Create Task button at the bottom
-- Quick Actions section (replaced with Profile Management only)
-
-**Changes Made**:
-
-1. **Updated `frontend/app/(dashboard)/dashboard/page.tsx`**:
-   - **Removed System Status Card**: Eliminated the entire System Status section showing AI Agent, Browser Automation, and WebSocket status
-   - **Removed Recent Activity Card**: Eliminated the Recent Activity section displaying task completion, task started, and system update events
-   - **Removed Recent Tasks Section**: Eliminated the TaskList component that was showing recent tasks with filters and pagination
-   - **Cleaned Up Imports**: Removed unused icon imports (CheckCircle, Activity, TrendingUp, Clock) and TaskList component import
-   - **Maintained Layout**: Preserved the overall dashboard structure while removing the specified components
-
-2. **Components Removed**:
-   - **System Status**: Card showing AI Agent (Online), Browser Automation (Ready), WebSocket (Connected) with animated status indicators
-   - **Recent Activity**: Card showing task completion, task started, and system update events with timestamps
-   - **Recent Tasks**: TaskList component with search, filters, and task display functionality
-   - **Create Task Button**: This was part of the TaskList component that was removed
-   - **Quick Actions Section**: Replaced the multi-button Quick Actions with a single Profile Management card containing only the Edit Profile button
-
-3. **Preserved Components**:
-   - **Header**: Dashboard title and user profile section
-   - **Welcome Section**: Gradient welcome message with user display name
-   - **Ticket Upload Section**: OCR ticket upload functionality with dual pane support
-   - **User Profile Card**: Company and tax information display
-   - **Profile Management**: Single Edit Profile button for user profile management
-   - **Task Statistics**: TaskStats component for overview metrics
-   - **Active Tasks Progress**: TaskProgressList for monitoring running tasks
-
-**Technical Implementation**:
-- **Clean Removal**: Removed entire card components without affecting surrounding layout
-- **Import Cleanup**: Eliminated unused imports to prevent linting warnings
-- **Layout Preservation**: Maintained responsive grid structure and spacing
-- **Component Dependencies**: Removed TaskList component that was no longer needed
-
-**Files Modified**:
-- `frontend/app/(dashboard)/dashboard/page.tsx`
-
-**Status**: Implementation complete - All requested dashboard components successfully removed while maintaining dashboard functionality and layout integrity.
-
-**Result**: Dashboard now has a cleaner, more focused interface with the core functionality preserved:
-- Ticket upload and OCR processing
-- User profile management
-- Profile management (Edit Profile button only)
-- Task statistics and progress monitoring
-- Removed cluttered status, activity displays, and unnecessary action buttons
-
-**Testing Required**:
-1. Verify dashboard loads without errors after component removal
-2. Confirm layout remains responsive and properly spaced
-3. Test that remaining functionality works correctly
-4. Validate that no console errors appear from removed components
-5. Check that dashboard maintains proper visual hierarchy
-6. Ensure mobile responsiveness is maintained
-
----
-
-## Previous Updates
+**Implementation Steps**:
+1. Run migration script on existing databases

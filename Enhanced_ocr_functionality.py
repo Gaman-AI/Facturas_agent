@@ -297,7 +297,18 @@ def detect_vendor_type(merchant_name, text_content):
             if pattern in merchant_name_lower or pattern in text_lower:
                 return vendor_type
     
-    return "unknown"
+    # **WALMART DETECTION**
+    walmart_indicators = ['walmart', 'supercenter', 'bodega aurrera']
+    if any(indicator in text_lower or indicator in merchant_lower for indicator in walmart_indicators):
+        return 'walmart'
+    
+    # **WANSOFT DETECTION**
+    wansoft_indicators = ['wansoft', 'el molino', 'molino']
+    if any(indicator in text_lower or indicator in merchant_lower for indicator in wansoft_indicators):
+        print(f"[VENDOR-DETECTION] Wansoft detected! Text: '{text_lower[:100]}...', Merchant: '{merchant_lower}'", file=sys.stderr)
+        return 'wansoft'
+    
+    return 'generic'
 
 def extract_enhanced_fields(combined_data, vendor_type):
     """
@@ -311,8 +322,8 @@ def extract_enhanced_fields(combined_data, vendor_type):
         dict: Enhanced field extraction results
     """
     enhanced_fields = {
-        "store_branch_plaza": "",
-        "register_station_terminal": "",
+        "branch": "",
+        "register": "",
         "payment_type": "",
         "card_last_4_digits": "",
         "additional_info": {}
@@ -321,13 +332,13 @@ def extract_enhanced_fields(combined_data, vendor_type):
     text_content = combined_data.get("text_content", "")
     key_value_pairs = combined_data.get("extracted_fields", {}).get("key_value_pairs", [])
     
-    # Extract store/branch/plaza information
-    enhanced_fields["store_branch_plaza"] = extract_store_branch_plaza_enhanced(
+    # Extract branch information
+    enhanced_fields["branch"] = extract_branch_enhanced(
         text_content, key_value_pairs, vendor_type
     )
     
-    # Extract register/station/terminal information
-    enhanced_fields["register_station_terminal"] = extract_register_station_terminal_enhanced(
+    # Extract register information
+    enhanced_fields["register"] = extract_register_enhanced(
         text_content, key_value_pairs, vendor_type
     )
     
@@ -348,9 +359,9 @@ def extract_enhanced_fields(combined_data, vendor_type):
     
     return enhanced_fields
 
-def extract_store_branch_plaza_enhanced(text_content, key_value_pairs, vendor_type):
+def extract_branch_enhanced(text_content, key_value_pairs, vendor_type):
     """
-    Enhanced store/branch/plaza extraction using multiple data sources.
+    Enhanced branch extraction using multiple data sources.
     """
     # First, try to find in key-value pairs
     for kvp in key_value_pairs:
@@ -374,9 +385,9 @@ def extract_store_branch_plaza_enhanced(text_content, key_value_pairs, vendor_ty
     
     return ""
 
-def extract_register_station_terminal_enhanced(text_content, key_value_pairs, vendor_type):
+def extract_register_enhanced(text_content, key_value_pairs, vendor_type):
     """
-    Enhanced register/station/terminal extraction.
+    Enhanced register extraction.
     """
     # Check key-value pairs first
     for kvp in key_value_pairs:
@@ -459,658 +470,64 @@ def extract_card_last_4_digits_enhanced(text_content, key_value_pairs):
     
     return ""
 
-def extract_vendor_specific_info(text_content, key_value_pairs, vendor_type):
+def extract_wansoft_codigo_factura(text):
     """
-    Extract vendor-specific additional information.
+    Extract the "Código de facturación" from wansoft receipts.
+    
+    Args:
+        text (str): Full receipt text
+        
+    Returns:
+        str: Código de facturación, or None if not found
     """
-    additional_info = {}
+    print(f"[WANSOFT-EXTRACTION] Starting código de factura extraction", file=sys.stderr)
+    print(f"[WANSOFT-EXTRACTION] Text preview: {text[:200]}...", file=sys.stderr)
     
-    if vendor_type == "walmart":
-        # Extract Walmart-specific fields
-        additional_info["membership_number"] = extract_membership_number(text_content)
-        additional_info["store_number"] = extract_store_number(text_content)
-    
-    elif vendor_type == "costco":
-        # Extract Costco-specific fields
-        additional_info["membership_number"] = extract_membership_number(text_content)
-        additional_info["warehouse_number"] = extract_warehouse_number(text_content)
-    
-    elif vendor_type == "h-e-b":
-        # Extract H-E-B-specific fields
-        additional_info["store_location"] = extract_heb_location(text_content)
-        additional_info["promotional_info"] = extract_promotional_info(text_content)
-    
-    return additional_info
-
-def extract_membership_number(text_content):
-    """Extract membership number from text."""
+    # Enhanced patterns for wansoft código de facturación
     patterns = [
-        r'membership\s*#?\s*(\d+)',
-        r'membresia\s*#?\s*(\d+)',
-        r'member\s*#?\s*(\d+)'
+        # Standard patterns with 18 digits
+        r'(?:código de facturación|codigo de facturacion)[\s:]*(\d{18})',  # código de facturación: 250518126605018034
+        r'(?:código de factura|codigo de factura)[\s:]*(\d{18})',  # código de factura: 250518126605018034
+        r'(?:facturación|facturacion)[\s:]*(\d{18})',  # facturación: 250518126605018034
+        r'(?:código|codigo)[\s:]*(\d{18})',  # código: 250518126605018034
+        
+        # More flexible patterns for different formats
+        r'(?:código de facturación|codigo de facturacion)[\s:]*(\d{12,20})',  # Allow 12-20 digits
+        r'(?:código de factura|codigo de factura)[\s:]*(\d{12,20})',  # Allow 12-20 digits
+        r'(?:facturación|facturacion)[\s:]*(\d{12,20})',  # Allow 12-20 digits
+        r'(?:código|codigo)[\s:]*(\d{12,20})',  # Allow 12-20 digits
+        
+        # Look for patterns in the "FACTURACIÓN EN LÍNEA" section
+        r'(?:FACTURACIÓN EN LÍNEA|FACTURACION EN LINEA).*?(?:código|codigo)[\s:]*(\d{12,20})',
+        r'(?:FACTURACIÓN EN LÍNEA|FACTURACION EN LINEA).*?(?:facturación|facturacion)[\s:]*(\d{12,20})',
+        
+        # Look for patterns near the end of the receipt (where facturación info usually is)
+        r'(?:código|codigo)[\s:]*(\d{12,20})(?=.*?(?:Powered by Wansoft|Wansoft))',
+        r'(?:facturación|facturacion)[\s:]*(\d{12,20})(?=.*?(?:Powered by Wansoft|Wansoft))',
+        
+        # Look for any long number sequence that might be the código
+        r'(?:código|codigo)[\s:]*(\d{10,20})',  # Very flexible - 10-20 digits
     ]
     
-    for pattern in patterns:
-        matches = re.findall(pattern, text_content, re.IGNORECASE)
-        if matches:
-            return matches[0]
-    
-    return ""
-
-def extract_store_number(text_content):
-    """Extract store number from text."""
-    patterns = [
-        r'store\s*#?\s*(\d+)',
-        r'tienda\s*#?\s*(\d+)'
-    ]
-    
-    for pattern in patterns:
-        matches = re.findall(pattern, text_content, re.IGNORECASE)
-        if matches:
-            return matches[0]
-    
-    return ""
-
-def extract_warehouse_number(text_content):
-    """Extract warehouse number from text."""
-    patterns = [
-        r'warehouse\s*#?\s*(\d+)',
-        r'almacen\s*#?\s*(\d+)'
-    ]
-    
-    for pattern in patterns:
-        matches = re.findall(pattern, text_content, re.IGNORECASE)
-        if matches:
-            return matches[0]
-    
-    return ""
-
-def extract_heb_location(text_content):
-    """Extract H-E-B specific location information."""
-    patterns = [
-        r'heb\s+([^,\n]+)',
-        r'las\s+lomas',
-        r'san\s+luis\s+potosi'
-    ]
-    
-    for pattern in patterns:
-        matches = re.findall(pattern, text_content, re.IGNORECASE)
-        if matches:
-            return matches[0].strip()
-    
-    return ""
-
-def extract_promotional_info(text_content):
-    """Extract promotional information from text."""
-    promotional_keywords = [
-        "promocion", "promotion", "descuento", "discount", 
-        "oferta", "offer", "rebate", "cashback"
-    ]
-    
-    lines = text_content.split('\n')
-    promotional_lines = []
-    
-    for line in lines:
-        if any(keyword in line.lower() for keyword in promotional_keywords):
-            promotional_lines.append(line.strip())
-    
-    return " | ".join(promotional_lines) if promotional_lines else ""
-
-def select_best_total(enhanced_total, azure_total, confidence_scores):
-    """
-    Select the best total amount based on confidence scores and validation.
-    
-    Args:
-        enhanced_total: Total from enhanced pattern detection
-        azure_total: Total from Azure structured extraction
-        confidence_scores: Confidence scores from different models
-        
-    Returns:
-        str: Best total amount
-    """
-    # If we have both totals, compare them
-    if enhanced_total and azure_total:
-        try:
-            enhanced_float = float(enhanced_total)
-            azure_float = float(azure_total)
-            
-            # If they're very close (within 1 cent), use the one with higher confidence
-            if abs(enhanced_float - azure_float) <= 0.01:
-                receipt_confidence = confidence_scores.get("receipt", 0.5)
-                document_confidence = confidence_scores.get("document", 0.5)
-                
-                if receipt_confidence > document_confidence:
-                    print(f"[ENHANCED-OCR] Using Azure total (higher confidence): {azure_total}", file=sys.stderr)
-                    return azure_total
-                else:
-                    print(f"[ENHANCED-OCR] Using enhanced total (higher confidence): {enhanced_total}", file=sys.stderr)
-                    return enhanced_total
-            else:
-                # If they differ significantly, use the one that seems more reasonable
-                # (usually the larger one for receipts, but this could be vendor-specific)
-                if enhanced_float > azure_float:
-                    print(f"[ENHANCED-OCR] Using enhanced total (higher amount): {enhanced_total}", file=sys.stderr)
-                    return enhanced_total
-                else:
-                    print(f"[ENHANCED-OCR] Using Azure total (higher amount): {azure_total}", file=sys.stderr)
-                    return azure_total
-        except (ValueError, TypeError):
-            # If conversion fails, use enhanced total as fallback
-            print(f"[ENHANCED-OCR] Using enhanced total (fallback): {enhanced_total}", file=sys.stderr)
-            return enhanced_total
-    
-    # If only one total is available, use it
-    elif enhanced_total:
-        print(f"[ENHANCED-OCR] Using enhanced total (only option): {enhanced_total}", file=sys.stderr)
-        return enhanced_total
-    elif azure_total:
-        print(f"[ENHANCED-OCR] Using Azure total (only option): {azure_total}", file=sys.stderr)
-        return azure_total
-    else:
-        print(f"[ENHANCED-OCR] No total amount detected", file=sys.stderr)
-        return ""
-
-def extract_ticket_number_patterns(text):
-    """
-    Enhanced ticket number extraction using pattern-based detection.
-    Looks for the longest number in the receipt which is likely the ticket number.
-    
-    Args:
-        text (str): Full receipt text
-        
-    Returns:
-        str: Detected ticket number or None
-    """
-    # **PATTERN 1: Long continuous numbers (15+ digits)**
-    # Example: 11122521255212552254
-    continuous_pattern = r'\b\d{15,}\b'
-    continuous_matches = re.findall(continuous_pattern, text)
-    
-    if continuous_matches:
-        # Get the longest continuous number
-        longest_continuous = max(continuous_matches, key=len)
-        return longest_continuous
-    
-    # **PATTERN 2: Grouped numbers with spaces (4+ groups of 3+ digits)**
-    # Examples: 11111 22222 33333 44444, 1111 2222 3333 4444
-    grouped_pattern = r'\b(?:\d{3,}\s+){3,}\d{3,}\b'
-    grouped_matches = re.findall(grouped_pattern, text)
-    
-    if grouped_matches:
-        # Convert grouped numbers to continuous format and find longest
-        processed_grouped = []
-        for match in grouped_matches:
-            # Remove spaces to get continuous number
-            continuous_number = re.sub(r'\s+', '', match.strip())
-            if len(continuous_number) >= 12:  # Minimum length for ticket numbers
-                processed_grouped.append(continuous_number)
-        
-        if processed_grouped:
-            longest_grouped = max(processed_grouped, key=len)
-            return longest_grouped
-    
-    # **PATTERN 3: Numbers with separators (dashes, dots, etc.)**
-    # Examples: 1111-2222-3333-4444, 111.222.333.444
-    separator_pattern = r'\b\d{3,}(?:[-.\s]\d{3,}){2,}\b'
-    separator_matches = re.findall(separator_pattern, text)
-    
-    if separator_matches:
-        processed_separator = []
-        for match in separator_matches:
-            # Remove all separators to get continuous number
-            continuous_number = re.sub(r'[-.\s]+', '', match.strip())
-            if len(continuous_number) >= 10:  # Minimum length for ticket numbers
-                processed_separator.append(continuous_number)
-        
-        if processed_separator:
-            longest_separator = max(processed_separator, key=len)
-            return longest_separator
-    
-    # **PATTERN 4: Fallback - longest single number (8+ digits)**
-    # Look for any number with 8 or more digits as potential ticket number
-    fallback_pattern = r'\b\d{8,}\b'
-    fallback_matches = re.findall(fallback_pattern, text)
-    
-    if fallback_matches:
-        # Filter out common non-ticket numbers (amounts, dates, etc.)
-        filtered_matches = []
-        for match in fallback_matches:
-            # Skip if it looks like a monetary amount (ends with 00 and has decimal-like pattern)
-            if match.endswith('00') and len(match) <= 10:
-                continue
-            # Skip if it looks like a date format
-            if len(match) == 8 and (match.startswith('20') or match.startswith('19')):
-                continue
-            filtered_matches.append(match)
-        
-        if filtered_matches:
-            longest_fallback = max(filtered_matches, key=len)
-            return longest_fallback
-    
-    return None
-
-def extract_total_patterns(text):
-    """
-    Enhanced total amount extraction using multiple pattern detection strategies.
-    Returns only the most accurate total amount found.
-    
-    Args:
-        text (str): Full receipt text
-        
-    Returns:
-        float: Detected total amount or None
-    """
-    print(f"[ENHANCED-OCR] Extracting total amount", file=sys.stderr)
-    
-    # **PATTERN 1: Exact TOTAL label detection (highest priority)**
-    total_patterns = [
-        r'total[\s:]*\$?\s*([0-9]+[.,][0-9]{2})',  # TOTAL: $2997.00, Total 2997.00
-        r'total[\s:]*\$?\s*([0-9]+)',  # TOTAL: $2997, Total 2997
-        r'\$?\s*([0-9]+[.,][0-9]{2})\s*total',  # $2997.00 TOTAL, 2997.00 TOTAL
-        r'\$?\s*([0-9]+)\s*total',  # $2997 TOTAL, 2997 TOTAL
-    ]
-    
-    exact_totals = []
-    for pattern in total_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        for match in matches:
-            try:
-                amount_str = match.replace(',', '.')
-                amount = float(amount_str)
-                if 1.0 <= amount <= 100000.0:  # Reasonable receipt range
-                    exact_totals.append(amount)
-            except ValueError:
-                continue
-    
-    if exact_totals:
-        # If multiple exact totals found, prefer the largest (most likely final total)
-        selected_total = max(exact_totals)
-        print(f"[ENHANCED-OCR] Found exact TOTAL: {selected_total}", file=sys.stderr)
-        return selected_total
-    
-    # **PATTERN 2: Labeled total variants (medium priority)**
-    labeled_variants = [
-        r'(?:gran total|total general|total final)[\s:]*\$?\s*([0-9]+[.,][0-9]{2})',
-        r'(?:amount due|amount|due)[\s:]*\$?\s*([0-9]+[.,][0-9]{2})',
-        r'(?:pay|payment|payable)[\s:]*\$?\s*([0-9]+[.,][0-9]{2})',
-    ]
-    
-    labeled_amounts = []
-    for pattern in labeled_variants:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        for match in matches:
-            try:
-                amount_str = match.replace(',', '.')
-                amount = float(amount_str)
-                if 1.0 <= amount <= 100000.0:
-                    labeled_amounts.append(amount)
-            except ValueError:
-                continue
-    
-    if labeled_amounts:
-        # Get the largest labeled amount
-        max_amount = max(labeled_amounts)
-        print(f"[ENHANCED-OCR] Found labeled total: {max_amount}", file=sys.stderr)
-        return max_amount
-    
-    # **PATTERN 3: End-portion analysis (lower priority)**
-    # Look at the last portion of the receipt for total amounts
-    end_portion = text[-200:] if len(text) > 200 else text
-    
-    # Find monetary amounts in the end portion
-    end_pattern = r'(?:\$\s*)?([0-9]+[.,][0-9]{2})(?:\s*\$)?'
-    end_matches = re.findall(end_pattern, end_portion)
-    
-    end_amounts = []
-    for match in end_matches:
-        try:
-            amount_str = match.replace(',', '.')
-            amount = float(amount_str)
-            # More restrictive range for end-portion detection
-            if 50.0 <= amount <= 50000.0:  # Avoid small amounts like tax/change
-                end_amounts.append(amount)
-        except ValueError:
-            continue
-    
-    if end_amounts:
-        # For end-portion, prefer amounts that appear multiple times or are largest
-        from collections import Counter
-        amount_counts = Counter(end_amounts)
-        
-        # If an amount appears multiple times, it's likely the total
-        for amount, count in amount_counts.most_common():
-            if count > 1:
-                print(f"[ENHANCED-OCR] Found repeated total: {amount}", file=sys.stderr)
-                return amount
-        
-        # Otherwise, return largest end-portion amount
-        max_end_amount = max(end_amounts)
-        print(f"[ENHANCED-OCR] Found end-portion total: {max_end_amount}", file=sys.stderr)
-        return max_end_amount
-    
-    # **PATTERN 4: Fallback - more conservative approach**
-    # Find larger monetary amounts but be very selective
-    conservative_pattern = r'(?:\$\s*)?([0-9]+[.,][0-9]{2})(?:\s*\$)?'
-    all_matches = re.findall(conservative_pattern, text)
-    
-    fallback_amounts = []
-    for match in all_matches:
-        try:
-            amount_str = match.replace(',', '.')
-            amount = float(amount_str)
-            # Very conservative range - avoid small amounts and huge amounts
-            if 100.0 <= amount <= 25000.0:  # Focus on reasonable receipt totals
-                fallback_amounts.append(amount)
-        except ValueError:
-            continue
-    
-    if fallback_amounts:
-        # Get the most common amount in the reasonable range
-        from collections import Counter
-        amount_counts = Counter(fallback_amounts)
-        
-        # Prefer amounts that appear multiple times
-        for amount, count in amount_counts.most_common(3):  # Top 3 most common
-            if count >= 2:  # Appears at least twice
-                print(f"[ENHANCED-OCR] Found repeated total: {amount}", file=sys.stderr)
-                return amount
-        
-        # If no repeated amounts, get largest in reasonable range
-        largest_fallback = max(fallback_amounts)
-        print(f"[ENHANCED-OCR] Found fallback total: {largest_fallback}", file=sys.stderr)
-        return largest_fallback
-    
-    print(f"[ENHANCED-OCR] No suitable total amount found", file=sys.stderr)
-    return None
-
-def extract_costco_specific_info(text):
-    """
-    Costco-specific information extraction.
-    For Costco: Ticket ID is the main identifier, Folio is secondary.
-    
-    Args:
-        text (str): Full receipt text
-        
-    Returns:
-        dict: Costco-specific ticket and folio information
-    """
-    result = {'ticket_id': None, 'folio': None}
-    
-    # **COSTCO TICKET ID PATTERNS**
-    # Costco often uses different formats for ticket identification
-    ticket_patterns = [
-        r'(?:ticket|receipt|recibo)[\s#:]*(\d{8,20})',  # Ticket: 12345678901234
-        r'(?:ref|reference|referencia)[\s#:]*(\d{8,20})',  # Ref: 12345678901234
-        r'(?:transaction|trans|transaccion)[\s#:]*(\d{8,20})',  # Transaction: 12345678901234
-        r'(?:order|orden)[\s#:]*(\d{8,20})',  # Order: 12345678901234
-        r'(?:^|\n)(\d{12,20})(?=\s*(?:\n|$))',  # Long number on its own line
-    ]
-    
-    # Try pattern-based detection first
-    for pattern in ticket_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE | re.MULTILINE)
-        if matches:
-            # Get the longest match (likely the main ticket ID)
-            longest_match = max(matches, key=len)
-            if len(longest_match) >= 10:  # Minimum length for Costco ticket
-                result['ticket_id'] = longest_match
-                break
-    
-    # If no specific ticket found, use pattern-based detection
-    if not result['ticket_id']:
-        pattern_ticket = extract_ticket_number_patterns(text)
-        if pattern_ticket:
-            result['ticket_id'] = pattern_ticket
-    
-    # **COSTCO FOLIO PATTERNS**
-    # Costco folio is often a shorter number
-    folio_patterns = [
-        r'(?:folio|fol)[\s#:]*(\d{4,12})',  # Folio: 123456
-        r'(?:receipt\s+#|recibo\s+#)[\s]*(\d{4,12})',  # Receipt # 123456
-        r'(?:store|tienda)[\s#:]*(\d{4,8})',  # Store: 1234
-        r'(?:terminal|term)[\s#:]*(\d{3,8})',  # Terminal: 123
-    ]
-    
-    for pattern in folio_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        if matches:
-            # Get first reasonable folio match
-            for match in matches:
-                if len(match) >= 4 and match != result['ticket_id']:
-                    result['folio'] = match
-                    break
-            if result['folio']:
-                break
-    
-    # **FALLBACK: Find secondary number if folio not found**
-    if not result['folio']:
-        # Look for shorter numbers that could be folios
-        secondary_numbers = re.findall(r'\b(\d{4,8})\b', text)
-        for num in secondary_numbers:
-            if num != result['ticket_id'] and len(num) >= 4:
-                result['folio'] = num
-                break
-    
-    return result
-
-def extract_store_branch_plaza(text, merchant_name=""):
-    """
-    Extract store, branch, or plaza information from receipt text.
-    
-    Args:
-        text (str): Full receipt text
-        merchant_name (str): Detected merchant name for context
-        
-    Returns:
-        str: Detected store/branch/plaza information or None
-    """
-    text_lower = text.lower()
-    
-    # **PATTERN 1: Direct store/branch labels**
-    store_patterns = [
-        r'(?:store|tienda|sucursal)[\s:]*([^\n\r]{2,30})',  # Store: Downtown Mall
-        r'(?:branch|rama|sucursal)[\s:]*([^\n\r]{2,30})',   # Branch: North Plaza
-        r'(?:plaza|mall|centro)[\s:]*([^\n\r]{2,30})',      # Plaza: Fashion Center
-        r'(?:location|ubicacion)[\s:]*([^\n\r]{2,30})',     # Location: Main Street
-        r'(?:address|direccion)[\s:]*([^\n\r]{2,30})',      # Address: 123 Main St
-    ]
-    
-    for pattern in store_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        if matches:
-            # Clean and validate the match
-            for match in matches:
-                cleaned = re.sub(r'[^\w\s\-\.]', '', match.strip())
-                if len(cleaned) >= 3 and not cleaned.isdigit():
-                    return cleaned
-    
-    # **PATTERN 2: Store numbers and codes**
-    store_code_patterns = [
-        r'(?:store|tienda)[\s#]*(\d{2,4})',           # Store #123
-        r'(?:branch|rama)[\s#]*(\d{2,4})',            # Branch #456
-        r'(?:sucursal)[\s#]*(\d{2,4})',               # Sucursal #789
-        r'(?:store|tienda)[\s-]*([A-Z]{2,4})',        # Store-ABC
-        r'(?:branch|rama)[\s-]*([A-Z]{2,4})',         # Branch-XYZ
-    ]
-    
-    for pattern in store_code_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        if matches:
-            return f"Store {matches[0]}"
-    
-    # **PATTERN 3: Address-based detection**
-    address_patterns = [
-        r'(\d{1,4}\s+[A-Za-z\s]{2,20}(?:street|st|avenue|ave|road|rd|plaza|mall))',
-        r'([A-Za-z\s]{2,20}(?:street|st|avenue|ave|road|rd|plaza|mall))',
-        r'([A-Za-z\s]{2,20}(?:north|south|east|west|n|s|e|w))',
-    ]
-    
-    for pattern in address_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
+    for i, pattern in enumerate(patterns):
+        matches = re.findall(pattern, text, re.IGNORECASE | re.DOTALL)
         if matches:
             for match in matches:
-                cleaned = match.strip()
-                if len(cleaned) >= 5:
-                    return cleaned
-    
-    return None
-
-def extract_register_station_terminal(text):
-    """
-    Extract register, station, or terminal information from receipt text.
-    
-    Args:
-        text (str): Full receipt text
-        
-    Returns:
-        str: Detected register/station/terminal information or None
-    """
-    text_lower = text.lower()
-    
-    # **PATTERN 1: Direct register/terminal labels**
-    register_patterns = [
-        r'(?:register|registro|caja)[\s:]*(\d{1,4})',           # Register: 1
-        r'(?:terminal|term)[\s:]*(\d{1,4})',                    # Terminal: 2
-        r'(?:station|estacion)[\s:]*(\d{1,4})',                 # Station: 3
-        r'(?:pos|point of sale)[\s:]*(\d{1,4})',                # POS: 4
-        r'(?:caja|cashier)[\s:]*(\d{1,4})',                     # Caja: 5
-    ]
-    
-    for pattern in register_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        if matches:
-            return f"Register {matches[0]}"
-    
-    # **PATTERN 2: Standalone register numbers**
-    standalone_patterns = [
-        r'\b(?:reg|terminal|term|caja)[\s]*(\d{1,4})\b',        # REG 1, TERM 2
-        r'\b(\d{1,4})[\s]*(?:reg|terminal|term|caja)\b',        # 1 REG, 2 TERM
-    ]
-    
-    for pattern in standalone_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        if matches:
-            return f"Register {matches[0]}"
-    
-    # **PATTERN 3: Context-based detection**
-    # Look for numbers that appear near register-related keywords
-    context_pattern = r'(?:register|terminal|station|caja|pos)[\s\w]*?(\d{1,4})'
-    matches = re.findall(context_pattern, text, re.IGNORECASE)
-    if matches:
-        return f"Register {matches[0]}"
-    
-    return None
-
-def extract_payment_type(text):
-    """
-    Extract payment type information from receipt text.
-    
-    Args:
-        text (str): Full receipt text
-        
-    Returns:
-        str: Detected payment type or None
-    """
-    text_lower = text.lower()
-    
-    # **PATTERN 1: Direct payment method labels**
-    payment_patterns = [
-        r'(?:payment method|metodo de pago|forma de pago)[\s:]*([^\n\r]{2,20})',
-        r'(?:paid by|pagado con|pago con)[\s:]*([^\n\r]{2,20})',
-        r'(?:card type|tipo de tarjeta)[\s:]*([^\n\r]{2,20})',
-        r'(?:credit|debit|cash|efectivo|tarjeta)[\s:]*([^\n\r]{2,20})',
-    ]
-    
-    for pattern in payment_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        if matches:
-            for match in matches:
-                cleaned = match.strip()
-                if len(cleaned) >= 2:
-                    return cleaned
-    
-    # **PATTERN 2: Common payment method keywords**
-    payment_keywords = {
-        'credit': ['credit', 'credito', 'visa', 'mastercard', 'amex', 'american express'],
-        'debit': ['debit', 'debito', 'debit card', 'tarjeta de debito'],
-        'cash': ['cash', 'efectivo', 'dinero', 'billete'],
-        'mobile': ['mobile', 'mobil', 'phone', 'celular', 'apple pay', 'google pay'],
-        'gift': ['gift', 'regalo', 'gift card', 'tarjeta de regalo'],
-        'check': ['check', 'cheque', 'chequera']
-    }
-    
-    for payment_type, keywords in payment_keywords.items():
-        for keyword in keywords:
-            if keyword in text_lower:
-                return payment_type.title()
-    
-    # **PATTERN 3: Card brand detection**
-    card_brands = ['visa', 'mastercard', 'amex', 'american express', 'discover']
-    for brand in card_brands:
-        if brand in text_lower:
-            return f"{brand.title()} Card"
-    
-    return None
-
-def extract_card_last_4_digits(text):
-    """
-    Extract the last 4 digits of a payment card from receipt text.
-    
-    Args:
-        text (str): Full receipt text
-        
-    Returns:
-        str: Detected last 4 digits or None
-    """
-    # **PATTERN 1: Standard card format (XXXX)**
-    card_patterns = [
-        r'(?:card|tarjeta)[\s:]*\*{4,12}(\d{4})',           # Card: ****1234
-        r'(\*{4,12}\d{4})',                                   # ****1234
-        r'(?:ending in|termina en)[\s:]*(\d{4})',             # Ending in 1234
-        r'(?:last|ultimos)[\s:]*(\d{4})',                     # Last 1234
-        r'(?:card|tarjeta)[\s:]*(\d{4})',                     # Card 1234
-    ]
-    
-    for pattern in card_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        if matches:
-            # Validate that it's actually 4 digits
-            for match in matches:
-                if match.isdigit() and len(match) == 4:
+                print(f"[WANSOFT-EXTRACTION] Pattern {i} found match: {match}", file=sys.stderr)
+                if len(match) >= 10 and match.isdigit():  # At least 10 digits
+                    print(f"[WANSOFT-EXTRACTION] Returning código de factura: {match}", file=sys.stderr)
                     return match
     
-    # **PATTERN 2: Masked card numbers with different lengths**
-    masked_patterns = [
-        r'(\*{8,12}\d{4})',                                   # ********1234
-        r'(\d{4}\*{8,12})',                                   # 1234********
-        r'(\*{4,8}\d{4}\*{4,8})',                            # ****1234****
-    ]
+    # If no patterns found, try to find any long number sequence that might be the código
+    # Look for numbers that appear in the context of facturación
+    facturacion_context = re.search(r'(?:FACTURACIÓN EN LÍNEA|FACTURACION EN LINEA|facturación|facturacion).*?(\d{12,20})', text, re.IGNORECASE | re.DOTALL)
+    if facturacion_context:
+        match = facturacion_context.group(1)
+        print(f"[WANSOFT-EXTRACTION] Found código in facturación context: {match}", file=sys.stderr)
+        if len(match) >= 10 and match.isdigit():
+            return match
     
-    for pattern in masked_patterns:
-        matches = re.findall(pattern, text)
-        if matches:
-            # Extract the 4 digits from the masked pattern
-            for match in matches:
-                digits = re.findall(r'\d{4}', match)
-                if digits:
-                    return digits[0]
-    
-    # **PATTERN 3: Context-based 4-digit detection**
-    # Look for 4-digit numbers near card-related keywords
-    context_patterns = [
-        r'(?:card|tarjeta|credit|debit)[\s\w]*?(\d{4})',
-        r'(\d{4})[\s\w]*(?:card|tarjeta|credit|debit)',
-    ]
-    
-    for pattern in context_patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        if matches:
-            for match in matches:
-                if match.isdigit() and len(match) == 4:
-                    # Additional validation: avoid common non-card 4-digit patterns
-                    if not (match.startswith('00') or match.startswith('99')):
-                        return match
-    
+    print(f"[WANSOFT-EXTRACTION] No código de factura found", file=sys.stderr)
     return None
 
 def extract_advanced_ticket_info(text, merchant_name=""):
@@ -1143,6 +560,60 @@ def extract_advanced_ticket_info(text, merchant_name=""):
         extracted_id = costco_info['ticket_id']
         extracted_folio = costco_info['folio']
         extraction_method = 'costco_specific'
+        
+    elif vendor_type == 'wansoft':
+        print(f"[ENHANCED-OCR] Using Wansoft-specific extraction", file=sys.stderr)
+        # For Wansoft: Extract código de facturación and use standard ID/folio extraction
+        try:
+            # Extract código de facturación first
+            codigo_factura = extract_wansoft_codigo_factura(text)
+            
+            enhanced_prompt = f"""Extract the ID and Folio numbers from the Wansoft receipt text. Return ONLY a JSON object with fields 'id' and 'folio'.
+
+WANSOFT SPECIFIC DETECTION RULES:
+- Look for "Movimiento" number as the main ID (usually 6-12 digits)
+- Look for "Orden" number as potential folio (usually 2-4 digits)
+- The receipt may have "Ticket de Pagado" with transaction details
+- Focus on numbers that appear in the transaction details section
+- The main identifier is often the "Movimiento" number
+
+FALLBACK STRATEGY:
+- If no specific labels found, identify the longest number sequence in the receipt
+- Prioritize numbers with 6+ digits for main ID
+- Use shorter numbers (2-6 digits) for folio
+- Exclude monetary amounts and dates
+
+Receipt text: {text}"""
+
+            response = openai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": enhanced_prompt
+                    },
+                    {
+                        "role": "user",
+                        "content": text
+                    }
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.3,
+                max_tokens=256
+            )
+
+            openai_data = json.loads(response.choices[0].message.content)
+            extracted_id = openai_data.get('id')
+            extracted_folio = openai_data.get('folio')
+            extraction_method = 'wansoft_specific'
+            
+            print(f"[ENHANCED-OCR] Wansoft AI extraction completed", file=sys.stderr)
+            
+        except Exception as e:
+            print(f"[ENHANCED-OCR] Wansoft AI extraction failed, using pattern detection", file=sys.stderr)
+            extracted_id = None
+            extracted_folio = None
+            extraction_method = 'wansoft_pattern_fallback'
         
     else:
         # **STANDARD EXTRACTION for other vendors**
@@ -1242,12 +713,22 @@ Vendor context: {vendor_type} - {merchant_name}"""
                     extracted_folio = potential_folio
                     break
     
+    # Add código de factura for wansoft
+    codigo_factura = None
+    if vendor_type == 'wansoft':
+        print(f"[ENHANCED-OCR] Wansoft vendor detected, extracting código de factura", file=sys.stderr)
+        codigo_factura = extract_wansoft_codigo_factura(text)
+        print(f"[ENHANCED-OCR] Extracted código de factura: {codigo_factura}", file=sys.stderr)
+    else:
+        print(f"[ENHANCED-OCR] Vendor type is {vendor_type}, not wansoft", file=sys.stderr)
+    
     return {
         'id': extracted_id,
         'folio': extracted_folio,
         'total': enhanced_total,
         'vendor_type': vendor_type,
-        'extraction_method': extraction_method
+        'extraction_method': extraction_method,
+        'codigo_factura': codigo_factura
     }
 
 def extract_receipt_data(image_path):
@@ -1341,8 +822,8 @@ def extract_receipt_data(image_path):
     
     # **ENHANCED FIELD EXTRACTION** using combined model results
     enhanced_fields = extract_enhanced_fields(combined_data, vendor_type)
-    store_branch_plaza = enhanced_fields["store_branch_plaza"]
-    register_station_terminal = enhanced_fields["register_station_terminal"]
+    branch = enhanced_fields["branch"]
+    register = enhanced_fields["register"]
     payment_type = enhanced_fields["payment_type"]
     card_last_4_digits = enhanced_fields["card_last_4_digits"]
     additional_info = enhanced_fields["additional_info"]
@@ -1399,6 +880,10 @@ def extract_receipt_data(image_path):
         # Costco uses ID_Ticket and Mesa_Folio format
         id_field = ticket_id_field if ticket_id_field != "N/A" else "N/A"
         folio_venta = folio_field if folio_field != "N/A" else "N/A"
+    elif vendor_type == 'wansoft':
+        # Wansoft uses ID and Fol_Vta format, plus código de factura
+        id_field = ticket_id_field if ticket_id_field != "N/A" else "N/A"
+        folio_venta = folio_field if folio_field != "N/A" else "N/A"
     else:
         # Generic mapping for unknown vendors
         id_field = ticket_id_field if ticket_id_field != "N/A" else "N/A"
@@ -1415,6 +900,7 @@ def extract_receipt_data(image_path):
     print(f"  Register/Station/Terminal: {register_station_terminal}", file=sys.stderr)
     print(f"  Payment Type: {payment_type}", file=sys.stderr)
     print(f"  Card Last 4 Digits: {card_last_4_digits}", file=sys.stderr)
+    print(f"  Código de Factura: {ticket_info.get('codigo_factura', 'N/A')}", file=sys.stderr)
 
     # **RETURN COMPREHENSIVE DATA STRUCTURE for Frontend**
     return {
@@ -1431,10 +917,10 @@ def extract_receipt_data(image_path):
         "Fol_Vta": folio if vendor_type in ["costco", "oxxo"] else "N/A",
         
         # Enhanced extracted fields
-        "Store_Branch_Plaza": store_branch_plaza,
-        "store_branch_plaza": store_branch_plaza,  # Alternative field name
-        "Register_Station_Terminal": register_station_terminal,
-        "register_station_terminal": register_station_terminal,  # Alternative field name
+        "Branch": branch,
+        "branch": branch,  # Alternative field name
+        "Register": register,
+        "register": register,  # Alternative field name
         "Payment_Type": payment_type,
         "payment_type": payment_type,  # Alternative field name
         "Card_Last_4_Digits": card_last_4_digits,
@@ -1443,6 +929,10 @@ def extract_receipt_data(image_path):
         # Additional fields
         "Comercio": merchant_name,
         "comercio": merchant_name,  # Alternative field name
+        
+        # Wansoft-specific fields
+        "Codigo_Factura": ticket_info.get('codigo_factura', 'N/A') if vendor_type == 'wansoft' else "N/A",
+        "codigo_factura": ticket_info.get('codigo_factura', 'N/A') if vendor_type == 'wansoft' else "N/A",  # Alternative field name
         
         # Raw text - COMPLETE text, not truncated
         "Full_Raw_Text": full_text,

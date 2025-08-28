@@ -179,8 +179,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       folio_venta: ocrData?.Fol_Vta || ocrData?.folio_venta || null,
       
       // New enhanced fields
-      store_branch_plaza: ocrData?.Store_Branch_Plaza || ocrData?.store_branch_plaza || null,
-      register_station_terminal: ocrData?.Register_Station_Terminal || ocrData?.register_station_terminal || null,
+          branch: ocrData?.Branch || ocrData?.branch || ocrData?.Store_Branch_Plaza || ocrData?.store_branch_plaza || null,
+    register: ocrData?.Register || ocrData?.register || ocrData?.Register_Station_Terminal || ocrData?.register_station_terminal || null,
       payment_type: ocrData?.Payment_Type || ocrData?.payment_type || null,
       card_last_4_digits: ocrData?.Card_Last_4_Digits || ocrData?.card_last_4_digits || null,
       
@@ -202,8 +202,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       'Fol_Vta': ocrData?.Fol_Vta || null,
       
       // New enhanced fields with alternative names
-      Store_Branch_Plaza: ocrData?.Store_Branch_Plaza || null,
-      Register_Station_Terminal: ocrData?.Register_Station_Terminal || null,
+      Branch: ocrData?.Branch || ocrData?.Store_Branch_Plaza || null,
+      Register: ocrData?.Register || ocrData?.Register_Station_Terminal || null,
       Payment_Type: ocrData?.Payment_Type || null,
       Card_Last_4_Digits: ocrData?.Card_Last_4_Digits || null
     }

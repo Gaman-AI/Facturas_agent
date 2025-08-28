@@ -42,10 +42,11 @@ interface TicketData {
   'ID_Ticket': string
   'Mesa_Folio': string
   // Additional fields for vendor facturacion
-  'Store_Branch_Plaza': string
-  'Register_Station_Terminal': string
+  'Branch': string
+  'Register': string
   'Payment_Type': string
   'Card_Last_4_Digits': string
+  'Codigo_Factura': string
 }
 
 // Copy Button Component
@@ -153,10 +154,11 @@ export function DashboardDualPane({
     'Fol_Vta': '',
     'ID_Ticket': '',
     'Mesa_Folio': '',
-    'Store_Branch_Plaza': '',
-    'Register_Station_Terminal': '',
+    'Branch': '',
+    'Register': '',
     'Payment_Type': '',
-    'Card_Last_4_Digits': ''
+    'Card_Last_4_Digits': '',
+    'Codigo_Factura': ''
   })
   const [rawText, setRawText] = useState<string>('')
   const [isProcessing, setIsProcessing] = useState(false)
@@ -345,11 +347,17 @@ export function DashboardDualPane({
           'Fol_Vta': ocrData.folio_venta || ocrData['Fol_Vta'] || '',
           'ID_Ticket': ocrData.id_ticket || ocrData.ID_Ticket || '',
           'Mesa_Folio': ocrData.mesa_folio || ocrData.Mesa_Folio || '',
-          'Store_Branch_Plaza': ocrData.store_branch_plaza || ocrData['Store_Branch_Plaza'] || '',
-          'Register_Station_Terminal': ocrData.register_station_terminal || ocrData['Register_Station_Terminal'] || '',
+                'Branch': ocrData.branch || ocrData['Branch'] || ocrData.store_branch_plaza || ocrData['Store_Branch_Plaza'] || '',
+      'Register': ocrData.register || ocrData['Register'] || ocrData.register_station_terminal || ocrData['Register_Station_Terminal'] || '',
           'Payment_Type': ocrData.payment_type || ocrData['Payment_Type'] || '',
-          'Card_Last_4_Digits': ocrData.card_last_4_digits || ocrData['Card_Last_4_Digits'] || ''
+          'Card_Last_4_Digits': ocrData.card_last_4_digits || ocrData['Card_Last_4_Digits'] || '',
+          'Codigo_Factura': ocrData.codigo_factura || ocrData['Codigo_Factura'] || ''
         }
+        
+        console.log('🔍 [FRONTEND-DEBUG] OCR Data received:', ocrData)
+        console.log('🔍 [FRONTEND-DEBUG] Código de Factura raw data:', ocrData.codigo_factura || ocrData['Codigo_Factura'])
+        console.log('🔍 [FRONTEND-DEBUG] Vendor type:', ocrData.vendor_type)
+        console.log('🔍 [FRONTEND-DEBUG] Extracted data:', extractedData)
         
         setTicketData(extractedData)
         setOcrSuccess(true)
@@ -364,10 +372,11 @@ export function DashboardDualPane({
         console.log('  - ID Ticket:', extractedData['ID_Ticket'])
         console.log('  - Total:', extractedData['Total'])
         console.log('  - Comercio:', extractedData['Comercio'])
-        console.log('  - Store/Branch/Plaza:', extractedData['Store_Branch_Plaza'])
-        console.log('  - Register/Station/Terminal:', extractedData['Register_Station_Terminal'])
+        console.log('  - Branch:', extractedData['Branch'])
+        console.log('  - Register:', extractedData['Register'])
         console.log('  - Payment Type:', extractedData['Payment_Type'])
         console.log('  - Card Last 4 Digits:', extractedData['Card_Last_4_Digits'])
+        console.log('  - Código de Factura:', extractedData['Codigo_Factura'])
         console.log('📝 Raw text length:', rawTextData.length)
         
       } else {
@@ -406,10 +415,11 @@ export function DashboardDualPane({
         'Fol_Vta': initialTicketData.folio_venta || initialTicketData['Fol_Vta'] || '',
         'ID_Ticket': initialTicketData.id_ticket || initialTicketData.ID_Ticket || '',
         'Mesa_Folio': initialTicketData.mesa_folio || initialTicketData.Mesa_Folio || '',
-        'Store_Branch_Plaza': initialTicketData.store_branch_plaza || initialTicketData['Store_Branch_Plaza'] || '',
-        'Register_Station_Terminal': initialTicketData.register_station_terminal || initialTicketData['Register_Station_Terminal'] || '',
+              'Branch': initialTicketData.branch || initialTicketData['Branch'] || initialTicketData.store_branch_plaza || initialTicketData['Store_Branch_Plaza'] || '',
+      'Register': initialTicketData.register || initialTicketData['Register'] || initialTicketData.register_station_terminal || initialTicketData['Register_Station_Terminal'] || '',
         'Payment_Type': initialTicketData.payment_type || initialTicketData['Payment_Type'] || '',
-        'Card_Last_4_Digits': initialTicketData.card_last_4_digits || initialTicketData['Card_Last_4_Digits'] || ''
+        'Card_Last_4_Digits': initialTicketData.card_last_4_digits || initialTicketData['Card_Last_4_Digits'] || '',
+        'Codigo_Factura': initialTicketData.codigo_factura || initialTicketData['Codigo_Factura'] || ''
       }
       
       setTicketData(mappedData)
@@ -432,6 +442,8 @@ export function DashboardDualPane({
       console.log('✅ Ticket data initialized:', mappedData)
       console.log('✅ Raw text length:', rawTextData.length)
       console.log('✅ OCR success set to true')
+      console.log('🔍 [FRONTEND-DEBUG] Initial Código de Factura:', mappedData['Codigo_Factura'])
+      console.log('🔍 [FRONTEND-DEBUG] Initial Vendor type:', initialTicketData.vendor_type)
     } else {
       console.log('⚠️ No initialTicketData provided')
     }
@@ -986,20 +998,20 @@ export function DashboardDualPane({
                   placeholder="Enter Total"
                 />
                 
-                {/* Store/Branch/Plaza */}
+                {/* Branch */}
                 <FieldWithCopy
-                  label="Store/Branch/Plaza"
-                  value={ticketData['Store_Branch_Plaza'] || ''}
-                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': value }))}
-                  placeholder="Enter Store/Branch/Plaza"
+                  label="Branch"
+                  value={ticketData['Branch'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Branch': value }))}
+                  placeholder="Enter Branch"
                 />
                 
-                {/* Register/Station/Terminal */}
+                {/* Register */}
                 <FieldWithCopy
-                  label="Register/Station/Terminal"
-                  value={ticketData['Register_Station_Terminal'] || ''}
-                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': value }))}
-                  placeholder="Enter Register/Station/Terminal"
+                  label="Register"
+                  value={ticketData['Register'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Register': value }))}
+                  placeholder="Enter Register"
                 />
                 
                 {/* Payment Type */}
@@ -1048,6 +1060,14 @@ export function DashboardDualPane({
                   value={ticketData['Fol_Vta'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Fol_Vta': value }))}
                   placeholder="Enter Fol_Vta"
+                />
+                
+                {/* Codigo_Factura */}
+                <FieldWithCopy
+                  label="Código de Factura"
+                  value={ticketData['Codigo_Factura'] || ''}
+                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Codigo_Factura': value }))}
+                  placeholder="Enter Código de Factura"
                 />
                 
                 {/* Comercio - Full width */}
@@ -1369,20 +1389,20 @@ export function DashboardDualPane({
                         placeholder="Enter Total"
                       />
                       
-                      {/* Store/Branch/Plaza */}
+                      {/* Branch */}
                       <FieldWithCopy
-                        label="Store/Branch/Plaza"
-                        value={ticketData['Store_Branch_Plaza'] || ''}
-                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': value }))}
-                        placeholder="Enter Store/Branch/Plaza"
+                        label="Branch"
+                        value={ticketData['Branch'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Branch': value }))}
+                        placeholder="Enter Branch"
                       />
                       
-                      {/* Register/Station/Terminal */}
+                      {/* Register */}
                       <FieldWithCopy
-                        label="Register/Station/Terminal"
-                        value={ticketData['Register_Station_Terminal'] || ''}
-                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': value }))}
-                        placeholder="Enter Register/Station/Terminal"
+                        label="Register"
+                        value={ticketData['Register'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Register': value }))}
+                        placeholder="Enter Register"
                       />
                       
                       {/* Payment Type */}
@@ -1431,6 +1451,14 @@ export function DashboardDualPane({
                         value={ticketData['Fol_Vta'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Fol_Vta': value }))}
                         placeholder="Enter Fol_Vta"
+                      />
+                      
+                      {/* Codigo_Factura */}
+                      <FieldWithCopy
+                        label="Código de Factura"
+                        value={ticketData['Codigo_Factura'] || ''}
+                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Codigo_Factura': value }))}
+                        placeholder="Enter Código de Factura"
                       />
                       
                       {/* Comercio - Full width */}

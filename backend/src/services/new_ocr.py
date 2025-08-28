@@ -245,7 +245,7 @@ def detect_vendor_type(text, merchant_name=""):
         merchant_name (str): Detected merchant name
         
     Returns:
-        str: Detected vendor type (oxxo, walmart, costco, generic)
+        str: Detected vendor type (oxxo, walmart, costco, h-e-b, generic)
     """
     text_lower = text.lower()
     merchant_lower = merchant_name.lower()
@@ -258,6 +258,15 @@ def detect_vendor_type(text, merchant_name=""):
     
     if any(indicator in text_lower or indicator in merchant_lower for indicator in costco_indicators):
         return 'costco'
+    
+    # **H-E-B DETECTION**
+    heb_indicators = [
+        'h-e-b', 'heb', 'supermercados internacionales heb', 
+        'supermercados intern. heb', 'supermercados internacionales heb'
+    ]
+    
+    if any(indicator in text_lower or indicator in merchant_lower for indicator in heb_indicators):
+        return 'h-e-b'
     
     # **OXXO DETECTION**
     oxxo_indicators = ['oxxo', 'cadena comercial oxxo']
@@ -337,17 +346,91 @@ def extract_costco_specific_info(text):
     
     return result
 
-def extract_store_branch_plaza(text, merchant_name=""):
+def extract_heb_specific_info(text):
     """
-    Extract store, branch, or plaza information from receipt text.
+    H-E-B-specific information extraction.
+    For H-E-B: Focus on extracting sucursal (branch) information from the bottom section.
+    
+    Args:
+        text (str): Full receipt text
+        
+    Returns:
+        dict: H-E-B-specific sucursal information
+    """
+    result = {'sucursal': None}
+    
+    # **H-E-B SUCURSAL PATTERNS - Look specifically at the bottom section**
+    # Based on the receipt format, sucursal appears after store information
+    # Order matters - more specific patterns first
+    sucursal_patterns = [
+        # Pattern 1: "HEB [BRANCH NAME]" format (most common) - standalone line - PRIORITY 1
+        r'(?:^|\n)\s*heb\s+(las\s+lomas|las\s+fuentes|san\s+luis\s+potosi|monterrey|reynosa|obispado)\s*(?:\n|$)',
+        # Pattern 2: "SUCURSAL HEB [BRANCH NAME]" format
+        r'sucursal\s+heb\s+([^,\n\r]{2,30})',
+        # Pattern 3: "HEB [BRANCH NAME]" format - after store info
+        r'(?:supermercados intern\.?\s+heb[^,\n\r]*?)\n\s*heb\s+(las\s+lomas|las\s+fuentes|san\s+luis\s+potosi|monterrey|reynosa|obispado)',
+        # Pattern 4: "SUCURSAL [BRANCH NAME]" format (but exclude URLs and common words)
+        r'sucursal\s+([^,\n\r]{2,30})(?![^,\n\r]*(?:www\.|http|o en|de su|durante|mes|compra|servicio|cliente|cualquier|facturacion))',
+        # Pattern 5: Look for branch names in address context but limit capture
+        r'(?:blvd\.|avenida|calle)[^,\n\r]*?([^,\n\r]{2,20})(?=\s+(?:cp|c\.p\.|col\.|tel\.))',
+    ]
+    
+    # Try pattern-based detection
+    for pattern in sucursal_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE | re.MULTILINE)
+        if matches:
+            # Get the first match and clean it
+            match = matches[0].strip()
+            # Remove common address elements that might be captured
+            cleaned_match = re.sub(r'\s+(?:cp|c\.p\.|col\.|tel\.|teléfono)\s+\d+.*$', '', match, flags=re.IGNORECASE)
+            cleaned_match = cleaned_match.strip()
+            
+            if len(cleaned_match) >= 3 and not cleaned_match.isdigit():
+                result['sucursal'] = cleaned_match
+                break
+    
+    # **FALLBACK: Look for branch information in the bottom third of the receipt**
+    if not result['sucursal']:
+        lines = text.split('\n')
+        # Focus on the bottom third of the receipt where branch info typically appears
+        bottom_section_start = max(0, len(lines) - len(lines) // 3)
+        bottom_section = '\n'.join(lines[bottom_section_start:])
+        
+        # Look for branch indicators in the bottom section
+        branch_indicators = [
+            r'heb\s+([^,\n\r]{2,30})',
+            r'sucursal\s+([^,\n\r]{2,30})',
+            r'(las\s+lomas|las\s+fuentes|san\s+luis\s+potosi)',
+        ]
+        
+        for pattern in branch_indicators:
+            matches = re.findall(pattern, bottom_section, re.IGNORECASE)
+            if matches:
+                match = matches[0].strip()
+                if len(match) >= 3 and not match.isdigit():
+                    result['sucursal'] = match
+                    break
+    
+    return result
+
+def extract_branch(text, merchant_name=""):
+    """
+    Extract branch information from receipt text.
     
     Args:
         text (str): Full receipt text
         merchant_name (str): Detected merchant name for context
         
     Returns:
-        str: Detected store/branch/plaza information or None
+        str: Detected branch information or None
     """
+    # **H-E-B SPECIFIC EXTRACTION**
+    # Check if this is an H-E-B receipt and use specific extraction
+    if 'heb' in merchant_name.lower() or 'h-e-b' in merchant_name.lower():
+        heb_info = extract_heb_specific_info(text)
+        if heb_info['sucursal']:
+            return heb_info['sucursal']
+    
     # **PATTERN 1: Direct store/branch labels**
     store_patterns = [
         r'(?:store|tienda|sucursal)[\s:]*([^\n\r]{2,30})',  # Store: Downtown Mall
@@ -379,17 +462,35 @@ def extract_store_branch_plaza(text, merchant_name=""):
     
     return None
 
-def extract_register_station_terminal(text):
+def extract_register(text):
     """
-    Extract register, station, or terminal information from receipt text.
+    Extract register information from receipt text.
     
     Args:
         text (str): Full receipt text
         
     Returns:
-        str: Detected register/station/terminal information or None
+        str: Detected register information or None
     """
-    # **PATTERN 1: Direct register/terminal labels**
+    # **PATTERN 1: Pharmacy/Store cashier format (CAJA X - NAME)**
+    pharmacy_patterns = [
+        r'(?:caja|cashier)[\s:]*(\d{1,4})[\s\-]+([a-zA-Z\s]{2,30})(?:\n|$)',  # CAJA 4 - KARLA URIBE
+        r'(?:caja|cashier)[\s:]*(\d{1,4})[\s]+([a-zA-Z\s]{2,30})(?:\n|$)',     # CAJA 4 KARLA URIBE
+        r'(?:caja|cashier)[\s:]*(\d{1,4})[\s\-]+([a-zA-Z\s]{2,30})(?:\n|$)',   # Caja 4 - Karla Uribe
+    ]
+    
+    for pattern in pharmacy_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            register_num, cashier_name = matches[0]
+            # Clean the cashier name - remove extra whitespace and newlines
+            cashier_name = re.sub(r'\s+', ' ', cashier_name.strip())
+            # Remove any trailing text after the name (but keep the full name)
+            cashier_name = re.sub(r'\s+\n.*$', '', cashier_name)
+            if len(cashier_name) >= 2:
+                return cashier_name  # Return the cashier name instead of register number
+    
+    # **PATTERN 2: Direct register/terminal labels (fallback)**
     register_patterns = [
         r'(?:register|registro|caja)[\s:]*(\d{1,4})',           # Register: 1
         r'(?:terminal|term)[\s:]*(\d{1,4})',                    # Terminal: 2
@@ -490,6 +591,56 @@ def extract_advanced_ticket_info(text, merchant_name=""):
         extracted_id = costco_info['ticket_id']
         extracted_folio = costco_info['folio']
         extraction_method = 'costco_specific'
+        
+    elif vendor_type == 'h-e-b':
+        print(f"[ENHANCED-OCR] Using H-E-B-specific extraction", file=sys.stderr)
+        # For H-E-B: Use standard extraction but with enhanced patterns
+        try:
+            enhanced_prompt = f"""Extract the ID and Folio numbers from the H-E-B receipt text. Return ONLY a JSON object with fields 'id' and 'folio'.
+
+H-E-B SPECIFIC DETECTION RULES:
+- Look for ticket numbers near the top of the receipt (usually 6-12 digits)
+- Look for folio numbers that might be labeled as "Ticket", "Folio", or standalone numbers
+- H-E-B receipts often have transaction numbers and store identifiers
+- Focus on numbers that appear in the transaction details section
+
+FALLBACK STRATEGY:
+- If no specific labels found, identify the longest number sequence in the receipt
+- Prioritize numbers with 6+ digits for main ID
+- Use shorter numbers (3-6 digits) for folio
+- Exclude monetary amounts and dates
+
+Receipt text: {text}"""
+
+            response = openai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": enhanced_prompt
+                    },
+                    {
+                        "role": "user",
+                        "content": text
+                    }
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.3,
+                max_tokens=256
+            )
+
+            openai_data = json.loads(response.choices[0].message.content)
+            extracted_id = openai_data.get('id')
+            extracted_folio = openai_data.get('folio')
+            extraction_method = 'heb_specific'
+            
+            print(f"[ENHANCED-OCR] H-E-B AI extraction completed", file=sys.stderr)
+            
+        except Exception as e:
+            print(f"[ENHANCED-OCR] H-E-B AI extraction failed, using pattern detection", file=sys.stderr)
+            extracted_id = None
+            extracted_folio = None
+            extraction_method = 'heb_pattern_fallback'
         
     else:
         # **STANDARD EXTRACTION for other vendors**
@@ -701,9 +852,9 @@ def extract_receipt_data(image_path):
     enhanced_total = ticket_info['total']
     vendor_type = ticket_info['vendor_type']
     
-    # **NEW FIELD EXTRACTION: Store/Branch/Plaza, Register/Station/Terminal, Payment Type, Card Last 4 Digits**
-    store_branch_plaza = extract_store_branch_plaza(full_text, merchant_name)
-    register_station_terminal = extract_register_station_terminal(full_text)
+    # **NEW FIELD EXTRACTION: Branch, Register, Payment Type, Card Last 4 Digits**
+    branch = extract_branch(full_text, merchant_name)
+    register = extract_register(full_text)
     payment_type = extract_payment_type(full_text)
     card_last_4_digits = extract_card_last_4_digits(full_text)
 
@@ -760,8 +911,8 @@ def extract_receipt_data(image_path):
     print(f"  ID: {ticket_id_field}", file=sys.stderr)
     print(f"  Folio: {folio_field}", file=sys.stderr)
     print(f"  Vendor Type: {vendor_type}", file=sys.stderr)
-    print(f"  Store/Branch/Plaza: {store_branch_plaza}", file=sys.stderr)
-    print(f"  Register/Station/Terminal: {register_station_terminal}", file=sys.stderr)
+    print(f"  Branch: {branch}", file=sys.stderr)
+    print(f"  Register: {register}", file=sys.stderr)
     print(f"  Payment Type: {payment_type}", file=sys.stderr)
     print(f"  Card Last 4 Digits: {card_last_4_digits}", file=sys.stderr)
 
@@ -780,10 +931,10 @@ def extract_receipt_data(image_path):
         "Fol_Vta": folio_venta,
         
         # New extracted fields (ENHANCED BUT SAFE)
-        "Store_Branch_Plaza": store_branch_plaza if store_branch_plaza else "N/A",
-        "store_branch_plaza": store_branch_plaza if store_branch_plaza else "N/A",  # Alternative field name
-        "Register_Station_Terminal": register_station_terminal if register_station_terminal else "N/A",
-        "register_station_terminal": register_station_terminal if register_station_terminal else "N/A",  # Alternative field name
+        "Branch": branch if branch else "N/A",
+        "branch": branch if branch else "N/A",  # Alternative field name
+        "Register": register if register else "N/A",
+        "register": register if register else "N/A",  # Alternative field name
         "Payment_Type": payment_type if payment_type else "N/A",
         "payment_type": payment_type if payment_type else "N/A",  # Alternative field name
         "Card_Last_4_Digits": card_last_4_digits if card_last_4_digits else "N/A",
