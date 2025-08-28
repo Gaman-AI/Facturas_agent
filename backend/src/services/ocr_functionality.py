@@ -582,7 +582,13 @@ def extract_wansoft_codigo_factura(text):
     
     # Enhanced patterns for wansoft código de facturación
     patterns = [
-        # Standard patterns with 18 digits
+        # Alphanumeric patterns for codes like "MSL231117V72"
+        r'(?:código de facturación|codigo de facturacion)[\s:]*([A-Z0-9]{8,20})',  # código de facturación: MSL231117V72
+        r'(?:código de factura|codigo de factura)[\s:]*([A-Z0-9]{8,20})',  # código de factura: MSL231117V72
+        r'(?:facturación|facturacion)[\s:]*([A-Z0-9]{8,20})',  # facturación: MSL231117V72
+        r'(?:código|codigo)[\s:]*([A-Z0-9]{8,20})',  # código: MSL231117V72
+        
+        # Standard patterns with 18 digits (for backward compatibility)
         r'(?:código de facturación|codigo de facturacion)[\s:]*(\d{18})',  # código de facturación: 250518126605018034
         r'(?:código de factura|codigo de factura)[\s:]*(\d{18})',  # código de factura: 250518126605018034
         r'(?:facturación|facturacion)[\s:]*(\d{18})',  # facturación: 250518126605018034
@@ -595,15 +601,25 @@ def extract_wansoft_codigo_factura(text):
         r'(?:código|codigo)[\s:]*(\d{12,20})',  # Allow 12-20 digits
         
         # Look for patterns in the "FACTURACIÓN EN LÍNEA" section
+        r'(?:FACTURACIÓN EN LÍNEA|FACTURACION EN LINEA).*?(?:código|codigo)[\s:]*([A-Z0-9]{8,20})',
+        r'(?:FACTURACIÓN EN LÍNEA|FACTURACION EN LINEA).*?(?:facturación|facturacion)[\s:]*([A-Z0-9]{8,20})',
         r'(?:FACTURACIÓN EN LÍNEA|FACTURACION EN LINEA).*?(?:código|codigo)[\s:]*(\d{12,20})',
         r'(?:FACTURACIÓN EN LÍNEA|FACTURACION EN LINEA).*?(?:facturación|facturacion)[\s:]*(\d{12,20})',
         
         # Look for patterns near the end of the receipt (where facturación info usually is)
+        r'(?:código|codigo)[\s:]*([A-Z0-9]{8,20})(?=.*?(?:Powered by Wansoft|Wansoft))',
+        r'(?:facturación|facturacion)[\s:]*([A-Z0-9]{8,20})(?=.*?(?:Powered by Wansoft|Wansoft))',
         r'(?:código|codigo)[\s:]*(\d{12,20})(?=.*?(?:Powered by Wansoft|Wansoft))',
         r'(?:facturación|facturacion)[\s:]*(\d{12,20})(?=.*?(?:Powered by Wansoft|Wansoft))',
         
-        # Look for any long number sequence that might be the código
+        # Look for any alphanumeric sequence that might be the código
+        r'(?:código|codigo)[\s:]*([A-Z0-9]{8,20})',  # Very flexible - 8-20 alphanumeric chars
         r'(?:código|codigo)[\s:]*(\d{10,20})',  # Very flexible - 10-20 digits
+        
+        # Look for standalone alphanumeric codes that might be the código de factura
+        # Pattern for codes like "MSL231117V72" (3 letters + 6 digits + 1 letter + 2 digits)
+        r'\b([A-Z]{3}\d{6}[A-Z]\d{2})\b',  # MSL231117V72 format
+        r'\b([A-Z]{2,4}\d{6,8}[A-Z]?\d{1,3})\b',  # More flexible alphanumeric format
     ]
     
     for i, pattern in enumerate(patterns):
@@ -611,16 +627,25 @@ def extract_wansoft_codigo_factura(text):
         if matches:
             for match in matches:
                 print(f"[WANSOFT-EXTRACTION] Pattern {i} found match: {match}", file=sys.stderr)
-                if len(match) >= 10 and match.isdigit():  # At least 10 digits
+                # Accept both alphanumeric codes (8+ chars) and numeric codes (10+ digits)
+                if (len(match) >= 8 and match.isalnum()) or (len(match) >= 10 and match.isdigit()):
                     print(f"[WANSOFT-EXTRACTION] Returning código de factura: {match}", file=sys.stderr)
                     return match
     
-    # If no patterns found, try to find any long number sequence that might be the código
-    # Look for numbers that appear in the context of facturación
-    facturacion_context = re.search(r'(?:FACTURACIÓN EN LÍNEA|FACTURACION EN LINEA|facturación|facturacion).*?(\d{12,20})', text, re.IGNORECASE | re.DOTALL)
+    # If no patterns found, try to find any alphanumeric or numeric sequence that might be the código
+    # Look for codes that appear in the context of facturación
+    facturacion_context = re.search(r'(?:FACTURACIÓN EN LÍNEA|FACTURACION EN LINEA|facturación|facturacion).*?([A-Z0-9]{8,20})', text, re.IGNORECASE | re.DOTALL)
     if facturacion_context:
         match = facturacion_context.group(1)
         print(f"[WANSOFT-EXTRACTION] Found código in facturación context: {match}", file=sys.stderr)
+        if len(match) >= 8 and match.isalnum():
+            return match
+    
+    # Also try numeric fallback
+    facturacion_context_numeric = re.search(r'(?:FACTURACIÓN EN LÍNEA|FACTURACION EN LINEA|facturación|facturacion).*?(\d{12,20})', text, re.IGNORECASE | re.DOTALL)
+    if facturacion_context_numeric:
+        match = facturacion_context_numeric.group(1)
+        print(f"[WANSOFT-EXTRACTION] Found numeric código in facturación context: {match}", file=sys.stderr)
         if len(match) >= 10 and match.isdigit():
             return match
     
