@@ -5,6 +5,8 @@
 .env.test.local
 .env.production.local
 .env.staging
+.env.test
+.env.example.backup
 secrets.env
 credentials.json
 token.json
