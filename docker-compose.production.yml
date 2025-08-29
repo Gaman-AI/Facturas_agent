@@ -1,0 +1,298 @@
+# Production Docker Compose for CFDI Automation Platform
+# Optimized for production deployment with proper service separation
+
+version: '3.8'
+
+services:
+  # Frontend - Next.js Application
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    container_name: cfdi-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    env_file:
+      - docker.env
+    volumes:
+      - frontend_data:/app/.next
+      - frontend_cache:/app/.next/cache
+    depends_on:
+      backend-api:
+        condition: service_healthy
+      browser-automation:
+        condition: service_healthy
+    networks:
+      - cfdi_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Node.js Backend API Service
+  backend-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runner
+    container_name: cfdi-backend-api
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      - START_WORKER=true
+    env_file:
+      - docker.env
+    volumes:
+      - backend_data:/app/data
+      - backend_logs:/app/logs
+      - backend_tmp:/app/tmp
+    networks:
+      - cfdi_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Python Browser Automation Service
+  browser-automation:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.python.optimized
+      target: runner
+    container_name: cfdi-browser-automation
+    ports:
+      - "9000:9000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=9000
+      - DISPLAY=:99
+      - PLAYWRIGHT_BROWSERS_PATH=/app/playwright-browsers
+    env_file:
+      - docker.env
+    volumes:
+      - browser_data:/app/browser_data
+      - browser_logs:/app/logs
+      - browser_screenshots:/app/screenshots
+      - browser_downloads:/app/downloads
+      - browser_cache:/app/playwright-browsers
+    networks:
+      - cfdi_network
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_ADMIN
+    shm_size: 2g
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:9000/health', timeout=5)"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: cfdi-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - cfdi_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+  # PostgreSQL for data persistence
+  postgres:
+    image: postgres:15-alpine
+    container_name: cfdi-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=cfdi_automation
+      - POSTGRES_USER=cfdi_user
+      - POSTGRES_PASSWORD=cfdi_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/corrected_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - cfdi_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cfdi_user -d cfdi_automation"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Nginx Reverse Proxy
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: cfdi-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+    volumes:
+      - nginx_logs:/var/log/nginx
+      - nginx_cache:/var/cache/nginx
+      - nginx_ssl:/etc/nginx/ssl:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend-api:
+        condition: service_healthy
+      browser-automation:
+        condition: service_healthy
+    networks:
+      - cfdi_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Volumes for persistent data
+volumes:
+  # Frontend volumes
+  frontend_data:
+    driver: local
+  frontend_cache:
+    driver: local
+  
+  # Backend volumes
+  backend_data:
+    driver: local
+  backend_logs:
+    driver: local
+  backend_tmp:
+    driver: local
+  
+  # Browser automation volumes
+  browser_data:
+    driver: local
+  browser_logs:
+    driver: local
+  browser_screenshots:
+    driver: local
+  browser_downloads:
+    driver: local
+  browser_cache:
+    driver: local
+  
+  # Database volumes
+  redis_data:
+    driver: local
+  postgres_data:
+    driver: local
+  
+  # Nginx volumes
+  nginx_logs:
+    driver: local
+  nginx_cache:
+    driver: local
+  nginx_ssl:
+    driver: local
+
+# Network configuration
+networks:
+  cfdi_network:
+    driver: bridge
+    name: cfdi_automation_network
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1

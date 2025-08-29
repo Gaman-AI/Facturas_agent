@@ -1,0 +1,116 @@
+# Multi-stage Dockerfile for Python Browser Automation Service
+# Production-ready with security hardening and Playwright optimization
+
+# Stage 1: Base Python environment
+FROM python:3.11-slim AS base
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/app/playwright-browsers \
+    DISPLAY=:99
+
+# Stage 2: System dependencies
+FROM base AS deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Essential system packages
+    wget \
+    curl \
+    gnupg \
+    ca-certificates \
+    procps \
+    xvfb \
+    # Browser dependencies for Playwright
+    libxss1 \
+    libnss3 \
+    libnspr4 \
+    libatk-bridge2.0-0 \
+    libdrm2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    libpango-1.0-0 \
+    libcairo2 \
+    libatspi2.0-0 \
+    libgtk-3-0 \
+    fonts-liberation \
+    xdg-utils \
+    # Clean up
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Stage 3: Python dependencies
+FROM deps AS python-deps
+WORKDIR /app
+
+# Copy requirements files
+COPY requirements.txt requirements_ocr.txt ./
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir -r requirements_ocr.txt
+
+# Stage 4: Browser automation setup
+FROM python-deps AS browser-setup
+WORKDIR /app
+
+# Install browser-use library if exists
+COPY browser-use/ ./browser-use/
+RUN if [ -f "browser-use/setup.py" ]; then \
+        cd browser-use && pip install -e .; \
+    fi
+
+# Install Playwright and browsers
+RUN playwright install chromium --with-deps \
+    && playwright install-deps chromium
+
+# Create necessary directories
+RUN mkdir -p /app/{logs,data,browser_data,screenshots,downloads,tmp,playwright-browsers} \
+    && chmod 755 /app/playwright-browsers
+
+# Stage 5: Production runtime
+FROM browser-setup AS runner
+WORKDIR /app
+
+# Create non-root user
+RUN groupadd -r -g 1000 appuser && \
+    useradd -r -u 1000 -g appuser -m -s /bin/bash appuser
+
+# Set proper ownership
+RUN chown -R appuser:appuser /app
+
+# Copy application code
+COPY --chown=appuser:appuser . .
+
+# Set proper permissions
+RUN chmod +x /app/*.py 2>/dev/null || true \
+    && chmod +x /app/start.sh 2>/dev/null || true
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 9000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=3 \
+    CMD python -c "import requests; import sys; \
+    try: \
+        response = requests.get('http://localhost:9000/health', timeout=10); \
+        sys.exit(0 if response.status_code == 200 else 1) \
+    except: \
+        sys.exit(1)"
+
+# Copy and set permissions for startup script
+COPY --chown=appuser:appuser start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Start the application
+ENTRYPOINT ["/app/start.sh"]
+CMD []

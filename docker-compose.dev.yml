@@ -1,0 +1,236 @@
+# Development Docker Compose for CFDI Automation Platform
+# Optimized for development with hot-reload and debugging
+
+version: '3.8'
+
+services:
+  # Frontend - Next.js Application (Development)
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: cfdi-frontend-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+    env_file:
+      - docker.env
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      backend-api-dev:
+        condition: service_healthy
+      browser-automation-dev:
+        condition: service_healthy
+    networks:
+      - cfdi_dev_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    command: ["npm", "run", "dev"]
+
+  # Node.js Backend API Service (Development)
+  backend-api-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runner
+    container_name: cfdi-backend-api-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=development
+      - PORT=8000
+      - START_WORKER=true
+    env_file:
+      - docker.env
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - backend_dev_data:/app/data
+      - backend_dev_logs:/app/logs
+      - backend_dev_tmp:/app/tmp
+    networks:
+      - cfdi_dev_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    restart: unless-stopped
+    command: ["npm", "run", "dev"]
+
+  # Python Browser Automation Service (Development)
+  browser-automation-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.python.optimized
+      target: runner
+    container_name: cfdi-browser-automation-dev
+    ports:
+      - "9000:9000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=9000
+      - DISPLAY=:99
+      - PLAYWRIGHT_BROWSERS_PATH=/app/playwright-browsers
+      - PYTHONPATH=/app
+    env_file:
+      - docker.env
+    volumes:
+      - ./backend:/app
+      - browser_dev_data:/app/browser_data
+      - browser_dev_logs:/app/logs
+      - browser_dev_screenshots:/app/screenshots
+      - browser_dev_downloads:/app/downloads
+      - browser_dev_cache:/app/playwright-browsers
+    networks:
+      - cfdi_dev_network
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_ADMIN
+    shm_size: 2g
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:9000/health', timeout=5)"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    command: ["python", "-m", "uvicorn", "api_server:app", "--host", "0.0.0.0", "--port", "9000", "--reload"]
+
+  # Redis for caching and session management
+  redis-dev:
+    image: redis:7-alpine
+    container_name: cfdi-redis-dev
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - cfdi_dev_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # PostgreSQL for data persistence (Development)
+  postgres-dev:
+    image: postgres:15-alpine
+    container_name: cfdi-postgres-dev
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=cfdi_automation_dev
+      - POSTGRES_USER=cfdi_user
+      - POSTGRES_PASSWORD=cfdi_password
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./backend/corrected_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - cfdi_dev_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cfdi_user -d cfdi_automation_dev"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy (Development)
+  nginx-dev:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: cfdi-nginx-dev
+    ports:
+      - "8080:80"
+      - "8443:443"
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+    volumes:
+      - nginx_dev_logs:/var/log/nginx
+      - nginx_dev_cache:/var/cache/nginx
+      - nginx_dev_ssl:/etc/nginx/ssl:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      frontend-dev:
+        condition: service_healthy
+      backend-api-dev:
+        condition: service_healthy
+      browser-automation-dev:
+        condition: service_healthy
+    networks:
+      - cfdi_dev_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+# Volumes for development data
+volumes:
+  # Frontend development volumes
+  frontend_dev_data:
+    driver: local
+  
+  # Backend development volumes
+  backend_dev_data:
+    driver: local
+  backend_dev_logs:
+    driver: local
+  backend_dev_tmp:
+    driver: local
+  
+  # Browser automation development volumes
+  browser_dev_data:
+    driver: local
+  browser_dev_logs:
+    driver: local
+  browser_dev_screenshots:
+    driver: local
+  browser_dev_downloads:
+    driver: local
+  browser_dev_cache:
+    driver: local
+  
+  # Database development volumes
+  redis_dev_data:
+    driver: local
+  postgres_dev_data:
+    driver: local
+  
+  # Nginx development volumes
+  nginx_dev_logs:
+    driver: local
+  nginx_dev_cache:
+    driver: local
+  nginx_dev_ssl:
+    driver: local
+
+# Development network configuration
+networks:
+  cfdi_dev_network:
+    driver: bridge
+    name: cfdi_dev_network
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.22.0.0/16
+          gateway: 172.22.0.1

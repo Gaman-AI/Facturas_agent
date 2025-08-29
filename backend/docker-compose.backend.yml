@@ -1,0 +1,187 @@
+# Docker Compose for Backend Services Only
+# Optimized for development and production deployment
+
+version: '3.8'
+
+services:
+  # Node.js Backend API Service
+  backend-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: cfdi-backend-api
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      - START_WORKER=true
+    env_file:
+      - ../docker.env
+    volumes:
+      - backend_data:/app/data
+      - backend_logs:/app/logs
+      - backend_tmp:/app/tmp
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Python Browser Automation Service
+  browser-automation:
+    build:
+      context: .
+      dockerfile: Dockerfile.python.optimized
+      target: runner
+    container_name: cfdi-browser-automation
+    ports:
+      - "9000:9000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=9000
+      - DISPLAY=:99
+      - PLAYWRIGHT_BROWSERS_PATH=/app/playwright-browsers
+    env_file:
+      - ../docker.env
+    volumes:
+      - browser_data:/app/browser_data
+      - browser_logs:/app/logs
+      - browser_screenshots:/app/screenshots
+      - browser_downloads:/app/downloads
+      - browser_cache:/app/playwright-browsers
+    networks:
+      - backend_network
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_ADMIN
+    shm_size: 2g
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:9000/health', timeout=5)"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: cfdi-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+  # PostgreSQL for data persistence (if needed)
+  postgres:
+    image: postgres:15-alpine
+    container_name: cfdi-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=cfdi_automation
+      - POSTGRES_USER=cfdi_user
+      - POSTGRES_PASSWORD=cfdi_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./corrected_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - backend_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cfdi_user -d cfdi_automation"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+# Volumes for persistent data
+volumes:
+  backend_data:
+    driver: local
+  backend_logs:
+    driver: local
+  backend_tmp:
+    driver: local
+  browser_data:
+    driver: local
+  browser_logs:
+    driver: local
+  browser_screenshots:
+    driver: local
+  browser_downloads:
+    driver: local
+  browser_cache:
+    driver: local
+  redis_data:
+    driver: local
+  postgres_data:
+    driver: local
+
+# Network configuration
+networks:
+  backend_network:
+    driver: bridge
+    name: cfdi_backend_network
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/16
+          gateway: 172.21.0.1
