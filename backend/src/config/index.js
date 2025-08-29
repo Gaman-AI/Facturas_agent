@@ -63,6 +63,20 @@ const config = {
   
   // Validate required environment variables - OPTIMIZED FOR FASTER STARTUP
   validate() {
+    // Check if we're in development mode and should use mock services
+    if (config.isDevelopment()) {
+      const hasValidSupabase = process.env.SUPABASE_URL && 
+                              process.env.SUPABASE_ANON_KEY && 
+                              process.env.SUPABASE_SERVICE_KEY &&
+                              !process.env.SUPABASE_URL.includes('test-project') &&
+                              !process.env.SUPABASE_ANON_KEY.includes('test_anon_key')
+      
+      if (!hasValidSupabase) {
+        console.log('🔧 Development mode detected - will use mock services for Supabase')
+        return // Allow startup with mock services
+      }
+    }
+
     // Only validate absolutely critical vars on startup for faster boot time
     const critical = [
       'SUPABASE_URL',
