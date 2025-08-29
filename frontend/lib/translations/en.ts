@@ -51,9 +51,12 @@ const en: Translations = {
   // Login Page
   'login.title': 'Login',
   'login.subtitle': 'Access your CFDI 4.0 System account',
+  'login.description': 'Sign in to your account to continue',
   'login.emailPlaceholder': 'your@email.com',
   'login.passwordPlaceholder': 'Your password',
   'login.loginButton': 'Login',
+  'login.noAccount': "Don't have an account?",
+  'login.registerHere': 'Register here',
   'login.error.invalidCredentials': 'Invalid credentials',
   'login.error.generic': 'Login error',
 

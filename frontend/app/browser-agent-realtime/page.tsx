@@ -1,6 +1,6 @@
 'use client'
 
-import { CFDITaskForm } from '@/components/CFDITaskForm';
+import { SimpleTaskSubmissionPane } from '@/components/SimpleTaskSubmissionPane';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -18,7 +18,7 @@ export default function CFDITaskPage() {
             </p>
           </div>
           
-          <CFDITaskForm />
+          <SimpleTaskSubmissionPane />
         </div>
       </div>
     </ProtectedRoute>

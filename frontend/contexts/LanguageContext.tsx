@@ -116,6 +116,15 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
         'features.secure': 'Secure',
         'features.intelligent': 'Intelligent',
         'features.compatible': 'Compatible',
+        // Login translations
+        'login.title': 'Login',
+        'login.description': 'Sign in to your account to continue',
+        'login.noAccount': "Don't have an account?",
+        'login.registerHere': 'Register here',
+        // Auth translations
+        'auth.email': 'Email',
+        'auth.password': 'Password',
+        'auth.loggingIn': 'Logging in...',
         // SimpleTaskSubmission component translations
         'tasks.validation.taskRequired': 'Task description is required',
         'tasks.validation.taskTooLong': 'Task description is too long',
@@ -137,6 +146,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
         // Validation messages
         'validation.email.required': 'Email is required',
         'validation.email.invalid': 'Invalid email format',
+        'validation.password.required': 'Password is required',
         'validation.password.minLength': 'Password must be at least {min} characters',
         'validation.password.uppercase': 'Password must contain at least one uppercase letter',
         'validation.password.lowercase': 'Password must contain at least one lowercase letter',

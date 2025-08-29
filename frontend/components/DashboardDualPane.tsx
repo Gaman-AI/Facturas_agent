@@ -29,19 +29,19 @@ function FullscreenModal({ isOpen, onClose, url, title = 'Live Browser View' }: 
 
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center">
-      <div className="relative w-full h-full max-w-full max-h-full bg-white rounded-lg overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 bg-gray-50 border-b">
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">
-              Press ESC to exit fullscreen
-            </span>
-            <Button size="sm" variant="outline" onClick={onClose}>
-              ✕ Close
-            </Button>
-          </div>
-        </div>
+               <div className="relative w-full h-full max-w-full max-h-full bg-white rounded-lg overflow-hidden">
+           {/* Header */}
+           <div className="flex items-center justify-between p-4 bg-[#E5EADF] border-b border-[#C7D8D0]">
+             <h2 className="text-lg font-semibold text-[#164F5B]">{title}</h2>
+             <div className="flex items-center gap-2">
+               <span className="text-sm text-[#527779]">
+                 Press ESC to exit fullscreen
+               </span>
+               <Button size="sm" variant="outline" onClick={onClose} className="border-[#208692] text-[#208692] hover:bg-[#E5EADF]">
+                 ✕ Close
+               </Button>
+             </div>
+           </div>
 
         {/* Iframe Content */}
         <div className="w-full h-full" style={{ height: 'calc(100vh - 80px)' }}>
@@ -128,9 +128,9 @@ function CopyButton({ value, className = '', size = 'sm' }: CopyButtonProps) {
       title="Copy to clipboard"
     >
       {copied ? (
-        <Check className="h-3 w-3 text-green-600" />
+        <Check className="h-3 w-3 text-[#208692]" />
       ) : (
-        <Copy className="h-3 w-3 text-gray-500 hover:text-gray-700" />
+        <Copy className="h-3 w-3 text-[#527779] hover:text-[#164F5B]" />
       )}
     </Button>
   )
@@ -148,16 +148,16 @@ interface FieldWithCopyProps {
 
 function FieldWithCopy({ label, value, onChange, placeholder, className = '', fullWidth = false }: FieldWithCopyProps) {
   return (
-    <div className={`bg-gray-50 border border-red-200 rounded-lg p-2 ${fullWidth ? 'col-span-2' : ''} ${className}`}>
-      <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          className="flex-1 h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-          placeholder={placeholder}
-        />
+         <div className={`bg-[#E5EADF] border border-[#C7D8D0] rounded-lg p-2 ${fullWidth ? 'col-span-2' : ''} ${className}`}>
+       <label className="block text-xs font-medium text-[#527779] mb-1">{label}</label>
+       <div className="flex items-center gap-2">
+         <input
+           type="text"
+           value={value || ''}
+           onChange={(e) => onChange(e.target.value)}
+           className="flex-1 h-8 px-2 py-1 bg-white border border-[#C7D8D0] rounded text-xs text-[#527779] focus:outline-none focus:ring-2 focus:ring-[#208692] focus:border-transparent"
+           placeholder={placeholder}
+         />
         <CopyButton value={value} />
       </div>
     </div>
@@ -776,93 +776,93 @@ export function DashboardDualPane({
 
   // Render live view iframe when URL is available
   const renderLiveView = () => {
-    if (!currentLiveViewUrl) {
-      return (
-        <div className="h-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                      <div className="text-center text-gray-500">
-              <Monitor className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-              <h3 className="text-lg font-medium mb-2">No Live View Available</h3>
-              <p className="text-sm mb-3">
-                {browserMode === 'local' 
-                  ? 'Local browser mode - no live view available' 
-                  : 'Waiting for task to start and generate live view URL...'
-                }
-              </p>
-            </div>
-        </div>
-      )
-    }
+         if (!currentLiveViewUrl) {
+       return (
+         <div className="h-full flex items-center justify-center bg-[#E5EADF] rounded-lg border-2 border-dashed border-[#C7D8D0]">
+                       <div className="text-center text-[#527779]">
+               <Monitor className="w-12 h-12 mx-auto mb-3 text-[#A8C5C0]" />
+               <h3 className="text-lg font-medium mb-2 text-[#164F5B]">No Live View Available</h3>
+               <p className="text-sm mb-3 text-[#527779]">
+                 {browserMode === 'local' 
+                   ? 'Local browser mode - no live view available' 
+                   : 'Waiting for task to start and generate live view URL...'
+                 }
+               </p>
+             </div>
+         </div>
+       )
+     }
 
-    // For local mode, show a different message since there's no live view
-    if (browserMode === 'local') {
-      return (
-        <div className="h-full flex items-center justify-center bg-green-50 rounded-lg border-2 border-dashed border-green-300">
-          <div className="text-center text-green-600">
-            <Monitor className="w-16 h-16 mx-auto mb-4 text-green-400" />
-            <h3 className="text-lg font-medium mb-2">Local Browser Mode Active</h3>
-            <p className="text-sm mb-3">Task is running in your local browser</p>
-            <div className="mt-4 p-3 bg-green-100 rounded border border-green-200">
-              <p className="text-xs text-green-700 font-medium">Local Mode Info:</p>
-              <p className="text-xs text-green-600">No live view available for local browser</p>
-              <p className="text-xs text-green-600">Check your local browser for automation progress</p>
-            </div>
-          </div>
-        </div>
-      )
-    }
+         // For local mode, show a different message since there's no live view
+     if (browserMode === 'local') {
+       return (
+         <div className="h-full flex items-center justify-center bg-[#E5EADF] rounded-lg border-2 border-dashed border-[#C7D8D0]">
+           <div className="text-center text-[#527779]">
+             <Monitor className="w-16 h-16 mx-auto mb-4 text-[#208692]" />
+             <h3 className="text-lg font-medium mb-2 text-[#164F5B]">Local Browser Mode Active</h3>
+             <p className="text-sm mb-3 text-[#527779]">Task is running in your local browser</p>
+             <div className="mt-4 p-3 bg-[#C7D8D0] rounded border border-[#C7D8D0]">
+               <p className="text-xs text-[#164F5B] font-medium">Local Mode Info:</p>
+               <p className="text-xs text-[#527779]">No live view available for local browser</p>
+               <p className="text-xs text-[#527779]">Check your local browser for automation progress</p>
+             </div>
+           </div>
+         </div>
+       )
+     }
 
-    // Validate URL format for Browserbase mode
-    const isValidBrowserbaseUrl = currentLiveViewUrl.includes('browserbase.com/devtools/inspector.html')
-    
-    if (!isValidBrowserbaseUrl) {
-      return (
-        <div className="h-full flex items-center justify-center bg-yellow-50 rounded-lg border-2 border-dashed border-yellow-300">
-          <div className="text-center text-yellow-600">
-            <Monitor className="w-16 h-16 mx-auto mb-4 text-yellow-400" />
-            <h3 className="text-lg font-medium mb-2">Invalid Live View URL Format</h3>
-            <p className="text-sm">Expected Browserbase devtools URL format</p>
-            <div className="mt-4 p-3 bg-yellow-100 rounded border border-yellow-200">
-              <p className="text-xs text-yellow-700 font-medium">Invalid URL Format</p>
-              <p className="text-xs text-yellow-600 mt-2">Expected Browserbase devtools URL format</p>
-            </div>
-          </div>
-        </div>
-      )
-    }
+         // Validate URL format for Browserbase mode
+     const isValidBrowserbaseUrl = currentLiveViewUrl.includes('browserbase.com/devtools/inspector.html')
+     
+     if (!isValidBrowserbaseUrl) {
+       return (
+         <div className="h-full flex items-center justify-center bg-[#E5EADF] rounded-lg border-2 border-dashed border-[#C7D8D0]">
+           <div className="text-center text-[#527779]">
+             <Monitor className="w-16 h-16 mx-auto mb-4 text-[#208692]" />
+             <h3 className="text-lg font-medium mb-2 text-[#164F5B]">Invalid Live View URL Format</h3>
+             <p className="text-sm text-[#527779]">Expected Browserbase devtools URL format</p>
+             <div className="mt-4 p-3 bg-[#C7D8D0] rounded border border-[#C7D8D0]">
+               <p className="text-xs text-[#164F5B] font-medium">Invalid URL Format</p>
+               <p className="text-xs text-[#527779] mt-2">Expected Browserbase devtools URL format</p>
+             </div>
+           </div>
+         </div>
+       )
+     }
 
-    return (
-      <div className="h-full bg-white rounded-lg border border-gray-200 overflow-hidden flex flex-col">
-        <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <Monitor className="w-4 h-4 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">Live Browser View</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-              {taskState.status}
-            </Badge>
-            <Button size="sm" variant="outline" onClick={handleRefreshView}>
-              🔄 Refresh
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setIsFullscreenModal(true)} disabled={!currentLiveViewUrl}>
-              ⛶ Fullscreen
-            </Button>
-            {viewportSize.width > 0 && viewportSize.height > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {Math.round(viewportSize.width)}×{Math.round(viewportSize.height)}
-              </Badge>
-            )}
-          </div>
-        </div>
+         return (
+       <div className="h-full bg-white rounded-lg border border-[#C7D8D0] overflow-hidden flex flex-col">
+         <div className="p-3 bg-[#E5EADF] border-b border-[#C7D8D0] flex items-center justify-between flex-shrink-0">
+           <div className="flex items-center gap-2">
+             <Monitor className="w-4 h-4 text-[#527779]" />
+             <span className="text-sm font-medium text-[#164F5B]">Live Browser View</span>
+           </div>
+           <div className="flex items-center gap-2">
+             <Badge variant="outline" className="text-xs border-[#208692] text-[#208692] bg-[#E5EADF]">
+               {taskState.status}
+             </Badge>
+             <Button size="sm" variant="outline" onClick={handleRefreshView} className="border-[#208692] text-[#208692] hover:bg-[#E5EADF]">
+               🔄 Refresh
+             </Button>
+             <Button size="sm" variant="outline" onClick={() => setIsFullscreenModal(true)} disabled={!currentLiveViewUrl} className="border-[#208692] text-[#208692] hover:bg-[#E5EADF]">
+               ⛶ Fullscreen
+             </Button>
+             {viewportSize.width > 0 && viewportSize.height > 0 && (
+               <Badge variant="secondary" className="text-xs bg-[#C7D8D0] text-[#164F5B]">
+                 {Math.round(viewportSize.width)}×{Math.round(viewportSize.height)}
+               </Badge>
+             )}
+           </div>
+         </div>
         
 
         
         <div className="flex-1 relative overflow-hidden flex flex-col" style={{ minHeight: '500px' }}>
-          {isResizing && (
-            <div className="absolute top-2 right-2 z-10 bg-blue-500 text-white text-xs px-2 py-1 rounded shadow-lg">
-              Resizing...
-            </div>
-          )}
+                     {isResizing && (
+             <div className="absolute top-2 right-2 z-10 bg-[#208692] text-white text-xs px-2 py-1 rounded shadow-lg">
+               Resizing...
+             </div>
+           )}
           <iframe
             src={currentLiveViewUrl}
             sandbox="allow-same-origin allow-scripts"
@@ -886,22 +886,22 @@ export function DashboardDualPane({
   if (isMobile) {
     return (
       <div className={`h-full w-full overflow-hidden ${className}`}>
-        <div className="flex flex-col h-full gap-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style={{ minHeight: '1000px' }}>
+                 <div className="flex flex-col h-full gap-6 overflow-y-auto scrollbar-thin scrollbar-thumb-[#A8C5C0] scrollbar-track-[#E5EADF]" style={{ minHeight: '1000px' }}>
           {/* Ticket Data Form Section */}
-          <Card className="border-2 border-slate-200/60 shadow-lg bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden flex-shrink-0">
-            <CardHeader className="pb-3 bg-gradient-to-r from-red-50 to-rose-50 border-b border-slate-200/40 flex-shrink-0">
-              <CardTitle className="flex items-center space-x-2 text-lg">
-                <div className="w-7 h-7 bg-red-500 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <span>Ticket Data</span>
-              </CardTitle>
-              <CardDescription className="text-slate-600 text-sm">
-                Ingrese los datos del ticket en los campos correspondientes.
-              </CardDescription>
-            </CardHeader>
+                     <Card className="border-2 border-[#C7D8D0] shadow-lg bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden flex-shrink-0">
+             <CardHeader className="pb-3 bg-gradient-to-r from-[#E5EADF] to-[#C7D8D0] border-b border-[#C7D8D0] flex-shrink-0">
+               <CardTitle className="flex items-center space-x-2 text-lg">
+                 <div className="w-7 h-7 bg-[#208692] rounded-lg flex items-center justify-center">
+                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                   </svg>
+                 </div>
+                 <span className="text-[#26272A]">Ticket Data</span>
+               </CardTitle>
+               <CardDescription className="text-[#527779] text-sm">
+                 Ingrese los datos del ticket en los campos correspondientes.
+               </CardDescription>
+             </CardHeader>
             <CardContent className="p-3 flex flex-col h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
               {/* File Upload Section for Mobile */}
               <div className="mb-3 p-3 border border-slate-200 rounded-lg bg-slate-50">
@@ -1233,9 +1233,9 @@ export function DashboardDualPane({
           {/* Browser View Section - Show when task is active OR manual URL is present */}
           {(taskState.status !== 'idle' || currentLiveViewUrl) && (
             <Card className="flex-1 min-h-0 border-2 border-slate-200/60 shadow-lg bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden">
-              <CardHeader className="pb-2 bg-gradient-to-r from-pink-50 to-rose-50 border-b border-slate-200/40 flex-shrink-0">
+              <CardHeader className="pb-2 bg-gradient-to-r from-teal-50 to-teal-100 border-b border-slate-200/40 flex-shrink-0">
                 <CardTitle className="flex items-center space-x-2 text-base">
-                  <div className="w-6 h-6 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
+                  <div className="w-6 h-6 bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
                     <Monitor className="w-3 h-3 text-white" />
                   </div>
                   <span>Live Browser View</span>
@@ -1267,17 +1267,17 @@ export function DashboardDualPane({
   return (
     <div className={`h-full w-full overflow-hidden ${className}`}>
       <Card className="border-2 border-slate-200/60 shadow-xl bg-white/90 backdrop-blur-sm h-full w-full rounded-xl overflow-hidden hover:shadow-2xl transition-all duration-300">
-        <CardHeader className="pb-3 flex-shrink-0 bg-gradient-to-r from-pink-50 to-rose-50 border-b-2 border-slate-200/40">
+        <CardHeader className="pb-3 flex-shrink-0 bg-gradient-to-r from-teal-50 to-teal-100 border-b-2 border-slate-200/40">
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center space-x-3 text-lg">
-              <div className="w-7 h-7 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
+              <div className="w-7 h-7 bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
                 <Activity className="w-4 h-4 text-white" />
               </div>
               <span>Dual Pane Task Monitor</span>
             </div>
             {taskState.status !== 'idle' && (
               <div className="flex items-center gap-3">
-                <Badge variant="outline" className="flex items-center gap-1 border-pink-300 text-pink-700 bg-pink-50">
+                <Badge variant="outline" className="flex items-center gap-1 border-[#208692] text-[#208692] bg-[#E5EADF]">
                   <Monitor className="w-3 h-3" />
                   Task: {taskState.taskId?.slice(0, 8)}...
                 </Badge>
@@ -1285,7 +1285,7 @@ export function DashboardDualPane({
                   size="sm" 
                   variant="outline" 
                   onClick={resetTaskState}
-                  className="border-pink-300 text-pink-700 hover:bg-pink-50"
+                  className="border-[#208692] text-[#208692] hover:bg-[#E5EADF]"
                 >
                   New Task
                 </Button>
@@ -1302,8 +1302,8 @@ export function DashboardDualPane({
         
         <CardContent className="p-0 flex-1 overflow-hidden" style={{ height: 'calc(100% - 90px)' }}>
           <ResizablePanelGroup direction="horizontal" className="h-full w-full overflow-hidden">
-            {/* Left Pane - Ticket Data Form (35% default) */}
-            <ResizablePanel defaultSize={35} minSize={25} maxSize={50} className="overflow-hidden">
+            {/* Left Pane - Ticket Data Form (50% default) */}
+            <ResizablePanel defaultSize={50} minSize={40} maxSize={60} className="overflow-hidden">
               <div className="h-full p-3 border-r-2 border-slate-200/40 bg-gradient-to-b from-white to-slate-50/30 overflow-hidden">
                 <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden flex flex-col">
                   {/* Scrollable content container */}
@@ -1631,10 +1631,10 @@ export function DashboardDualPane({
               </div>
             </ResizablePanel>
 
-            <ResizableHandle withHandle className="w-2 bg-gradient-to-b from-pink-100 to-rose-100 hover:bg-gradient-to-b hover:from-pink-200 hover:to-rose-200 transition-all duration-200" data-panel-resize-handle />
+            <ResizableHandle withHandle className="w-2 bg-gradient-to-b from-teal-100 to-teal-200 hover:bg-gradient-b hover:from-teal-200 hover:to-teal-300 transition-all duration-200" data-panel-resize-handle />
 
             {/* Right Pane - Live View with URL Input (65% default) */}
-            <ResizablePanel defaultSize={65} minSize={50} maxSize={75} className="overflow-hidden" data-panel="live-view">
+            <ResizablePanel defaultSize={50} minSize={40} maxSize={60} className="overflow-hidden" data-panel="live-view">
               <div className="h-full p-3 bg-gradient-to-b from-white to-slate-50/30 overflow-hidden">
                 <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden">
                   <div className="h-full flex flex-col" data-viewport="live-view">

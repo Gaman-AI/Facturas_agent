@@ -346,7 +346,7 @@ export function LiveViewPane({
         <CardHeader className="flex-shrink-0 border-b">
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-pink-600" />
+              <Zap className="w-5 h-5 text-teal-600" />
               <span>Create Task</span>
             </div>
             <div className="flex items-center gap-2">
@@ -378,7 +378,7 @@ export function LiveViewPane({
         <CardHeader className="flex-shrink-0 border-b">
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <MessageCircle className="w-5 h-5 text-pink-600" />
+              <MessageCircle className="w-5 h-5 text-teal-600" />
               <span>Agent Chat</span>
             </div>
             <div className="flex items-center gap-2">

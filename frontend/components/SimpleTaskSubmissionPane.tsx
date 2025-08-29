@@ -289,7 +289,7 @@ export function SimpleTaskSubmissionPane({
           <Button 
             type="submit" 
             disabled={isSubmitting || !task.trim() || task.length > characterLimit}
-            className="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+            className="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700"
           >
             {isSubmitting ? (
               <>
