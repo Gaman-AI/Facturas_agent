@@ -1,12 +1,24 @@
 FROM python:3.11-slim AS base
 
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PLAYWRIGHT_BROWSERS_PATH=/app/playwright-browsers
+
 # Install system dependencies
 FROM base AS deps
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Essential system packages
     wget \
+    curl \
     gnupg \
     ca-certificates \
     procps \
+    xvfb \
+    # Browser dependencies
     libxss1 \
     libnss3 \
     libnspr4 \
@@ -23,98 +35,262 @@ RUN apt-get update && apt-get install -y \
     libatspi2.0-0 \
     libgtk-3-0 \
     libgdk-pixbuf2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
+    # Additional dependencies for better browser support
+    fonts-liberation \
+    libappindicator3-1 \
+    libu2f-udev \
+    xdg-utils \
+    # Build tools (removed after installation)
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 WORKDIR /app
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies
+COPY requirements.txt requirements_ocr.txt ./
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -r requirements_ocr.txt
+
+# Install browser-use library
+COPY browser-use/ ./browser-use/
+RUN cd browser-use && pip install -e .
 
 # Install browser dependencies
 FROM deps AS browser-deps
-RUN playwright install chromium
-RUN playwright install-deps chromium
+WORKDIR /app
+
+# Copy Python environment from deps stage
+COPY --from=deps /usr/local /usr/local
+
+# Install Playwright and browsers
+RUN playwright install chromium --with-deps && \
+    playwright install-deps chromium
+
+# Create playwright cache directory with proper permissions
+RUN mkdir -p /app/playwright-browsers && \
+    chmod 755 /app/playwright-browsers
 
 # Production image
 FROM browser-deps AS runner
 WORKDIR /app
 
-# Create non-root user
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Create non-root user with specific UID/GID
+RUN groupadd -r -g 1000 appuser && \
+    useradd -r -u 1000 -g appuser -m -s /bin/bash appuser
 
-# Copy application code
-COPY --from=deps /app /app
-COPY . .
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/{logs,data,browser_data,screenshots,downloads,tmp} && \
+    mkdir -p /home/appuser/.cache && \
+    chown -R appuser:appuser /app /home/appuser
 
-# Create necessary directories
-RUN mkdir -p /app/logs /data && chown -R appuser:appuser /app /data
+# Copy application code with proper ownership
+COPY --chown=appuser:appuser . .
 
-# Create FastAPI wrapper
-COPY <<EOF /app/api_server.py
+# Set proper permissions for executables
+RUN chmod +x /app/*.py 2>/dev/null || true
+
+# Create enhanced FastAPI wrapper
+COPY <<'EOF' /app/api_server.py
 import asyncio
 import os
 import logging
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import Optional
+import traceback
+from datetime import datetime
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any
 import uvicorn
 
-from main import (
-    create_browserbase_session,
-    create_browser_profile,
-    run_automation_task,
-    ManagedBrowserSession
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Application lifespan
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("🚀 CFDI Browser Automation Service starting up...")
+    yield
+    logger.info("🛑 CFDI Browser Automation Service shutting down...")
+
+# FastAPI app with enhanced configuration
+app = FastAPI(
+    title="CFDI Browser Automation Service",
+    description="Mexican CFDI 4.0 Invoice Automation via Browser-Use",
+    version="2.0.0",
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
-app = FastAPI(title="CFDI Browser Automation Service", version="1.0.0")
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.get("/health")
+# Health check endpoint
+@app.get("/health", status_code=status.HTTP_200_OK)
 async def health_check():
-    return {"status": "healthy", "service": "browser-automation"}
+    return {
+        "status": "healthy",
+        "service": "cfdi-browser-automation",
+        "version": "2.0.0",
+        "timestamp": datetime.utcnow().isoformat(),
+        "python_version": f"{os.sys.version_info.major}.{os.sys.version_info.minor}.{os.sys.version_info.micro}"
+    }
 
+# Task request models
 class TaskRequest(BaseModel):
-    task_type: str
-    parameters: dict
-    profile_id: Optional[str] = None
+    task: str = Field(..., description="Task description for browser automation")
+    vendor_url: Optional[str] = Field(None, description="Target vendor URL")
+    model: str = Field("gpt-5-nano-2025-08-07", description="LLM model to use")
+    max_steps: int = Field(50, description="Maximum steps for automation")
+    timeout_minutes: int = Field(30, description="Task timeout in minutes")
+    customer_details: Optional[Dict[str, Any]] = Field(None, description="Customer details for CFDI")
+    
+class TaskResponse(BaseModel):
+    status: str
+    task_id: str
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    execution_time: Optional[float] = None
 
-@app.post("/run-task")
+# Task execution endpoint
+@app.post("/run-task", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 async def run_task(request: TaskRequest):
+    task_id = f"task_{int(datetime.utcnow().timestamp())}"
+    start_time = datetime.utcnow()
+    
     try:
-        # Initialize browser session
+        logger.info(f"📋 Starting task {task_id}: {request.task[:100]}...")
+        
+        # Import main automation functions
+        try:
+            from main import (
+                create_browserbase_session,
+                create_browser_profile,
+                run_automation_task,
+                ManagedBrowserSession
+            )
+        except ImportError as e:
+            logger.error(f"Failed to import automation modules: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Browser automation service unavailable"
+            )
+        
+        # Execute automation task
         session = await create_browserbase_session()
+        profile = create_browser_profile()
         
-        # Create or use existing profile
-        if request.profile_id:
-            profile = await create_browser_profile(session, request.profile_id)
-        else:
-            profile = await create_browser_profile(session)
+        async with ManagedBrowserSession(session.connect_url, profile) as browser_session:
+            result = await run_automation_task(browser_session, request.task)
         
-        # Run the automation task
-        result = await run_automation_task(session, request.task_type, request.parameters)
+        execution_time = (datetime.utcnow() - start_time).total_seconds()
+        logger.info(f"✅ Task {task_id} completed in {execution_time:.2f}s")
         
-        return {
-            "status": "success",
-            "result": result,
-            "profile_id": profile.id if profile else None
-        }
+        return TaskResponse(
+            status="completed",
+            task_id=task_id,
+            result={"message": result, "vendor_url": request.vendor_url},
+            execution_time=execution_time
+        )
+        
     except Exception as e:
-        logging.error(f"Task execution failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        execution_time = (datetime.utcnow() - start_time).total_seconds()
+        error_msg = str(e)
+        logger.error(f"❌ Task {task_id} failed after {execution_time:.2f}s: {error_msg}")
+        logger.error(traceback.format_exc())
+        
+        return TaskResponse(
+            status="failed",
+            task_id=task_id,
+            error=error_msg,
+            execution_time=execution_time
+        )
 
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    logger.error(f"Unhandled exception: {exc}")
+    logger.error(traceback.format_exc())
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Internal server error"}
+    )
+
+# Main entry point
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 9000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    host = os.getenv("HOST", "0.0.0.0")
+    
+    logger.info(f"🌐 Starting server on {host}:{port}")
+    
+    uvicorn.run(
+        "api_server:app",
+        host=host,
+        port=port,
+        log_level="info",
+        access_log=True,
+        reload=False
+    )
 EOF
 
+# Switch to non-root user
 USER appuser
 
+# Set working directory ownership
+WORKDIR /app
+
+# Expose port
 EXPOSE 9000
 
-ENV PORT=9000
+# Environment variables
+ENV PORT=9000 \
+    HOST=0.0.0.0 \
+    PYTHONPATH=/app \
+    DISPLAY=:99
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-  CMD python -c "import requests; requests.get('http://localhost:9000/health')" || exit 1
+# Create startup script for better process management
+COPY <<'EOF' /app/start.sh
+#!/bin/bash
+set -e
 
-CMD ["python", "api_server.py"] 
+# Start virtual display for browser automation
+if [ "$DISPLAY" = ":99" ]; then
+    echo "🖥️  Starting virtual display..."
+    Xvfb :99 -screen 0 1920x1080x24 -ac -nolisten tcp -dpi 96 &
+    export DISPLAY=:99
+fi
+
+# Wait for display to be ready
+sleep 2
+
+# Start the application
+echo "🚀 Starting CFDI Browser Automation Service..."
+exec python api_server.py
+EOF
+
+# Make startup script executable
+RUN chmod +x /app/start.sh
+
+# Enhanced health check
+HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=3 \
+    CMD python -c "import requests; import sys; \
+    try: \
+        response = requests.get('http://localhost:9000/health', timeout=10); \
+        sys.exit(0 if response.status_code == 200 else 1) \
+    except: \
+        sys.exit(1)" || exit 1
+
+# Use startup script as entrypoint
+CMD ["/app/start.sh"] 

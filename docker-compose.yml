@@ -1,5 +1,7 @@
 # Docker Compose configuration for CFDI Automation Platform
-# Multi-service setup with frontend, backend, Python browser automation, Nginx, and Redis
+# Enhanced multi-service setup with optimized security and performance
+
+version: '3.8'
 
 services:
   # Frontend - Next.js Application
@@ -17,42 +19,75 @@ services:
       - docker.env
     volumes:
       - frontend_data:/app/.next
+      - frontend_cache:/app/.next/cache
     depends_on:
-      - backend_api
-      - python_browser
+      backend_api:
+        condition: service_healthy
+      python_browser:
+        condition: service_healthy
     networks:
       - cfdi_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # Backend API - Node.js/Express Server
+  # Backend API - Node.js/Express Server  
   backend_api:
     build:
       context: ./backend
       dockerfile: Dockerfile.nodejs
       target: runner
     ports:
-      - "5000:5000"
+      - "8000:8000"
     environment:
       - NODE_ENV=production
-      - PORT=5000
+      - PORT=8000
+      - START_WORKER=true
     env_file:
       - docker.env
     volumes:
       - backend_data:/app/data
-      - ./logs:/app/logs
+      - backend_logs:/app/logs
+      - backend_tmp:/app/tmp
     networks:
       - cfdi_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 45s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Python Browser Automation Service
   python_browser:
@@ -65,25 +100,43 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=9000
+      - DISPLAY=:99
     env_file:
       - docker.env
     volumes:
       - browser_data:/app/browser_data
-      - ./logs:/app/logs
+      - browser_logs:/app/logs
+      - browser_screenshots:/app/screenshots
+      - browser_downloads:/app/downloads
     networks:
       - cfdi_network
     security_opt:
       - seccomp:unconfined
     cap_add:
       - SYS_ADMIN
+    shm_size: 2g
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:9000/health', timeout=5)"]
       interval: 30s
-      timeout: 10s
+      timeout: 15s
       retries: 3
-      start_period: 40s
+      start_period: 60s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # Nginx Reverse Proxy
+  # Nginx Reverse Proxy with SSL Termination
   nginx:
     build:
       context: ./nginx
@@ -91,40 +144,117 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
     volumes:
       - nginx_logs:/var/log/nginx
       - nginx_cache:/var/cache/nginx
-      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_ssl:/etc/nginx/ssl:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
     depends_on:
-      - frontend
-      - backend_api
-      - python_browser
+      frontend:
+        condition: service_healthy
+      backend_api:
+        condition: service_healthy
+      python_browser:
+        condition: service_healthy
     networks:
       - cfdi_network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-# Volumes for persistent data
+# Volumes for persistent data and enhanced caching
 volumes:
+  # Frontend volumes
   frontend_data:
     driver: local
+    labels:
+      - "traefik.enable=false"
+  frontend_cache:
+    driver: local
+    labels:
+      - "traefik.enable=false"
+  
+  # Backend volumes
   backend_data:
     driver: local
+    labels:
+      - "traefik.enable=false"
+  backend_logs:
+    driver: local
+    labels:
+      - "traefik.enable=false"
+  backend_tmp:
+    driver: local
+    labels:
+      - "traefik.enable=false"
+  
+  # Browser automation volumes
   browser_data:
     driver: local
+    labels:
+      - "traefik.enable=false"
+  browser_logs:
+    driver: local
+    labels:
+      - "traefik.enable=false"
+  browser_screenshots:
+    driver: local
+    labels:
+      - "traefik.enable=false"
+  browser_downloads:
+    driver: local
+    labels:
+      - "traefik.enable=false"
+  
+  # Nginx volumes
   nginx_logs:
     driver: local
+    labels:
+      - "traefik.enable=false"
   nginx_cache:
     driver: local
+    labels:
+      - "traefik.enable=false"
+  nginx_ssl:
+    driver: local
+    labels:
+      - "traefik.enable=false"
 
-# Custom network for service communication
+# Enhanced network configuration
 networks:
   cfdi_network:
     driver: bridge
+    name: cfdi_automation_network
     ipam:
+      driver: default
       config:
-        - subnet: 172.20.0.0/16 
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+    driver_opts:
+      com.docker.network.bridge.name: cfdi-bridge
+      com.docker.network.bridge.enable_icc: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "true"
+      com.docker.network.driver.mtu: 1500
+    labels:
+      - "traefik.enable=false"
+      - "com.cfdi-automation.network=main" 
