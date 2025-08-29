@@ -3,7 +3,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "backend/Dockerfile.python"
 
 [deploy]
-startCommand = "python api_server.py"
+startCommand = "python zeabur_entry.py"
 healthCheckPath = "/health"
 healthCheckTimeout = 300
 

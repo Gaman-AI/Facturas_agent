@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     procps \
     xvfb \
-    # Browser dependencies
+    # Browser dependencies (simplified for compatibility)
     libxss1 \
     libnss3 \
     libnspr4 \
@@ -34,11 +34,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcairo2 \
     libatspi2.0-0 \
     libgtk-3-0 \
-    libgdk-pixbuf2.0-0 \
     # Additional dependencies for better browser support
     fonts-liberation \
-    libappindicator3-1 \
-    libu2f-udev \
     xdg-utils \
     # Build tools (removed after installation)
     && apt-get clean \
@@ -260,28 +257,15 @@ ENV PORT=9000 \
     PYTHONPATH=/app \
     DISPLAY=:99
 
-# Create startup script for better process management
-COPY <<'EOF' /app/start.sh
-#!/bin/bash
-set -e
+# Copy startup script
+COPY start.sh /app/start.sh
 
-# Start virtual display for browser automation
-if [ "$DISPLAY" = ":99" ]; then
-    echo "🖥️  Starting virtual display..."
-    Xvfb :99 -screen 0 1920x1080x24 -ac -nolisten tcp -dpi 96 &
-    export DISPLAY=:99
-fi
+# Switch to root temporarily to set permissions
+USER root
+RUN chmod +x /app/start.sh && chown appuser:appuser /app/start.sh
 
-# Wait for display to be ready
-sleep 2
-
-# Start the application
-echo "🚀 Starting CFDI Browser Automation Service..."
-exec python api_server.py
-EOF
-
-# Make startup script executable
-RUN chmod +x /app/start.sh
+# Switch back to non-root user
+USER appuser
 
 # Enhanced health check
 HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=3 \
@@ -293,4 +277,5 @@ HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=3 \
         sys.exit(1)" || exit 1
 
 # Use startup script as entrypoint
-CMD ["/app/start.sh"] 
+ENTRYPOINT ["/app/start.sh"]
+CMD [] 

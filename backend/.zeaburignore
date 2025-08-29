@@ -1,0 +1,14 @@
+# Zeabur ignore file - prevent auto-detection of wrong entry points
+test_*.py
+*_test.py
+test-*.py
+simple.py
+browser_agent.py
+*.test.js
+test-*.js
+__pycache__/
+*.pyc
+node_modules/
+tmp/
+uploads/
+logs/
