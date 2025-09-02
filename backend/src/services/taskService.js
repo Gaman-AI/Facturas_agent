@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import config from '../config/index.js'
 import { v4 as uuidv4 } from 'uuid'
+import { createMockClient } from './mockSupabaseService.js'
 
 /**
  * TaskService - Database operations for automation tasks and task steps
@@ -8,17 +9,28 @@ import { v4 as uuidv4 } from 'uuid'
  */
 class TaskService {
   constructor() {
-    // Create admin client with service key for server-side operations
-    this.supabase = createClient(
-      config.supabase.url,
-      config.supabase.serviceKey,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
+    // Check if we should use mock services
+    if (config.isDevelopment() && 
+        (!config.supabase.url || 
+         config.supabase.url.includes('test-project') ||
+         config.supabase.anonKey.includes('test_anon_key'))) {
+      console.log('🔧 Using Mock Supabase Service for TaskService')
+      this.supabase = createMockClient()
+      this.isMock = true
+    } else {
+      // Create admin client with service key for server-side operations
+      this.supabase = createClient(
+        config.supabase.url,
+        config.supabase.serviceKey,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
         }
-      }
-    )
+      )
+      this.isMock = false
+    }
   }
 
   /**

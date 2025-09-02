@@ -202,45 +202,21 @@ class ApiClient {
 // Create singleton instance
 const apiClient = new ApiClient();
 
-// Types
-export interface Task {
-  id: string;
-  prompt: string;
-  status: 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
-  created_at: string;
-  completed_at?: string;
-  error_message?: string;
-  result?: any;
-  steps?: TaskStep[];
-}
-
-export interface TaskStep {
-  id: number;
-  task_id: string;
-  step_type: 'action' | 'observation' | 'error';
-  content: Record<string, any>;
-  timestamp: string;
-}
-
-export interface CreateTaskRequest {
-  prompt: string;
-}
-
-export interface HealthResponse {
-  status: string;
-  timestamp: string;
-  version: string;
-}
-
-// Simplified Browser Task Integration Types
-export interface BrowserTaskRequest {
-  task: string;
+// Dashboard Dual Pane Task Types
+export interface DashboardTaskRequest {
+  vendor_url: string;
+  user_profile: any;
+  ocr_ticket_data: any;
+  raw_text: string;
   model?: string;
-  llm_provider?: 'openai' | 'anthropic' | 'google';
+  temperature?: number;
+  max_steps?: number;
   timeout_minutes?: number;
+  llm_provider?: string;
+  browser_mode?: 'browserbase' | 'local';
 }
 
-export interface BrowserTaskResponse {
+export interface DashboardTaskResponse {
   success: boolean;
   data: {
     task_id: string;
@@ -401,62 +377,10 @@ export interface TaskLogsResponse {
   };
 }
 
-
-
-// CFDI Task Types to match backend validation
-export interface CFDITaskRequest {
-  customer_details: {
-    rfc: string;
-    email: string;
-    company_name: string;
-    fiscal_regime?: string;
-    address?: {
-      street: string;
-      exterior_number: string;
-      interior_number?: string;
-      colony: string;
-      municipality: string;
-      state: string;
-      postal_code: string;
-    };
-  };
-  invoice_details: {
-    ticket_id: string;
-    folio?: string;
-    transaction_date?: string;
-    subtotal?: number;
-    iva?: number;
-    total: number;
-    currency?: string;
-  };
-  vendor_url: string;
-  automation_config?: {
-    llm_provider?: 'openai' | 'anthropic' | 'google';
-    model?: string;
-    max_retries?: number;
-    timeout_minutes?: number;
-  };
-}
-
-export interface CFDITaskResponse {
-  success: boolean;
-  data?: {
-    task_id: string;
-    status: string;
-    result: any;
-    execution_time: number;
-    logs: any[];
-  };
-  error?: {
-    code: string;
-    message: string;
-    details?: any;
-  };
-  meta: {
-    timestamp: string;
-    requestId: string;
-    message?: string;
-  };
+export interface HealthResponse {
+  status: string;
+  timestamp: string;
+  version: string;
 }
 
 // API Service Class
@@ -478,155 +402,23 @@ export class ApiService {
     return response.data as HealthResponse;
   }
 
-  // CFDI Task Execution - Main method for CFDI automation
-  static async executeCFDITask(taskData: CFDITaskRequest): Promise<CFDITaskResponse> {
-    const response = await apiClient.post('/tasks/execute', taskData);
-    return response.data as CFDITaskResponse;
-  }
-
-  // Task Management
-  static async createTask(prompt: string): Promise<Task> {
-    const response = await apiClient.post('/tasks', { task: prompt });
-    const data = response.data;
-    
-    // Ensure the response matches our Task interface
-    return {
-      id: data.id || data.task_id,
-      prompt: data.prompt,
-      status: data.status,
-      created_at: data.created_at,
-      completed_at: data.completed_at,
-      error_message: data.error_message,
-      result: data.result,
-      steps: data.steps || []
-    } as Task;
-  }
-
-  static async getTasks(skip: number = 0, limit: number = 100): Promise<Task[]> {
-    try {
-      // Use the browser-use tasks endpoint instead of legacy /tasks
-      const response = await apiClient.get('/tasks/browser-use', {
-        params: { offset: skip, limit }
-      });
-      
-      console.log('Raw API response:', response.data);
-      
-      // Transform the response to match the Task interface
-      const browserUseResponse = response.data as BrowserUseTasksResponse;
-      
-      if (!browserUseResponse?.data?.tasks) {
-        console.warn('Invalid API response structure:', browserUseResponse);
-        return [];
-      }
-      
-      const transformedTasks = browserUseResponse.data.tasks.map(task => {
-        if (!task.task_id) {
-          console.warn('Task missing task_id:', task);
-          return null;
-        }
-        
-        return {
-          id: task.task_id,
-          prompt: task.prompt_preview || 'Browser automation task',
-          status: task.status as 'pending' | 'running' | 'paused' | 'completed' | 'failed',
-          created_at: task.created_at,
-          completed_at: task.completed_at,
-          error_message: task.error,
-          result: task.result,
-          steps: [] // Browser-use tasks don't have steps in the same format
-        };
-      }).filter(Boolean); // Remove null entries
-      
-      console.log('Transformed tasks:', transformedTasks);
-      return transformedTasks;
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-      // Return empty array as fallback
-      return [];
-    }
-  }
-
-  static async getTask(taskId: string): Promise<Task> {
-    const response = await apiClient.get(`/tasks/${taskId}`);
-    return response.data as Task;
-  }
-
-  static async getTaskSteps(taskId: string): Promise<{ task_id: string; steps: TaskStep[] }> {
-    const response = await apiClient.get(`/tasks/${taskId}/steps`);
-    return response.data as { task_id: string; steps: TaskStep[] };
-  }
-
-  // Task Control
-  static async pauseTask(taskId: string): Promise<{ message: string; task_id: string }> {
-    const response = await apiClient.post(`/tasks/${taskId}/pause`);
-    return response.data as { message: string; task_id: string };
-  }
-
-  static async resumeTask(taskId: string): Promise<{ message: string; task_id: string }> {
-    const response = await apiClient.post(`/tasks/${taskId}/resume`);
-    return response.data as { message: string; task_id: string };
-  }
-
-  static async stopTask(taskId: string): Promise<{ message: string; task_id: string }> {
-    const response = await apiClient.put(`/tasks/${taskId}/stop`);
-    return response.data as { message: string; task_id: string };
-  }
-
-  static async deleteTask(taskId: string): Promise<{ message: string; task_id: string }> {
-    const response = await apiClient.delete(`/tasks/${taskId}`);
-    return response.data as { message: string; task_id: string };
-  }
-
-  // Browser Agent Realtime (Legacy - kept for compatibility)
-  static async createBrowserTask(request: BrowserTaskRequest): Promise<BrowserTaskResponse> {
-    try {
-      const response = await apiClient.post('/tasks/browser-use', request);
-      return response.data as BrowserTaskResponse;
-    } catch (error) {
-      console.error('Error creating browser task:', error);
-      throw error;
-    }
-  }
-
-  static async getBrowserTaskLogs(sessionId: string): Promise<any[]> {
-    const response = await apiClient.get(`/browser-agent/logs/${sessionId}`);
-    return response.data as any[];
-  }
-
-  // Execute task immediately (for testing)
-  static async executeBrowserTask(request: BrowserTaskRequest): Promise<BrowserTaskResponse> {
-    const response = await apiClient.post('/tasks/execute', request);
-    return response.data as BrowserTaskResponse;
-  }
-
-  // Browser-Use Task Creation (main method for browser automation)
-  static async createBrowserUseTask(request: {
-    vendor_url: string;
-    user_profile: any;
-    ocr_ticket_data: any;
-    raw_text: string;
-    model?: string;
-    temperature?: number;
-    max_steps?: number;
-    timeout_minutes?: number;
-    llm_provider?: string;
-    browser_mode?: 'browserbase' | 'local';
-  }): Promise<BrowserTaskResponse> {
-    // Normalize the request - optimized structure without duplicate data
+  // Dashboard Dual Pane Task Creation - Main method for browser automation
+  static async createDashboardTask(request: DashboardTaskRequest): Promise<DashboardTaskResponse> {
+    // Normalize the request for Dashboard Dual Pane
     const normalizedRequest = {
       vendor_url: request.vendor_url,
       user_profile: request.user_profile,
       ocr_ticket_data: request.ocr_ticket_data,
       raw_text: request.raw_text,
-      model: request.model || 'gpt-4o-mini',
+      model: request.model || 'gpt-5-nano-2025-08-07',
       temperature: request.temperature || 0.7,
-      max_steps: request.max_steps || 30,
+      max_steps: request.max_steps || 100,
       timeout_minutes: request.timeout_minutes || 30,
       browser_mode: request.browser_mode || 'browserbase'
     };
 
     const response = await apiClient.post('/tasks/browser-use', normalizedRequest);
-    return response.data as BrowserTaskResponse;
+    return response.data as DashboardTaskResponse;
   }
 
   static async getBrowserUseTask(taskId: string): Promise<BrowserUseTask> {

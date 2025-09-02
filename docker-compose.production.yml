@@ -1,5 +1,5 @@
-# Docker Compose configuration for CFDI Automation Platform
-# Enhanced multi-service setup with optimized security and performance
+# Production Docker Compose for CFDI Automation Platform
+# Optimized for production deployment with proper service separation
 
 version: '3.8'
 
@@ -10,6 +10,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: production
+    container_name: cfdi-frontend
     ports:
       - "3000:3000"
     environment:
@@ -21,9 +22,9 @@ services:
       - frontend_data:/app/.next
       - frontend_cache:/app/.next/cache
     depends_on:
-      backend_api:
+      backend-api:
         condition: service_healthy
-      python_browser:
+      browser-automation:
         condition: service_healthy
     networks:
       - cfdi_network
@@ -48,12 +49,13 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Backend API - Node.js/Express Server  
-  backend_api:
+  # Node.js Backend API Service
+  backend-api:
     build:
       context: ./backend
-      dockerfile: Dockerfile.nodejs
+      dockerfile: Dockerfile
       target: runner
+    container_name: cfdi-backend-api
     ports:
       - "8000:8000"
     environment:
@@ -90,17 +92,19 @@ services:
         max-file: "3"
 
   # Python Browser Automation Service
-  python_browser:
+  browser-automation:
     build:
       context: ./backend
-      dockerfile: Dockerfile.python
+      dockerfile: Dockerfile.python.optimized
       target: runner
+    container_name: cfdi-browser-automation
     ports:
       - "9000:9000"
     environment:
       - PYTHONUNBUFFERED=1
       - PORT=9000
       - DISPLAY=:99
+      - PLAYWRIGHT_BROWSERS_PATH=/app/playwright-browsers
     env_file:
       - docker.env
     volumes:
@@ -108,6 +112,7 @@ services:
       - browser_logs:/app/logs
       - browser_screenshots:/app/screenshots
       - browser_downloads:/app/downloads
+      - browser_cache:/app/playwright-browsers
     networks:
       - cfdi_network
     security_opt:
@@ -136,11 +141,68 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Nginx Reverse Proxy with SSL Termination
+  # Redis for caching and session management
+  redis:
+    image: redis:7-alpine
+    container_name: cfdi-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - cfdi_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+  # PostgreSQL for data persistence
+  postgres:
+    image: postgres:15-alpine
+    container_name: cfdi-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=cfdi_automation
+      - POSTGRES_USER=cfdi_user
+      - POSTGRES_PASSWORD=cfdi_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/corrected_schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    networks:
+      - cfdi_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cfdi_user -d cfdi_automation"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Nginx Reverse Proxy
   nginx:
     build:
       context: ./nginx
       dockerfile: Dockerfile
+    container_name: cfdi-nginx
     ports:
       - "80:80"
       - "443:443"
@@ -155,9 +217,9 @@ services:
     depends_on:
       frontend:
         condition: service_healthy
-      backend_api:
+      backend-api:
         condition: service_healthy
-      python_browser:
+      browser-automation:
         condition: service_healthy
     networks:
       - cfdi_network
@@ -182,65 +244,49 @@ services:
         max-size: "10m"
         max-file: "3"
 
-# Volumes for persistent data and enhanced caching
+# Volumes for persistent data
 volumes:
   # Frontend volumes
   frontend_data:
     driver: local
-    labels:
-      - "traefik.enable=false"
   frontend_cache:
     driver: local
-    labels:
-      - "traefik.enable=false"
   
   # Backend volumes
   backend_data:
     driver: local
-    labels:
-      - "traefik.enable=false"
   backend_logs:
     driver: local
-    labels:
-      - "traefik.enable=false"
   backend_tmp:
     driver: local
-    labels:
-      - "traefik.enable=false"
   
   # Browser automation volumes
   browser_data:
     driver: local
-    labels:
-      - "traefik.enable=false"
   browser_logs:
     driver: local
-    labels:
-      - "traefik.enable=false"
   browser_screenshots:
     driver: local
-    labels:
-      - "traefik.enable=false"
   browser_downloads:
     driver: local
-    labels:
-      - "traefik.enable=false"
+  browser_cache:
+    driver: local
+  
+  # Database volumes
+  redis_data:
+    driver: local
+  postgres_data:
+    driver: local
   
   # Nginx volumes
   nginx_logs:
     driver: local
-    labels:
-      - "traefik.enable=false"
   nginx_cache:
     driver: local
-    labels:
-      - "traefik.enable=false"
   nginx_ssl:
     driver: local
-    labels:
-      - "traefik.enable=false"
 
-# Enhanced network configuration
+# Network configuration
 networks:
   cfdi_network:
     driver: bridge
@@ -250,11 +296,3 @@ networks:
       config:
         - subnet: 172.20.0.0/16
           gateway: 172.20.0.1
-    driver_opts:
-      com.docker.network.bridge.name: cfdi-bridge
-      com.docker.network.bridge.enable_icc: "true"
-      com.docker.network.bridge.enable_ip_masquerade: "true"
-      com.docker.network.driver.mtu: 1500
-    labels:
-      - "traefik.enable=false"
-      - "com.cfdi-automation.network=main" 

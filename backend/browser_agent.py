@@ -237,7 +237,7 @@ def create_browser_profile() -> BrowserProfile:
     )
 
 
-async def run_local_browser_task(task: str, model: str = "gpt-4o-mini", max_steps: int = 100, user_profile: dict = None, ocr_ticket_data: dict = None):
+async def run_local_browser_task(task: str, model: str = None, max_steps: int = 100, user_profile: dict = None, ocr_ticket_data: dict = None):
     """
     Run a browser automation task using local Playwright browser (simple approach)
     
@@ -255,14 +255,17 @@ async def run_local_browser_task(task: str, model: str = "gpt-4o-mini", max_step
     if not os.getenv('OPENAI_API_KEY'):
         raise ValueError("OPENAI_API_KEY environment variable is required")
     
+    # Force use of gpt-4.1-mini like simple.py - ignore any model parameter
+    forced_model = 'gpt-4.1-mini'
+    
     print(f"[STARTING] Local browser task...")
-    print(f"   Model: {model}")
+    print(f"   Model: {forced_model} (forced, ignoring input)")
     print(f"   Max Steps: {max_steps}")
     print(f"   Task: {task[:100]}...")
     
     try:
-        # Create agent with local browser - simple approach
-        llm = ChatOpenAI(model=model)
+        # Create agent with local browser - simple approach using forced model
+        llm = ChatOpenAI(model=forced_model)
         
         # Create custom system message that includes user profile data
         custom_system_message = None
@@ -294,6 +297,8 @@ async def run_local_browser_task(task: str, model: str = "gpt-4o-mini", max_step
         agent = Agent(
             task=task, 
             llm=llm,
+            use_vision=True,  # Enable vision mode with medium priority
+            vision_priority="medium",  # Set vision priority to medium
             override_system_message=custom_system_message  # Use our custom system message
         )
         
@@ -307,7 +312,7 @@ async def run_local_browser_task(task: str, model: str = "gpt-4o-mini", max_step
         raise
 
 
-async def run_browserbase_browser_task(task: str, model: str = "gpt-4o", max_steps: int = 20, user_profile: dict = None, ocr_ticket_data: dict = None):
+async def run_browserbase_browser_task(task: str, model: str = None, max_steps: int = 20, user_profile: dict = None, ocr_ticket_data: dict = None):
     """
     Run a browser automation task using Browserbase cloud browser with session management
     
@@ -325,8 +330,11 @@ async def run_browserbase_browser_task(task: str, model: str = "gpt-4o", max_ste
     if not os.getenv('OPENAI_API_KEY'):
         raise ValueError("OPENAI_API_KEY environment variable is required")
     
+    # Force use of gpt-4.1-mini like simple.py - ignore any model parameter
+    forced_model = 'gpt-4.1-mini'
+    
     print(f"[STARTING] Browserbase browser task...")
-    print(f"   Model: {model}")
+    print(f"   Model: {forced_model} (forced, ignoring input)")
     print(f"   Max Steps: {max_steps}")
     print(f"   Task: {task[:100]}...")
     
@@ -344,7 +352,7 @@ async def run_browserbase_browser_task(task: str, model: str = "gpt-4o", max_ste
         
         # Use managed browser session context manager
         async with ManagedBrowserSession(session.connect_url, browser_profile) as browser_session:
-            result = await run_automation_task(browser_session, task, model, max_steps, user_profile, ocr_ticket_data)
+            result = await run_automation_task(browser_session, task, forced_model, max_steps, user_profile, ocr_ticket_data)
             print(f"[SUCCESS] Browserbase task completed successfully!")
             return str(result), session_info
             
@@ -356,9 +364,11 @@ async def run_browserbase_browser_task(task: str, model: str = "gpt-4o", max_ste
         raise
 
 
-async def run_automation_task(browser_session, task: str, model: str = "gpt-4o", max_steps: int = 20, user_profile: dict = None, ocr_ticket_data: dict = None):
+async def run_automation_task(browser_session, task: str, model: str = None, max_steps: int = 20, user_profile: dict = None, ocr_ticket_data = None):
     """Helper function to run automation task with given browser session"""
-    llm = ChatOpenAI(model=model, temperature=0.0)
+    # Force use of gpt-4.1-mini like simple.py - ignore any model parameter
+    forced_model = 'gpt-4.1-mini'
+    llm = ChatOpenAI(model=forced_model)
     
     # Create custom system message that includes user profile data
     custom_system_message = None
@@ -391,10 +401,11 @@ async def run_automation_task(browser_session, task: str, model: str = "gpt-4o",
         task=task,
         llm=llm,
         browser_session=browser_session,
-        enable_memory=False,
+        enable_memory=True,
         max_failures=5,
         retry_delay=5,
-        max_actions_per_step=1,
+        use_vision=True,  # Enable vision mode with medium priority
+        vision_priority="medium",  # Set vision priority to medium
         override_system_message=custom_system_message,  # Use our custom system message
     )
     
@@ -426,8 +437,8 @@ async def run_automation_task(browser_session, task: str, model: str = "gpt-4o",
 
 def generate_task_from_data(vendor_url: str, user_profile: dict = None, ocr_ticket_data: dict = None) -> str:
     """
-    Generate a comprehensive task description that includes user profile data
-    This ensures the agent has access to the real user information
+    Generate a task description similar to simple.py structure for better coherence
+    This creates a single coherent block of information like simple.py
     
     Args:
         vendor_url (str): The vendor website URL
@@ -435,40 +446,64 @@ def generate_task_from_data(vendor_url: str, user_profile: dict = None, ocr_tick
         ocr_ticket_data (dict): OCR extracted ticket data
         
     Returns:
-        str: Comprehensive task description with user data
+        str: Simple.py-style task description with user data in one block
     """
     if not vendor_url:
         return "Complete the required browser automation task"
     
-    # Build comprehensive task description
-    task_parts = [f"Navigate to {vendor_url} and complete the required actions"]
+    # Start with the URL like simple.py
+    task_lines = [vendor_url]
     
-    # Add user profile information if available
+    # Add user profile information in simple.py format
     if user_profile:
-        if user_profile.get('rfc'):
-            task_parts.append(f"Use RFC: {user_profile['rfc']}")
-        if user_profile.get('company_name'):
-            task_parts.append(f"Company: {user_profile['company_name']}")
         if user_profile.get('email'):
-            task_parts.append(f"Email: {user_profile['email']}")
+            task_lines.append(f"Email: {user_profile['email']}")
+        if user_profile.get('rfc'):
+            task_lines.append(f"RFC: {user_profile['rfc']}")
+        if user_profile.get('company_name'):
+            task_lines.append(f"Company Name: {user_profile['company_name']}")
+        if user_profile.get('country'):
+            task_lines.append(f"Country: {user_profile['country']}")
+        if user_profile.get('street'):
+            task_lines.append(f"Street: {user_profile['street']}")
+        if user_profile.get('exterior_number'):
+            task_lines.append(f"Exterior Number: {user_profile['exterior_number']}")
+        if user_profile.get('interior_number'):
+            task_lines.append(f"Interior Number: {user_profile['interior_number']}")
+        if user_profile.get('colony'):
+            task_lines.append(f"Colony: {user_profile['colony']}")
+        if user_profile.get('municipality'):
+            task_lines.append(f"Municipality: {user_profile['municipality']}")
         if user_profile.get('zip_code'):
-            task_parts.append(f"ZIP Code: {user_profile['zip_code']}")
+            task_lines.append(f"Zip Code: {user_profile['zip_code']}")
+        if user_profile.get('state'):
+            task_lines.append(f"State: {user_profile['state']}")
+        if user_profile.get('tax_regimen'):
+            task_lines.append(f"Tax Regimen: {user_profile['tax_regimen']}")
+        if user_profile.get('cdfi_usage'):
+            task_lines.append(f"CDFI Usage: {user_profile['cdfi_usage']}")
     
-    # Add OCR ticket data if available
+    # Add OCR ticket data in simple.py format
     if ocr_ticket_data:
+        task_lines.append("")  # Empty line separator like simple.py
+        if ocr_ticket_data.get('Folio'):
+            task_lines.append(f"Folio: {ocr_ticket_data['Folio']}")
+        if ocr_ticket_data.get('Transaction_Date'):
+            task_lines.append(f"Transaction Date: {ocr_ticket_data['Transaction_Date']}")
         if ocr_ticket_data.get('Total'):
-            task_parts.append(f"Ticket Total: {ocr_ticket_data['Total']}")
+            task_lines.append(f"Total: {ocr_ticket_data['Total']}")
         if ocr_ticket_data.get('ID_Ticket'):
-            task_parts.append(f"Ticket ID: {ocr_ticket_data['ID_Ticket']}")
+            task_lines.append(f"ID: {ocr_ticket_data['ID_Ticket']}")
+        # Legacy field mappings for backward compatibility
         if ocr_ticket_data.get('TC#'):
-            task_parts.append(f"TC Number: {ocr_ticket_data['TC#']}")
+            task_lines.append(f"TC: {ocr_ticket_data['TC#']}")
         if ocr_ticket_data.get('TR#'):
-            task_parts.append(f"TR Number: {ocr_ticket_data['TR#']}")
+            task_lines.append(f"TR: {ocr_ticket_data['TR#']}")
     
-    return ". ".join(task_parts)
+    return "\n".join(task_lines)
 
 
-async def run_agent_on_existing_session(session_connect_url: str, task: str, model: str = "gpt-4o", max_steps: int = 20, user_profile: dict = None, ocr_ticket_data: dict = None):
+async def run_agent_on_existing_session(session_connect_url: str, task: str, model: str = None, max_steps: int = 20, user_profile: dict = None, ocr_ticket_data: dict = None):
     """
     Run agent automation on an existing Browserbase session
     
@@ -487,9 +522,12 @@ async def run_agent_on_existing_session(session_connect_url: str, task: str, mod
     if not os.getenv('OPENAI_API_KEY'):
         raise ValueError("OPENAI_API_KEY environment variable is required")
     
+    # Force use of gpt-4.1-mini like simple.py - ignore any model parameter
+    forced_model = 'gpt-4.1-mini'
+    
     print(f"[STARTING] Agent execution on existing session...")
     print(f"   Connect URL: {session_connect_url}")
-    print(f"   Model: {model}")
+    print(f"   Model: {forced_model} (forced, ignoring input)")
     print(f"   Max Steps: {max_steps}")
     print(f"   Task: {task[:100]}...")
     
@@ -498,7 +536,7 @@ async def run_agent_on_existing_session(session_connect_url: str, task: str, mod
         
         # Use managed browser session with existing session
         async with ManagedBrowserSession(session_connect_url, browser_profile) as browser_session:
-            result = await run_automation_task(browser_session, task, model, max_steps, user_profile, ocr_ticket_data)
+            result = await run_automation_task(browser_session, task, forced_model, max_steps, user_profile, ocr_ticket_data)
             print(f"[SUCCESS] Agent execution completed on existing session!")
             return str(result)
             
@@ -541,13 +579,14 @@ async def main():
         vendor_url = task_data.get('vendor_url', '')
         browser_mode = task_data.get('browser_mode', 'local')
         
-        # Optional parameters
-        model = task_data.get('model', 'gpt-4o-mini')
+        # Optional parameters - FORCE model to match simple.py, ignore any input
+        model = 'gpt-4.1-mini'  # Always use this model, ignore API input
         max_steps = task_data.get('max_steps', 100)
         
         # Debug: Log the execution mode and key data
         print(f"[DEBUG] Execution Mode: {execution_mode}")
         print(f"[DEBUG] Browser Mode: {browser_mode}")
+        print(f"[DEBUG] Model: {model} (FORCED - ignoring any API input)")
         print(f"[DEBUG] User RFC: {user_profile.get('rfc', 'Not provided')}")
         
         # Generate comprehensive task with user profile and OCR data
@@ -568,7 +607,7 @@ async def main():
                         "success": True,
                         "result": "Browserbase session created successfully - Phase 1 Complete",
                         "phase": "create_session",
-                        "model_used": model,
+                        "model_used": f"{model} (FORCED - ignoring API input)",
                         "steps_executed": 0,  # No agent steps yet
                         "task_prompt": task,
                         "vendor_url": vendor_url,

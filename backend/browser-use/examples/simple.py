@@ -19,7 +19,26 @@ llm = ChatOpenAI(
 )
 
 
-task = 'Find the founders of browser-use'
+task = """ https://www4.oxxo.com:9443/facturacionElectronica-web/views/layout/inicio.do
+Email: jorge@gaman.ai
+RFC: DOGJ8603192W3
+Company Name: JORGE DOMENZAIN GALINDO
+Country: Mexico
+Street: PRIV DEL MARQUEZ
+Exterior Number: 404
+Interior Number: 4
+Colony: LOMAS 4A SECCION
+Municipality: San Luis Potosí
+Zip Code: 78216
+State: San Luis Potosí
+Tax Regimen: Personas Físicas con Actividades Empresariales y Profesionales
+CDFI Usage: Gastos en general
+
+Folio: 860523
+Transaction Date: 04/06/2025
+Total: 47.0
+ID: 10LGA50YMB1
+"""
 agent = Agent(task=task, llm=llm)
 
 

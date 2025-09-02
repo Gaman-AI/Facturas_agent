@@ -1,46 +1,46 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Send, Zap, AlertCircle, Play } from 'lucide-react'
-import { useAuth } from '@/hooks/useAuth'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Loader2, Send, RotateCcw, CheckCircle, AlertCircle, Zap, Brain, Target, Rocket } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
-import ApiService from '@/services/api'
+import { ApiService } from '@/services/api'
 
 interface SimpleTaskSubmissionProps {
   onTaskSubmit?: (taskId: string) => void
-  showRedirect?: boolean
+  onResetTask?: () => void
+  taskId?: string
+  status?: 'idle' | 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'connecting'
   className?: string
+  showRedirect?: boolean
 }
 
-export function SimpleTaskSubmission({ 
-  onTaskSubmit, 
-  showRedirect = true,
-  className = '' 
+export function SimpleTaskSubmission({
+  onTaskSubmit,
+  onResetTask,
+  taskId,
+  status = 'idle',
+  className = '',
+  showRedirect = false
 }: SimpleTaskSubmissionProps) {
   const { t } = useLanguage()
-  const { user } = useAuth()
-  const router = useRouter()
-  
   const [task, setTask] = useState('')
   const [llmProvider, setLlmProvider] = useState<'openai' | 'anthropic' | 'google'>('openai')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [isDemoMode, setIsDemoMode] = useState(false)
   const mountedRef = useRef(true)
-
   const characterLimit = 2000
-  const remainingChars = characterLimit - task.length
 
-  // Cleanup effect to prevent state updates on unmounted component
   useEffect(() => {
+    mountedRef.current = true
     return () => {
       mountedRef.current = false
     }
@@ -51,14 +51,14 @@ export function SimpleTaskSubmission({
     
     if (!task.trim()) {
       if (mountedRef.current) {
-        setError(t('tasks.validation.taskRequired'))
+        setError(t('tasks.validation.taskRequired', 'Please describe what you want to automate'))
       }
       return
     }
 
     if (task.length > characterLimit) {
       if (mountedRef.current) {
-        setError(t('tasks.validation.taskTooLong'))
+        setError(t('tasks.validation.taskTooLong', 'Task description is too long'))
       }
       return
     }
@@ -83,47 +83,23 @@ export function SimpleTaskSubmission({
       
       // Only update state if component is still mounted
       if (mountedRef.current) {
-        setSuccess(t('tasks.success.created'))
-        
-        // Clear form
-        setTask('')
+        setSuccess(t('tasks.success.created', 'Task created successfully!'))
         
         // Callback for parent component
         if (onTaskSubmit) {
           onTaskSubmit(taskId)
-        }
-        
-        // Redirect to monitoring page
-        if (showRedirect) {
-          setTimeout(() => {
-            if (mountedRef.current) {
-              router.push(`/task/monitor/${taskId}`)
-            }
-          }, 1500)
         }
       }
 
     } catch (error: any) {
       console.error('Error creating task:', error)
       
-      // Extract detailed error information
-      let errorMessage = 'Unknown error occurred'
-      
-      if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message
-      } else if (error?.response?.data?.error?.message) {
-        errorMessage = error.response.data.error.message
-      } else if (error?.message) {
-        errorMessage = error.message
-      }
-      
-      // Set error state with detailed message (only if mounted)
       if (mountedRef.current) {
+        const errorMessage = error.response?.data?.error?.message || 
+                           error.message || 
+                           t('tasks.error.generic', 'Failed to create task')
         setError(errorMessage)
       }
-      
-      // Don't redirect on error to prevent React reconciliation issues
-      console.log('Task creation failed, not redirecting')
     } finally {
       if (mountedRef.current) {
         setIsSubmitting(false)
@@ -131,194 +107,194 @@ export function SimpleTaskSubmission({
     }
   }
 
-  const handleQuickFill = (quickTask: string) => {
-    setTask(quickTask)
+  const handleReset = () => {
+    setTask('')
+    setError(null)
+    setSuccess(null)
+    
+    if (onResetTask) {
+      onResetTask()
+    }
   }
 
-  const quickTasks = [
-    t('tasks.quick.searchGoogle'),
-    t('tasks.quick.checkWeather'),
-    t('tasks.quick.findProduct'),
-    t('tasks.quick.socialMedia')
-  ]
+  const isFormValid = task.trim().length > 0 && task.length <= characterLimit
 
   return (
-    <Card className={`w-full max-w-2xl mx-auto ${className}`}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Zap className="w-5 h-5 text-primary" />
-          {t('tasks.simple.title')}
-        </CardTitle>
-        <CardDescription>
-          {t('tasks.simple.description')}
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent>
-        {/* Demo Mode Toggle */}
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-medium text-blue-900">Demo Mode</h4>
-              <p className="text-sm text-blue-700">Test the dual-pane interface without API setup</p>
-            </div>
-            <Button
-              type="button"
-              variant={isDemoMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                setIsDemoMode(!isDemoMode)
-              }}
-              className="flex items-center gap-2"
-            >
-              <Play className="w-4 h-4" />
-              {isDemoMode ? 'Demo Active' : 'Enable Demo'}
-            </Button>
+    <div className={`space-y-6 ${className}`}>
+      {/* Header */}
+      <div className="text-center">
+        <div className="flex items-center justify-center mb-4">
+          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+            <Brain className="w-6 h-6 text-white" />
           </div>
         </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          {t('tasks.simple.title', 'AI Browser Automation')}
+        </h2>
+        <p className="text-gray-600 max-w-2xl mx-auto">
+          {t('tasks.simple.description', 'Describe any web task in plain language and let our AI browser agent handle the rest automatically')}
+        </p>
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Task Description */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              {t('tasks.simple.taskLabel')}
-            </label>
-            <Textarea
-              value={task}
-              onChange={(e) => {
-                setTask(e.target.value)
-              }}
-              placeholder={t('tasks.simple.placeholder')}
-              className="min-h-[100px] resize-none"
-              disabled={isSubmitting}
-              maxLength={characterLimit}
-            />
-            <div className="flex justify-between items-center text-xs text-muted-foreground">
-              <span>{t('tasks.simple.hint')}</span>
-              <span className={remainingChars < 50 ? 'text-red-500' : ''}>
-                {remainingChars} characters remaining
-              </span>
+      {/* Task Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Target className="w-5 h-5 text-blue-600" />
+            {t('tasks.simple.formTitle', 'Create New Task')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Task Description */}
+            <div className="space-y-2">
+              <Label htmlFor="task">
+                {t('tasks.simple.taskDescription', 'What would you like to automate?')}
+                <Badge variant="secondary" className="ml-2">
+                  {task.length}/{characterLimit}
+                </Badge>
+              </Label>
+              <Textarea
+                id="task"
+                value={task}
+                onChange={(e) => setTask(e.target.value)}
+                placeholder={t('tasks.simple.taskPlaceholder', 'Describe your task in detail. For example: "Go to example.com, fill out the contact form with my information, and submit it" or "Navigate to my bank website, login, download the last 3 months of statements, and save them to my downloads folder"')}
+                className="min-h-[120px] resize-none"
+                maxLength={characterLimit}
+              />
             </div>
-          </div>
 
-          {/* Quick Tasks */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">
-              {t('tasks.simple.quickTasks')}
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {quickTasks.map((quickTask, index) => (
-                <Button
-                  key={`quick-task-${index}`}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleQuickFill(quickTask)}
-                  disabled={isSubmitting}
-                  className="text-xs h-8"
-                >
-                  {quickTask.slice(0, 30)}...
-                </Button>
-              ))}
+            {/* AI Model Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="llmProvider">
+                {t('tasks.simple.aiModel', 'AI Model')}
+              </Label>
+              <Select value={llmProvider} onValueChange={(value: any) => setLlmProvider(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="openai">OpenAI GPT-4o (Recommended)</SelectItem>
+                  <SelectItem value="anthropic">Anthropic Claude 3.5 Sonnet</SelectItem>
+                  <SelectItem value="google">Google Gemini Pro</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </div>
 
-          {/* LLM Selector */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">{t('tasks.simple.aiModel')}</label>
-            <Select 
-              value={llmProvider} 
-              onValueChange={(value: any) => {
-                setLlmProvider(value)
-              }}
-            >
-              <SelectTrigger disabled={isSubmitting}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="openai">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="default">OpenAI</Badge>
-                    <span>GPT-4O (Recommended)</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="anthropic">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary">Anthropic</Badge>
-                    <span>Claude 3.5 Sonnet</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="google">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">Google</Badge>
-                    <span>Gemini Pro</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Alerts - FIXED: Single stable container with proper conditional logic */}
-          <div className="space-y-2">
+            {/* Error/Success Messages */}
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            {!error && success && (
-              <Alert className="border-green-200 bg-green-50">
-                <AlertDescription className="text-green-800">{success}</AlertDescription>
+
+            {success && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
-          </div>
 
-          {/* Actions */}
-          <div className="flex gap-2">
-            <Button
-              type="submit"
-              className="flex-1"
-              disabled={isSubmitting || !task.trim() || task.length > characterLimit}
-            >
-              <div className="flex items-center gap-2">
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                type="submit"
+                disabled={!isFormValid || isSubmitting}
+                className="flex-1"
+                size="lg"
+              >
                 {isSubmitting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {t('tasks.simple.creating', 'Creating Task...')}
+                  </>
                 ) : (
-                  <Send className="w-4 h-4" />
+                  <>
+                    <Rocket className="w-4 h-4 mr-2" />
+                    {t('tasks.simple.createTask', 'Start Automation')}
+                  </>
                 )}
-                <span>
-                  {isSubmitting
-                    ? isDemoMode
-                      ? 'Creating Demo Task...'
-                      : t('tasks.simple.creating')
-                    : isDemoMode
-                    ? 'Start Demo Task'
-                    : t('tasks.simple.submit')}
-                </span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleReset}
+                disabled={isSubmitting}
+                className="flex-1 sm:flex-none"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                {t('tasks.simple.reset', 'Reset')}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Help Section */}
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+        <CardContent className="pt-6">
+          <h3 className="text-lg font-semibold mb-4 text-blue-900">
+            {t('tasks.simple.helpTitle', 'How It Works')}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-800">
+            <div className="text-center">
+              <div className="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center mx-auto mb-2">
+                <span className="text-blue-700 font-semibold">1</span>
               </div>
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.push('/task/monitor/demo_task_456')}
-              className="px-4"
-              disabled={isSubmitting}
-            >
-              <Zap className="w-4 h-4" />
-            </Button>
+              <p>{t('tasks.simple.step1', 'Describe your task in natural language')}</p>
+            </div>
+            <div className="text-center">
+              <div className="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center mx-auto mb-2">
+                <span className="text-blue-700 font-semibold">2</span>
+              </div>
+              <p>{t('tasks.simple.step2', 'AI agent executes actions automatically')}</p>
+            </div>
+            <div className="text-center">
+              <div className="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center mx-auto mb-2">
+                <span className="text-blue-700 font-semibold">3</span>
+              </div>
+              <p>{t('tasks.simple.step3', 'Monitor progress and get results')}</p>
+            </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* User Note - FIXED: Stable container with conditional content */}
-          <div className="text-xs text-muted-foreground text-center pt-2">
-            {user && !isDemoMode ? (
-              <span>{t('tasks.simple.userNote')}: {user.email}</span>
-            ) : (
-              <span>&nbsp;</span>
-            )}
+      {/* Example Tasks */}
+      <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+        <CardContent className="pt-6">
+          <h3 className="text-lg font-semibold mb-4 text-green-900">
+            {t('tasks.simple.examplesTitle', 'Example Tasks')}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="flex items-start space-x-3">
+              <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+              <p className="text-sm text-green-800">
+                {t('tasks.simple.example1', 'Fill out and submit web forms automatically')}
+              </p>
+            </div>
+            <div className="flex items-start space-x-3">
+              <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+              <p className="text-sm text-green-800">
+                {t('tasks.simple.example2', 'Download files from password-protected sites')}
+              </p>
+            </div>
+            <div className="flex items-start space-x-3">
+              <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+              <p className="text-sm text-green-800">
+                {t('tasks.simple.example3', 'Scrape data from multiple web pages')}
+              </p>
+            </div>
+            <div className="flex items-start space-x-3">
+              <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+              <p className="text-sm text-green-800">
+                {t('tasks.simple.example4', 'Navigate complex multi-step workflows')}
+              </p>
+            </div>
           </div>
-        </form>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   )
 }

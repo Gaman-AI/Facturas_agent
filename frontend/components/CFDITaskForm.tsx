@@ -1,567 +1,303 @@
 'use client'
 
-import React, { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
+import React, { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Loader2, FileText, AlertCircle, CheckCircle, Play } from 'lucide-react'
-import { useAuth, useUserProfile } from '@/hooks/useAuth'
-import { useSessionManager } from '@/hooks/useSessionManager'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Loader2, Send, RotateCcw, CheckCircle, AlertCircle, Zap, FileText, Building2, Calendar } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
-import ApiService, { type CFDITaskRequest, type CFDITaskResponse } from '@/services/api'
+import { ApiService } from '@/services/api'
 
-// Form validation schema
-const cfdiTaskSchema = z.object({
-  vendor_url: z.string().url('Debe ser una URL válida'),
-  ticket_id: z.string().min(1, 'El ID del ticket es requerido'),
-  folio: z.string().optional(),
-  transaction_date: z.string().optional(),
-  subtotal: z.number().positive().optional(),
-  iva: z.number().min(0).optional(),
-  total: z.number().positive('El total debe ser mayor a 0'),
-  currency: z.string().default('MXN'),
-  llm_provider: z.enum(['openai', 'anthropic', 'google']).default('openai'),
-  model: z.string().optional(),
-  max_retries: z.number().int().min(1).max(5).default(3),
-  timeout_minutes: z.number().int().min(5).max(60).default(30)
-})
-
-type CFDITaskFormData = z.infer<typeof cfdiTaskSchema>
-
-interface TaskResult {
-  success: boolean
-  data?: {
-    task_id: string
-    status: string
-    result: any
-    execution_time: number
-    logs: any[]
-  }
-  error?: {
-    code: string
-    message: string
-    details?: any
-  }
+interface CFDITaskFormProps {
+  onTaskSubmit?: (taskId: string) => void
+  onResetTask?: () => void
+  taskId?: string
+  status?: 'idle' | 'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'connecting'
+  className?: string
 }
 
-export function CFDITaskForm() {
-  const [isExecuting, setIsExecuting] = useState(false)
-  const [taskResult, setTaskResult] = useState<TaskResult | null>(null)
-  const [connectionError, setConnectionError] = useState<string | null>(null)
-  
-  const { user } = useAuth()
-  const { profile } = useUserProfile()
-  const { ensureValidSession, isRefreshing: sessionRefreshing } = useSessionManager()
+export function CFDITaskForm({
+  onTaskSubmit,
+  onResetTask,
+  taskId,
+  status = 'idle',
+  className = ''
+}: CFDITaskFormProps) {
   const { t } = useLanguage()
+  const [task, setTask] = useState('')
+  const [supplierName, setSupplierName] = useState('')
+  const [invoicePeriod, setInvoicePeriod] = useState('')
+  const [llmProvider, setLlmProvider] = useState<'openai' | 'anthropic' | 'google'>('openai')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const mountedRef = useRef(true)
+  const characterLimit = 2000
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors }
-  } = useForm<CFDITaskFormData>({
-    resolver: zodResolver(cfdiTaskSchema),
-    defaultValues: {
-      currency: 'MXN',
-      llm_provider: 'openai',
-      max_retries: 3,
-      timeout_minutes: 30
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
     }
-  })
-
-  const llmProvider = watch('llm_provider')
-
-  // Test backend connection on mount
-  React.useEffect(() => {
-    const testConnection = async () => {
-      try {
-        const isConnected = await ApiService.testConnection()
-        if (!isConnected) {
-          setConnectionError('No se puede conectar al backend. Verifique que esté ejecutándose en el puerto 8000.')
-        }
-      } catch (error) {
-        setConnectionError('Error al probar la conexión del backend.')
-      }
-    }
-    
-    testConnection()
   }, [])
 
-  // Poll task status function
-  const pollTaskStatus = (taskId: string) => {
-    const interval = setInterval(async () => {
-      try {
-        const taskResponse = await ApiService.getBrowserUseTask(taskId)
-        
-        if (taskResponse.success) {
-          const task = taskResponse.data
-          
-          // Update task result with current status
-          setTaskResult({
-            success: true,
-            data: {
-              task_id: task.task_id,
-              status: task.status,
-              result: task.result || null,
-              execution_time: task.execution_time_ms || 0,
-              logs: [] // Browser-use doesn't provide logs in this format
-            }
-          })
-          
-          // Stop polling if task is completed or failed
-          if (task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled') {
-            clearInterval(interval)
-            setIsExecuting(false)
-            
-            if (task.status === 'failed') {
-              setTaskResult({
-                success: false,
-                error: {
-                  code: 'TASK_EXECUTION_FAILED',
-                  message: task.error || 'La tarea falló durante la ejecución',
-                  details: task.error_type
-                }
-              })
-            }
-            
-            console.log(`🏁 Tarea ${task.status}: ${task.task_id}`)
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error polling task status:', error)
-        clearInterval(interval)
-        setIsExecuting(false)
-        setTaskResult({
-          success: false,
-          error: {
-            code: 'POLLING_ERROR',
-            message: 'Error al verificar el estado de la tarea'
-          }
-        })
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!task.trim()) {
+      if (mountedRef.current) {
+        setError(t('tasks.validation.taskRequired', 'Please describe what you want to automate'))
       }
-    }, 2000) // Poll every 2 seconds
-
-    // Set a maximum polling time of 10 minutes
-    setTimeout(() => {
-      clearInterval(interval)
-      if (isExecuting) {
-        setIsExecuting(false)
-        setTaskResult({
-          success: false,
-          error: {
-            code: 'TIMEOUT_ERROR',
-            message: 'La tarea ha excedido el tiempo máximo de ejecución'
-          }
-        })
-      }
-    }, 600000) // 10 minutes
-  }
-
-  const onSubmit = async (formData: CFDITaskFormData) => {
-    if (!profile || !user) {
-      setTaskResult({
-        success: false,
-        error: {
-          code: 'USER_NOT_AUTHENTICATED',
-          message: 'Usuario no autenticado o perfil no disponible'
-        }
-      })
       return
     }
 
-    setIsExecuting(true)
-    setTaskResult(null)
-    setConnectionError(null)
+    if (task.length > characterLimit) {
+      if (mountedRef.current) {
+        setError(t('tasks.validation.taskTooLong', 'Task description is too long'))
+      }
+      return
+    }
+
+    if (mountedRef.current) {
+      setIsSubmitting(true)
+      setError(null)
+      setSuccess(null)
+    }
 
     try {
-      // Ensure we have a valid session before making the API call
-      console.log('🔐 Ensuring valid session before API call...')
-      await ensureValidSession()
-      console.log('✅ Session validated, proceeding with task creation...')
-      // Prepare browser-use task data using user profile and form data
-      const taskData: CFDITaskRequest = {
-        vendor_url: formData.vendor_url,
-                customer_details: {
-          rfc: profile.rfc || '',
-          email: user.email || '',
-          company_name: profile.company_name || '',
-          address: {
-            street: profile.street || '',
-            exterior_number: profile.exterior_number || '',
-            interior_number: profile.interior_number || undefined,
-            colony: profile.colony || '',
-            municipality: profile.municipality || '',
-            state: profile.state || '',
-            postal_code: profile.zip_code || ''
-          }
-        },
-        invoice_details: {
-          ticket_id: formData.ticket_id,
-          folio: formData.folio || undefined,
-          transaction_date: formData.transaction_date || undefined,
-          subtotal: formData.subtotal,
-          iva: formData.iva,
-          total: formData.total,
-          currency: formData.currency
-        },
-        automation_config: {
-          llm_provider: formData.llm_provider,
-          model: formData.model || 'gpt-4.1-mini',
-          max_retries: formData.max_retries,
-          timeout_minutes: formData.timeout_minutes
-        }
-      }
-
-      console.log('🚀 Enviando tarea Browser-Use:', taskData)
-      
-      const result = await ApiService.createBrowserUseTask(taskData)
-      
-      if (result.success) {
-        console.log('✅ Tarea creada exitosamente:', result.data.task_id)
-        
-        // Start polling for task status
-        pollTaskStatus(result.data.task_id)
-        
-        // Set initial result
-        setTaskResult({
-          success: true,
-          data: {
-            task_id: result.data.task_id,
-            status: result.data.status,
-            result: null,
-            execution_time: 0,
-            logs: []
-          }
-        })
-      } else {
-        console.error('❌ Error creando la tarea:', result)
-        setTaskResult({
-          success: false,
-          error: {
-            code: 'TASK_CREATION_ERROR',
-            message: 'Error al crear la tarea de automatización'
-          }
-        })
-        setIsExecuting(false)
-      }
-
-    } catch (error) {
-      console.error('❌ Error ejecutando tarea Browser-Use:', error)
-      
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
-      setTaskResult({
-        success: false,
-        error: {
-          code: 'EXECUTION_ERROR',
-          message: errorMessage
+      // Create a CFDI-specific browser automation task
+      const response = await ApiService.createBrowserUseTask({
+        task: task,
+        llm_provider: llmProvider,
+        model: llmProvider === 'openai' ? 'gpt-4o' : 
+               llmProvider === 'anthropic' ? 'claude-3-5-sonnet-20241022' : 
+               'gemini-pro',
+        metadata: {
+          type: 'cfdi_invoice_request',
+          supplier_name: supplierName,
+          invoice_period: invoicePeriod
         }
       })
-      setIsExecuting(false)
 
-      // Check for connection errors
-      if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('Network Error')) {
-        setConnectionError('No se puede conectar al backend. Verifique que esté ejecutándose en el puerto 8000.')
+      const taskId = response.data.task_id
+      
+      // Only update state if component is still mounted
+      if (mountedRef.current) {
+        setSuccess(t('tasks.success.created', 'CFDI task created successfully!'))
+        
+        // Callback for parent component
+        if (onTaskSubmit) {
+          onTaskSubmit(taskId)
+        }
+      }
+
+    } catch (error: any) {
+      console.error('Error creating CFDI task:', error)
+      
+      if (mountedRef.current) {
+        const errorMessage = error.response?.data?.error?.message || 
+                           error.message || 
+                           t('tasks.error.generic', 'Failed to create CFDI task')
+        setError(errorMessage)
+      }
+    } finally {
+      if (mountedRef.current) {
+        setIsSubmitting(false)
       }
     }
   }
 
-  const getModelOptions = () => {
-    switch (llmProvider) {
-      case 'openai':
-        return [
-          { value: 'gpt-4o', label: 'GPT-4o' },
-          { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-          { value: 'gpt-4', label: 'GPT-4' }
-        ]
-      case 'anthropic':
-        return [
-          { value: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet' },
-          { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' }
-        ]
-      case 'google':
-        return [
-          { value: 'gemini-pro', label: 'Gemini Pro' },
-          { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' }
-        ]
-      default:
-        return []
+  const handleReset = () => {
+    setTask('')
+    setSupplierName('')
+    setInvoicePeriod('')
+    setError(null)
+    setSuccess(null)
+    
+    if (onResetTask) {
+      onResetTask()
     }
   }
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Connection Error Alert */}
-      {connectionError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{connectionError}</AlertDescription>
-        </Alert>
-      )}
+  const isFormValid = task.trim().length > 0 && task.length <= characterLimit
 
-      {/* Main Form */}
+  return (
+    <div className={`space-y-6 ${className}`}>
+      {/* Header */}
+      <div className="text-center">
+        <div className="flex items-center justify-center mb-4">
+          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+            <FileText className="w-6 h-6 text-blue-600" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          {t('tasks.cfdi.title', 'CFDI Invoice Automation')}
+        </h2>
+        <p className="text-gray-600 max-w-2xl mx-auto">
+          {t('tasks.cfdi.description', 'Automate CFDI invoice requests from supplier portals using AI-powered browser automation')}
+        </p>
+      </div>
+
+      {/* Task Form */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <FileText className="w-5 h-5" />
-            <span>{t('tasks.createNewTask')}</span>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="w-5 h-5 text-blue-600" />
+            {t('tasks.cfdi.formTitle', 'Create CFDI Task')}
           </CardTitle>
-          <CardDescription>
-            {t('tasks.formDescription')}
-          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {/* Vendor Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">{t('tasks.vendorInfo')}</h3>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <Label htmlFor="vendor_url">{t('tasks.vendorUrl')} *</Label>
-                  <Input
-                    {...register('vendor_url')}
-                    placeholder={t('tasks.vendorUrlPlaceholder')}
-                  />
-                </div>
+        <CardContent className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Supplier Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="supplierName">
+                  <Building2 className="w-4 h-4 inline mr-2" />
+                  {t('tasks.cfdi.supplierName', 'Supplier Name')}
+                </Label>
+                <Input
+                  id="supplierName"
+                  value={supplierName}
+                  onChange={(e) => setSupplierName(e.target.value)}
+                  placeholder={t('tasks.cfdi.supplierNamePlaceholder', 'e.g., CFE, Telmex, etc.')}
+                  className="w-full"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="invoicePeriod">
+                  <Calendar className="w-4 h-4 inline mr-2" />
+                  {t('tasks.cfdi.invoicePeriod', 'Invoice Period')}
+                </Label>
+                <Input
+                  id="invoicePeriod"
+                  value={invoicePeriod}
+                  onChange={(e) => setInvoicePeriod(e.target.value)}
+                  placeholder={t('tasks.cfdi.invoicePeriodPlaceholder', 'e.g., January 2024')}
+                  className="w-full"
+                />
               </div>
             </div>
 
-            {/* Invoice Details */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">{t('tasks.invoiceDetails')}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="ticket_id">{t('tasks.ticketId')} *</Label>
-                  <Input
-                    {...register('ticket_id')}
-                    placeholder={t('tasks.ticketIdPlaceholder')}
-                    onError={(e: React.SyntheticEvent<HTMLInputElement>) => {
-                      if (errors.ticket_id?.message) {
-                        (e.target as HTMLInputElement).setCustomValidity(errors.ticket_id.message)
-                      }
-                    }}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="folio">{t('tasks.folio')} ({t('common.optional')})</Label>
-                  <Input
-                    {...register('folio')}
-                    placeholder={t('tasks.folioPlaceholder')}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="transaction_date">{t('tasks.transactionDate')} ({t('common.optional')})</Label>
-                  <Input
-                    type="date"
-                    {...register('transaction_date')}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="currency">{t('tasks.currency')}</Label>
-                  <Select value={watch('currency')} onValueChange={(value) => setValue('currency', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MXN">MXN - Peso Mexicano</SelectItem>
-                      <SelectItem value="USD">USD - Dólar Americano</SelectItem>
-                      <SelectItem value="EUR">EUR - Euro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="subtotal">{t('tasks.subtotal')} ({t('common.optional')})</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    {...register('subtotal', { valueAsNumber: true })}
-                    placeholder={t('tasks.subtotalPlaceholder')}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="iva">{t('tasks.iva')} ({t('common.optional')})</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    {...register('iva', { valueAsNumber: true })}
-                    placeholder={t('tasks.ivaPlaceholder')}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="total">{t('tasks.total')} *</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    {...register('total', { valueAsNumber: true })}
-                    placeholder={t('tasks.totalPlaceholder')}
-                    onError={(e: React.SyntheticEvent<HTMLInputElement>) => {
-                      if (errors.total?.message) {
-                        (e.target as HTMLInputElement).setCustomValidity(errors.total.message)
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">{t('tasks.invoiceDetails')}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="ticket_id">{t('tasks.ticketId')} *</Label>
-                  <Input
-                    {...register('ticket_id')}
-                    placeholder={t('tasks.ticketIdPlaceholder')}
-                    onError={(e: React.SyntheticEvent<HTMLInputElement>) => {
-                      if (errors.ticket_id?.message) {
-                        (e.target as HTMLInputElement).setCustomValidity(errors.ticket_id.message)
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-            </div>  
-            {/* Automation Configuration */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Configuración de Automatización</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="llm_provider">Proveedor de IA</Label>
-                  <Select value={llmProvider} onValueChange={(value: any) => setValue('llm_provider', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="openai">OpenAI</SelectItem>
-                      <SelectItem value="anthropic">Anthropic</SelectItem>
-                      <SelectItem value="google">Google</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="model">Modelo (Opcional)</Label>
-                  <Select value={watch('model') || ''} onValueChange={(value) => setValue('model', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar modelo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getModelOptions().map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="max_retries">Reintentos Máximos</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="5"
-                    {...register('max_retries', { valueAsNumber: true })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="timeout_minutes">Timeout (minutos)</Label>
-                  <Input
-                    type="number"
-                    min="5"
-                    max="60"
-                    {...register('timeout_minutes', { valueAsNumber: true })}
-                  />
-                </div>
-              </div>
+            {/* Task Description */}
+            <div className="space-y-2">
+              <Label htmlFor="task">
+                {t('tasks.cfdi.taskDescription', 'Task Description')}
+                <Badge variant="secondary" className="ml-2">
+                  {task.length}/{characterLimit}
+                </Badge>
+              </Label>
+              <Textarea
+                id="task"
+                value={task}
+                onChange={(e) => setTask(e.target.value)}
+                placeholder={t('tasks.cfdi.taskPlaceholder', 'Describe what you want to automate. For example: "Navigate to CFE portal, login with credentials, download CFDI invoices for January 2024, and save them to the downloads folder"')}
+                className="min-h-[120px] resize-none"
+                maxLength={characterLimit}
+              />
             </div>
 
-            {/* Submit Button */}
-            <div className="flex justify-end">
+            {/* AI Model Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="llmProvider">
+                {t('tasks.cfdi.aiModel', 'AI Model')}
+              </Label>
+              <Select value={llmProvider} onValueChange={(value: any) => setLlmProvider(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="openai">OpenAI GPT-4o (Recommended)</SelectItem>
+                  <SelectItem value="anthropic">Anthropic Claude 3.5 Sonnet</SelectItem>
+                  <SelectItem value="google">Google Gemini Pro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Error/Success Messages */}
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {success && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 type="submit"
-                disabled={isExecuting || !!connectionError}
-                className="min-w-[200px]"
+                disabled={!isFormValid || isSubmitting}
+                className="flex-1"
+                size="lg"
               >
-                {isExecuting ? (
+                {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Ejecutando Tarea...
+                    {t('tasks.cfdi.creating', 'Creating Task...')}
                   </>
                 ) : (
                   <>
-                    <Play className="w-4 h-4 mr-2" />
-                    Ejecutar Automatización
+                    <Send className="w-4 h-4 mr-2" />
+                    {t('tasks.cfdi.createTask', 'Create CFDI Task')}
                   </>
                 )}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleReset}
+                disabled={isSubmitting}
+                className="flex-1 sm:flex-none"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                {t('tasks.cfdi.reset', 'Reset')}
               </Button>
             </div>
           </form>
         </CardContent>
       </Card>
 
-      {/* Task Result */}
-      {taskResult && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              {taskResult.success ? (
-                <CheckCircle className="w-5 h-5 text-green-500" />
-              ) : (
-                <AlertCircle className="w-5 h-5 text-red-500" />
-              )}
-              <span>
-                {taskResult.success ? 'Tarea Completada' : 'Error en la Ejecución'}
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {taskResult.success && taskResult.data ? (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <strong>ID de Tarea:</strong> {taskResult.data.task_id}
-                  </div>
-                  <div>
-                    <strong>Estado:</strong> {taskResult.data.status}
-                  </div>
-                  <div>
-                    <strong>Tiempo de Ejecución:</strong> {taskResult.data.execution_time}ms
-                  </div>
-                  <div>
-                    <strong>Logs:</strong> {taskResult.data.logs.length} entradas
-                  </div>
-                </div>
-                
-                {taskResult.data.result && (
-                  <div>
-                    <strong>Resultado:</strong>
-                    <pre className="bg-gray-100 p-4 rounded-md text-xs overflow-auto mt-2">
-                      {JSON.stringify(taskResult.data.result, null, 2)}
-                    </pre>
-                  </div>
-                )}
+      {/* Help Section */}
+      <Card className="bg-blue-50 border-blue-200">
+        <CardContent className="pt-6">
+          <h3 className="text-lg font-semibold mb-4 text-blue-900">
+            {t('tasks.cfdi.helpTitle', 'How CFDI Automation Works')}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-800">
+            <div className="text-center">
+              <div className="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center mx-auto mb-2">
+                <span className="text-blue-700 font-semibold">1</span>
               </div>
-            ) : (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Error:</strong> {taskResult.error?.message || 'Error desconocido'}
-                  {taskResult.error?.details && (
-                    <pre className="mt-2 text-xs">
-                      {JSON.stringify(taskResult.error.details, null, 2)}
-                    </pre>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
-      )}
+              <p>{t('tasks.cfdi.step1', 'Describe your CFDI task in detail')}</p>
+            </div>
+            <div className="text-center">
+              <div className="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center mx-auto mb-2">
+                <span className="text-blue-700 font-semibold">2</span>
+              </div>
+              <p>{t('tasks.cfdi.step2', 'AI navigates supplier portals automatically')}</p>
+            </div>
+            <div className="text-center">
+              <div className="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center mx-auto mb-2">
+                <span className="text-blue-700 font-semibold">3</span>
+              </div>
+              <p>{t('tasks.cfdi.step3', 'Download and organize your CFDI invoices')}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
-} 
+}
