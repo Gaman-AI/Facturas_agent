@@ -145,6 +145,7 @@ class EnhancedAutomationService:
             wait_between_actions=2.0,
             default_timeout=30000,
             default_navigation_timeout=30000,
+            highlight_elements=False,  # Disable element highlighting
         )
     
     def get_llm_client(self, llm_provider: str = None, model: str = None):

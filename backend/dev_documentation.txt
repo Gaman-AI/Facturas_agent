@@ -1,6 +1,76 @@
 CFDI Automation Backend Development Documentation
 ==================================================
 
+## Date: 2024-12-29 20:30 - Enhanced Date Field Handling Instructions Update
+
+### Overview
+Updated the browser-use agent system prompt with enhanced date field handling instructions to provide more comprehensive guidance for identifying and interacting with date fields on web pages.
+
+### Changes Made
+
+#### 1. **Enhanced Date Field Identification**
+- **File Modified**: `backend/browser-use/browser_use/agent/system_prompt.md`
+- **Improvements**:
+  - Added detailed guidance for identifying date fields using `aria-label`, `placeholder`, and `<label>` tags
+  - Included information about calendar icons as visual indicators
+  - Added guidance for identifying dropdown fields with placeholder text like "Select a country"
+
+#### 2. **Structured Date Selection Process**
+- **New Instructions**: Added numbered step-by-step process for date picker interaction
+- **Process Flow**:
+  1. Click the input to open the calendar widget
+  2. Navigate to the correct month/year using next/previous buttons
+  3. Click the desired day once the correct month is visible
+- **Validation**: Emphasized confirming the chosen date appears in the input field before proceeding
+
+#### 3. **Improved Documentation Structure**
+- **Enhanced Formatting**: Added bold headings and clear section separation
+- **Better Organization**: Grouped date and dropdown field guidance together
+- **Visual Hierarchy**: Used proper markdown formatting for step-by-step instructions
+
+### Technical Details
+
+#### **Previous Instructions** (Replaced):
+```
+- if the field is a text input that accepts date strings, simply type the date in the required format(considering the placeholder format, if not given fill in DD/MM/YYYY, the input data from <user_request> will be always DD/MM/YYYY)
+- if the date input field opens a date picker: click the input to open the calender widget, then navigate to the correct Month/year using the "next"/"previous" buttons on the calender, once the correct month is visible, click the target date on the calender. Confirm that the chosen date appears in the input field before proceeding.
+```
+
+#### **New Enhanced Instructions** (Added):
+```
+- **Date fields** often have labels like "Date of birth", "Start date", etc., or may show a calendar icon. Inspect the page structure (e.g., the `aria-label`, `placeholder`, or associated `<label>` tag) to reliably identify them.
+- **Dropdown fields** are usually `<select>` elements or styled divs that show a list of options when clicked. They often have a placeholder or default value like "Select a country".
+
+**Selecting a date:**
+- If the field is a text input that accepts date strings, simply type the date in the required format (considering the placeholder format, if not given fill in DD/MM/YYYY, the input data from <user_request> will be always DD/MM/YYYY) and move on.
+- If the field opens a date picker:
+    1. Click the input to open the calendar widget.
+    2. Navigate to the correct month/year using the "next"/"previous" buttons on the calendar.
+    3. Once the correct month is visible, click the desired day.
+- Confirm that the chosen date appears in the input field before proceeding.
+```
+
+### Benefits
+
+1. **Improved Field Identification**: More reliable detection of date fields using multiple identification methods
+2. **Clear Process Flow**: Numbered steps provide clearer guidance for date picker interactions
+3. **Enhanced Documentation**: Better structured instructions with proper markdown formatting
+4. **Broader Coverage**: Added guidance for dropdown fields in addition to date fields
+5. **Better User Experience**: More accurate form filling through improved field recognition
+
+### Validation
+
+- **Lint Check**: No linter errors detected after the update
+- **Structure Maintained**: Preserved original system prompt structure and formatting
+- **Backward Compatibility**: Enhanced existing instructions without breaking functionality
+
+### Files Modified
+- `backend/browser-use/browser_use/agent/system_prompt.md` - Enhanced date field handling instructions
+
+This update improves the browser agent's ability to accurately identify and interact with date fields on various web pages, leading to more successful form completion tasks.
+
+---
+
 ## Date: 2024-12-19 20:45 - Complete Containerization and Deployment Strategy
 
 ### Overview
@@ -620,6 +690,34 @@ This implementation provides the best of both worlds: automatic responsiveness f
 
 ### Note:
 This change successfully removes Redis dependency while maintaining all queue functionality through an efficient in-memory implementation. The system is now simpler to deploy and maintain, with no external Redis server required.
+
+---
+
+## Date: 2024-12-19 - Disabled Element Highlighting in Browser-Use Agent
+
+**Changes Made:**
+1. **Modified `backend/browser-use/browser_use/browser/profile.py`:**
+   - Changed default value of `highlight_elements` from `True` to `False`
+   - This disables the visual element highlighting feature by default
+
+2. **Updated `backend/src/services/enhanced_automation_service.py`:**
+   - Added `highlight_elements=False` to the `create_browser_profile()` method
+   - This ensures our application explicitly disables highlighting
+
+**Purpose:**
+- Removes the visible colored borders/outlines that appear around interactive elements during browser automation
+- Provides a cleaner visual experience during live browser sessions
+- Reduces visual clutter when watching the automation in real-time
+
+**Technical Details:**
+- The highlighting was controlled by the `doHighlightElements` parameter in the DOM tree JavaScript
+- Elements were highlighted with colored borders and labels showing their index numbers
+- This feature was primarily used for debugging and element identification
+- Disabling it has no impact on the automation functionality
+
+**How to Re-enable (if needed):**
+- Set `highlight_elements=True` in the BrowserProfile configuration
+- Or modify the default in `profile.py` back to `True`
 
 ---
 

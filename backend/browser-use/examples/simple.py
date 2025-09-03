@@ -19,25 +19,7 @@ llm = ChatOpenAI(
 )
 
 
-task = """ https://www4.oxxo.com:9443/facturacionElectronica-web/views/layout/inicio.do
-Email: jorge@gaman.ai
-RFC: DOGJ8603192W3
-Company Name: JORGE DOMENZAIN GALINDO
-Country: Mexico
-Street: PRIV DEL MARQUEZ
-Exterior Number: 404
-Interior Number: 4
-Colony: LOMAS 4A SECCION
-Municipality: San Luis Potosí
-Zip Code: 78216
-State: San Luis Potosí
-Tax Regimen: Personas Físicas con Actividades Empresariales y Profesionales
-CDFI Usage: Gastos en general
-
-Folio: 860523
-Transaction Date: 04/06/2025
-Total: 47.0
-ID: 10LGA50YMB1
+task = """go to google and search for figma and create a new account with email: rajuvenkatesh188@gmail.com and if asked for password: Hyderabad@8885 and after login, create a new project with name: My first project and create a website design which like amazon website and save. 
 """
 agent = Agent(task=task, llm=llm)
 
