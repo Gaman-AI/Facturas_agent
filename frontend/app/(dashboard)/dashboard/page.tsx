@@ -132,62 +132,59 @@ function DashboardContent() {
 
 
 
+  // Custom display name function for welcome message
+  const getWelcomeDisplayName = () => {
+    // Try to get firstname from user's full_name
+    if (user?.full_name) {
+      const firstName = user.full_name.split(' ')[0];
+      return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+    }
+    
+    // Fallback to email username (first part before @)
+    if (user?.email) {
+      const emailName = user.email.split('@')[0];
+      return emailName.charAt(0).toUpperCase() + emailName.slice(1).toLowerCase();
+    }
+    
+    // Final fallback
+    return 'User';
+  };
+
   // Show dashboard even without profile (profile is optional now)
-  const displayName = profile ? getDisplayName() : 'User'
+  const displayName = getWelcomeDisplayName()
   const hasProfile = !!profile
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-teal-100 to-teal-200">
-      {/* Header */}
-              <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-[#C7D8D0] relative z-[9998]">
-        <div className="w-full mx-auto px-2 sm:px-4 lg:px-6">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-[#208692] rounded-xl flex items-center justify-center shadow-lg">
-                <FileText className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-[#164F5B]">
-                  {t('dashboard.title')}
-                </h1>
-                <p className="text-sm text-[#527779]">AI-Powered Task Management</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <ProfileDropdown />
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="h-screen bg-gradient-to-br from-secondary via-muted to-border flex flex-col">
+
 
       {/* Main Content */}
-      <main className="w-full mx-auto px-2 sm:px-4 lg:px-6 py-8">
-        {/* Welcome Section */}
-        <div className="mb-6">
-          <div className="bg-[#208692] rounded-xl p-6 text-white shadow-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold mb-2">
-                  {t('dashboard.welcome')}, {displayName}! 👋
-                </h2>
-                <p className="text-[#E5EADF] text-base">
-                  {t('dashboard.subtitle')}
-                </p>
-              </div>
-              <div className="hidden md:block">
-                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
-                  <CloudUpload className="w-10 h-10 text-white" />
+      <main className="w-full mx-auto px-2 sm:px-4 lg:px-6 py-4 flex-1 flex flex-col min-h-0">
+        {/* Welcome Section - Only show when NOT in dual pane mode */}
+        {!useDualPane && (
+          <div className="mb-4">
+            <div className="rounded-lg p-4 text-white shadow-md" style={{ backgroundColor: '#208692' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold mb-1">
+                    Welcome back, {displayName}! 👋
+                  </h2>
+                  <p className="text-sm opacity-90">
+                    {t('dashboard.subtitle')}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <ProfileDropdown />
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Profile Management Card */}
-        {hasProfile && (
+        {/* Profile Management Card - Only show when NOT in dual pane mode */}
+        {hasProfile && !useDualPane && (
           <div className="mb-6">
-            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm border-l-4 border-l-teal-500">
+                          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm border-l-4 border-l-primary">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center space-x-2 text-xl">
                   <User className="w-6 h-6 text-[#208692]" />
@@ -208,19 +205,21 @@ function DashboardContent() {
         )}
 
         {/* Main Content Area */}
-        <div className="mb-8">
+        <div className="flex-1 min-h-0">
           {useDualPane ? (
-            <div className="h-[calc(100vh-300px)]">
+            <div className="h-full">
               <DashboardDualPane
                 onTaskSubmit={handleTaskSubmit}
                 className="h-full w-full"
                 initialTicketData={extractedTicketData}
                 vendorUrl={vendorUrl}
                 userProfile={profile}
+                onBackToUpload={() => setUseDualPane(false)}
+                profileDropdown={<ProfileDropdown />}
               />
             </div>
           ) : (
-              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm mb-6 border-l-4 border-l-teal-500">
+              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm mb-6 border-l-4 border-l-primary">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center space-x-2 text-xl">
                     <CloudUpload className="w-6 h-6 text-[#208692]" />
@@ -253,9 +252,6 @@ function DashboardContent() {
 
                     {/* Dropzone-like uploader */}
                     <div className="rounded-lg border-2 border-dashed border-[#C7D8D0] bg-[#E5EADF]/30 p-6 text-center">
-                      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-[#E5EADF]">
-                        <CloudUpload className="h-6 w-6 text-[#527779]" />
-                      </div>
                       <p className="text-sm text-[#527779] font-medium">Select or drag-and-drop your receipt</p>
                       <p className="text-xs text-[#527779] mt-1">Supported types: JPG, PNG, PDF</p>
                       <input

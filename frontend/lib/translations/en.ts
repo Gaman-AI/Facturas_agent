@@ -46,7 +46,7 @@ const en: Translations = {
   'auth.loginHere': 'Login here',
   'auth.loggingIn': 'Logging in...',
   'auth.registering': 'Registering...',
-  'auth.creatingAccount': 'Creating account...',
+  'auth.creatingAccount': 'Creating account',
 
   // Login Page
   'login.title': 'Login',
@@ -63,7 +63,10 @@ const en: Translations = {
   // Registration Page
   'register.title': 'Create Your Account',
   'register.subtitle': 'Join our CFDI automation platform',
+  'register.description': 'Join our CFDI automation platform',
   'register.createAccountButton': 'Create Account',
+  'register.alreadyHaveAccount': 'Already have an account?',
+  'register.loginHere': 'Login here',
 
   // Registration Form Sections
   'register.accessInfo': 'Access Information',

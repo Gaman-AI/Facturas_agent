@@ -136,7 +136,7 @@ export function TaskStats({ refreshTrigger = 0 }: TaskStatsProps) {
     return (
       <Card className="border-red-200">
         <CardContent className="pt-6">
-          <div className="flex items-center gap-2 text-red-600">
+          <div className="flex items-center gap-2 text-destructive">
             <AlertCircle className="w-4 h-4" />
             <span>{error}</span>
           </div>
@@ -165,11 +165,11 @@ export function TaskStats({ refreshTrigger = 0 }: TaskStatsProps) {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Loading...</p>
-                    <p className="text-2xl font-bold text-gray-900">-</p>
+                    <p className="text-sm font-medium text-muted-foreground">Loading...</p>
+                    <p className="text-2xl font-bold text-foreground">-</p>
                   </div>
-                  <div className="p-2 rounded-lg bg-gray-50">
-                    <div className="w-5 h-5 bg-gray-300 rounded"></div>
+                  <div className="p-2 rounded-lg bg-muted">
+                    <div className="w-5 h-5 bg-border rounded"></div>
                   </div>
                 </div>
               </CardContent>
@@ -185,43 +185,43 @@ export function TaskStats({ refreshTrigger = 0 }: TaskStatsProps) {
       title: t('dashboard.stats.total'),
       value: stats.total.toString(),
       icon: BarChart3,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50'
+      color: 'text-primary',
+      bgColor: 'bg-muted'
     },
     {
       title: t('dashboard.stats.running'),
       value: stats.running.toString(),
       icon: Activity,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50'
+      color: 'text-primary',
+      bgColor: 'bg-accent'
     },
     {
       title: t('dashboard.stats.completed'),
       value: stats.completed.toString(),
       icon: CheckCircle,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50'
+      color: 'text-muted-foreground',
+      bgColor: 'bg-secondary'
     },
     {
       title: t('dashboard.stats.failed'),
       value: stats.failed.toString(),
       icon: AlertCircle,
-      color: 'text-red-600',
-      bgColor: 'bg-red-50'
+      color: 'text-destructive',
+      bgColor: 'bg-secondary'
     },
     {
       title: t('dashboard.stats.pending'),
       value: stats.pending.toString(),
       icon: Clock,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50'
+      color: 'text-accent-foreground',
+      bgColor: 'bg-accent'
     },
     {
       title: t('dashboard.stats.successRate'),
       value: `${stats.successRate.toFixed(1)}%`,
       icon: TrendingUp,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50'
+      color: 'text-primary',
+      bgColor: 'bg-muted'
     }
   ];
 
@@ -247,8 +247,8 @@ export function TaskStats({ refreshTrigger = 0 }: TaskStatsProps) {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                    <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                    <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
+                    <p className="text-2xl font-bold text-foreground">{stat.value}</p>
                   </div>
                   <div className={`p-2 rounded-lg ${stat.bgColor}`}>
                     <Icon className={`w-5 h-5 ${stat.color}`} />
@@ -269,39 +269,39 @@ export function TaskStats({ refreshTrigger = 0 }: TaskStatsProps) {
                 <span>{stats.total} {t('common.total')}</span>
               </div>
               
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-border rounded-full h-2">
                 <div className="flex h-full rounded-full overflow-hidden">
                   {stats.completed > 0 && (
                     <div 
-                      className="bg-green-500" 
+                      className="bg-primary" 
                       style={{ width: `${(stats.completed / stats.total) * 100}%` }}
                       title={`${stats.completed} completed`}
                     />
                   )}
                   {stats.running > 0 && (
                     <div 
-                      className="bg-blue-500" 
+                      className="bg-muted-foreground" 
                       style={{ width: `${(stats.running / stats.total) * 100}%` }}
                       title={`${stats.running} running`}
                     />
                   )}
                   {stats.pending > 0 && (
                     <div 
-                      className="bg-yellow-500" 
+                      className="bg-accent" 
                       style={{ width: `${(stats.pending / stats.total) * 100}%` }}
                       title={`${stats.pending} pending`}
                     />
                   )}
                   {stats.paused > 0 && (
                     <div 
-                      className="bg-orange-500" 
+                      className="bg-accent" 
                       style={{ width: `${(stats.paused / stats.total) * 100}%` }}
                       title={`${stats.paused} paused`}
                     />
                   )}
                   {stats.failed > 0 && (
                     <div 
-                      className="bg-red-500" 
+                      className="bg-destructive" 
                       style={{ width: `${(stats.failed / stats.total) * 100}%` }}
                       title={`${stats.failed} failed`}
                     />
@@ -309,28 +309,28 @@ export function TaskStats({ refreshTrigger = 0 }: TaskStatsProps) {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-4 text-xs text-gray-600">
+              <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 bg-green-500 rounded"></div>
+                  <div className="w-3 h-3 bg-primary rounded"></div>
                   <span>{t('tasks.status.completed')} ({stats.completed})</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                  <div className="w-3 h-3 bg-muted-foreground rounded"></div>
                   <span>{t('tasks.status.running')} ({stats.running})</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                  <div className="w-3 h-3 bg-accent rounded"></div>
                   <span>{t('tasks.status.pending')} ({stats.pending})</span>
                 </div>
                 {stats.paused > 0 && (
                   <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                    <div className="w-3 h-3 bg-accent rounded"></div>
                     <span>{t('tasks.status.paused')} ({stats.paused})</span>
                   </div>
                 )}
                 {stats.failed > 0 && (
                   <div className="flex items-center gap-1">
-                    <div className="w-3 h-3 bg-red-500 rounded"></div>
+                    <div className="w-3 h-3 bg-destructive rounded"></div>
                     <span>{t('tasks.status.failed')} ({stats.failed})</span>
                   </div>
                 )}

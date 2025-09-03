@@ -12,21 +12,21 @@ export default function LoginPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-teal-100 to-teal-200 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-secondary via-muted to-border p-4">
       <Card className="w-full max-w-md border-0 shadow-xl bg-white/80 backdrop-blur-sm">
         <CardHeader className="text-center pb-6">
-          <div className="w-16 h-16 bg-teal-500 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <div className="w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg" style={{ backgroundColor: '#208692' }}>
             <Lock className="w-8 h-8 text-white" />
           </div>
-          <CardTitle className="text-2xl font-bold text-teal-800">{t('login.title')}</CardTitle>
-          <CardDescription className="text-teal-600">
+          <CardTitle className="text-2xl font-bold text-secondary-foreground">{t('login.title')}</CardTitle>
+          <CardDescription className="text-muted-foreground">
             {t('login.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <LoginForm />
-          <div className="pt-4 border-t border-teal-200">
-            <p className="text-sm text-teal-600 text-center">
+          <div className="pt-4 border-t border-border">
+            <p className="text-sm text-muted-foreground text-center">
               {t('login.noAccount')}{' '}
               <Link 
                 href="/register" 

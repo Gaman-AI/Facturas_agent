@@ -117,12 +117,12 @@ export function SimpleTaskSubmissionPane({
 
   const getStatusColor = () => {
     switch (status) {
-      case 'running': return 'bg-green-500'
-      case 'paused': return 'bg-yellow-500'
-      case 'completed': return 'bg-blue-500'
-      case 'failed': return 'bg-red-500'
-      case 'connecting': return 'bg-orange-500'
-      default: return 'bg-slate-500'
+      case 'running': return 'bg-primary'
+      case 'paused': return 'bg-accent'
+      case 'completed': return 'bg-muted-foreground'
+      case 'failed': return 'bg-destructive'
+      case 'connecting': return 'bg-accent'
+      default: return 'bg-muted'
     }
   }
 
@@ -145,23 +145,23 @@ export function SimpleTaskSubmissionPane({
           {/* Status Icon */}
           <div className="mb-6">
             {status === 'running' && (
-              <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-green-600 animate-spin" />
+              <div className="w-16 h-16 mx-auto mb-4 bg-accent rounded-full flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
               </div>
             )}
             {status === 'completed' && (
-              <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-8 h-8 text-blue-600" />
+              <div className="w-16 h-16 mx-auto mb-4 bg-secondary rounded-full flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 text-primary" />
               </div>
             )}
             {status === 'failed' && (
-              <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertCircle className="w-8 h-8 text-red-600" />
+              <div className="w-16 h-16 mx-auto mb-4 bg-secondary rounded-full flex items-center justify-center">
+                <AlertCircle className="w-8 h-8 text-destructive" />
               </div>
             )}
             {status === 'paused' && (
-              <div className="w-16 h-16 mx-auto mb-4 bg-yellow-100 rounded-full flex items-center justify-center">
-                <AlertCircle className="w-8 h-8 text-yellow-600" />
+              <div className="w-16 h-16 mx-auto mb-4 bg-accent rounded-full flex items-center justify-center">
+                <AlertCircle className="w-8 h-8 text-accent-foreground" />
               </div>
             )}
           </div>
@@ -171,7 +171,7 @@ export function SimpleTaskSubmissionPane({
             {getStatusText()}
           </h3>
 
-          <p className="text-slate-600 mb-6 text-center text-sm">
+          <p className="text-muted-foreground mb-6 text-center text-sm">
             {status === 'running' && 'Your browser automation task is running. Watch the progress in the browser view.'}
             {status === 'completed' && 'Your task has been completed successfully!'}
             {status === 'failed' && 'Your task encountered an error and could not complete.'}
@@ -183,17 +183,17 @@ export function SimpleTaskSubmissionPane({
             <CardContent className="p-4">
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Task ID:</span>
+                  <span className="text-muted-foreground">Task ID:</span>
                   <span className="font-mono">{taskId.slice(0, 8)}...</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Status:</span>
+                  <span className="text-muted-foreground">Status:</span>
                   <Badge variant="outline" className={`text-xs ${getStatusColor()}`}>
                     {getStatusText()}
                   </Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-600">Provider:</span>
+                  <span className="text-muted-foreground">Provider:</span>
                   <span className="capitalize">{llmProvider}</span>
                 </div>
               </div>
@@ -227,11 +227,11 @@ export function SimpleTaskSubmissionPane({
             className="min-h-[120px] resize-none"
             disabled={isSubmitting}
           />
-          <div className="flex justify-between text-xs text-slate-500">
+          <div className="flex justify-between text-xs text-muted-foreground">
             <span>
               {t('tasks.form.hint', 'Be specific about what you want the AI to do')}
             </span>
-            <span className={task.length > characterLimit * 0.9 ? 'text-red-500' : ''}>
+            <span className={task.length > characterLimit * 0.9 ? 'text-destructive' : ''}>
               {task.length}/{characterLimit}
             </span>
           </div>
@@ -249,19 +249,19 @@ export function SimpleTaskSubmissionPane({
             <SelectContent>
               <SelectItem value="openai">
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-green-500 rounded"></div>
+                  <div className="w-4 h-4 bg-primary rounded"></div>
                   OpenAI GPT-4o
                 </div>
               </SelectItem>
               <SelectItem value="anthropic">
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-orange-500 rounded"></div>
+                  <div className="w-4 h-4 bg-accent rounded"></div>
                   Anthropic Claude
                 </div>
               </SelectItem>
               <SelectItem value="google">
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                  <div className="w-4 h-4 bg-muted-foreground rounded"></div>
                   Google Gemini
                 </div>
               </SelectItem>
@@ -280,7 +280,7 @@ export function SimpleTaskSubmissionPane({
         {success && (
           <Alert>
             <CheckCircle className="h-4 w-4" />
-            <AlertDescription className="text-green-700">{success}</AlertDescription>
+            <AlertDescription className="text-primary">{success}</AlertDescription>
           </Alert>
         )}
 
@@ -289,7 +289,7 @@ export function SimpleTaskSubmissionPane({
           <Button 
             type="submit" 
             disabled={isSubmitting || !task.trim() || task.length > characterLimit}
-            className="w-full bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {isSubmitting ? (
               <>
@@ -306,7 +306,7 @@ export function SimpleTaskSubmissionPane({
         </div>
 
         {/* Help Text */}
-        <div className="text-xs text-slate-500 text-center">
+        <div className="text-xs text-muted-foreground text-center">
           {t('tasks.form.help', 'Your task will be executed in a secure browser environment')}
         </div>
       </form>

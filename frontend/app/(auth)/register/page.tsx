@@ -23,12 +23,12 @@ export default function RegisterPage() {
         </CardHeader>
         <CardContent>
           <RegisterForm />
-          <div className="pt-4 border-t border-teal-200">
-            <p className="text-sm text-teal-600">
+          <div className="pt-4 border-t border-border">
+            <p className="text-sm text-muted-foreground text-center">
               {t('register.alreadyHaveAccount')}{' '}
               <Link 
                 href="/login" 
-                className="font-medium text-teal-600 hover:text-teal-700 hover:underline transition-colors"
+                className="font-medium text-[#164F5B] hover:text-[#0f3a42] hover:underline transition-colors"
               >
                 {t('register.loginHere')}
               </Link>

@@ -27,10 +27,10 @@ export default function HomePage() {
   // Language can load progressively while showing the page
   if (!isInitialized || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-teal-100 to-teal-200">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-secondary via-muted to-border">
         <div className="text-center">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-teal-600">
+          <p className="mt-4 text-muted-foreground">
             {t('home.loadingApp')}
           </p>
         </div>
@@ -40,10 +40,10 @@ export default function HomePage() {
 
   if (isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-teal-100 to-teal-200">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-secondary via-muted to-border">
         <div className="text-center">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-teal-600">
+          <p className="mt-4 text-muted-foreground">
             {t('home.redirectingToDashboard')}
           </p>
         </div>
@@ -57,7 +57,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-teal-100 to-teal-200">
+    <div className="min-h-screen bg-gradient-to-br from-secondary via-muted to-border">
 
       
       {/* Hero Section */}
@@ -158,7 +158,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="bg-teal-50 border-t border-teal-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center text-sm text-teal-600">
+          <div className="text-center text-sm text-muted-foreground">
                          <p>
                {getText('footer.developedBy', 'Developed by')}{' '}
                <a

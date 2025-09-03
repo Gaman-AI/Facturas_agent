@@ -31,7 +31,7 @@ function FullscreenModal({ isOpen, onClose, url, title = 'Live Browser View' }: 
     <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center">
                <div className="relative w-full h-full max-w-full max-h-full bg-white rounded-lg overflow-hidden">
            {/* Header */}
-           <div className="flex items-center justify-between p-4 bg-[#E5EADF] border-b border-[#C7D8D0]">
+           <div className="flex items-center justify-between p-2 bg-[#E5EADF] border-b border-[#C7D8D0]">
              <h2 className="text-lg font-semibold text-[#164F5B]">{title}</h2>
              <div className="flex items-center gap-2">
                <span className="text-sm text-[#527779]">
@@ -44,13 +44,19 @@ function FullscreenModal({ isOpen, onClose, url, title = 'Live Browser View' }: 
            </div>
 
         {/* Iframe Content */}
-        <div className="w-full h-full" style={{ height: 'calc(100vh - 80px)' }}>
+        <div className="w-full h-full" style={{ height: 'calc(100vh - 60px)', margin: 0, padding: 0 }}>
           <iframe
             src={url}
-            sandbox="allow-same-origin allow-scripts"
-            allow="clipboard-read; clipboard-write"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-pointer-lock"
+            allow="clipboard-read; clipboard-write; fullscreen; camera; microphone"
             className="w-full h-full border-0"
             title={title}
+            style={{
+              margin: 0,
+              padding: 0,
+              border: 'none',
+              display: 'block'
+            }}
           />
         </div>
       </div>
@@ -64,6 +70,8 @@ export interface DashboardDualPaneProps {
   initialTicketData?: any
   vendorUrl?: string
   userProfile?: any
+  onBackToUpload?: () => void
+  profileDropdown?: React.ReactNode
 }
 
 interface TaskState {
@@ -124,7 +132,7 @@ function CopyButton({ value, className = '', size = 'sm' }: CopyButtonProps) {
       size={size}
       onClick={handleCopy}
       disabled={!value}
-      className={`h-6 w-6 p-0 hover:bg-gray-100 ${className}`}
+      className={`h-6 w-6 p-0 hover:bg-muted ${className}`}
       title="Copy to clipboard"
     >
       {copied ? (
@@ -148,7 +156,7 @@ interface FieldWithCopyProps {
 
 function FieldWithCopy({ label, value, onChange, placeholder, className = '', fullWidth = false }: FieldWithCopyProps) {
   return (
-         <div className={`bg-[#E5EADF] border border-[#C7D8D0] rounded-lg p-2 ${fullWidth ? 'col-span-2' : ''} ${className}`}>
+         <div className={`bg-gradient-to-b from-white to-slate-50/30 border border-[#C7D8D0] rounded-lg p-2 ${fullWidth ? 'col-span-2' : ''} ${className}`}>
        <label className="block text-xs font-medium text-[#527779] mb-1">{label}</label>
        <div className="flex items-center gap-2">
          <input
@@ -169,7 +177,9 @@ export function DashboardDualPane({
   className = '',
   initialTicketData,
   vendorUrl = '',
-  userProfile
+  userProfile,
+  onBackToUpload,
+  profileDropdown
 }: DashboardDualPaneProps) {
   const { t } = useLanguage()
   const [isMobile, setIsMobile] = useState(false)
@@ -857,25 +867,27 @@ export function DashboardDualPane({
         
 
         
-        <div className="flex-1 relative overflow-hidden flex flex-col" style={{ minHeight: '500px' }}>
+        <div className="flex-1 relative overflow-hidden flex flex-col">
                      {isResizing && (
-             <div className="absolute top-2 right-2 z-10 bg-[#208692] text-white text-xs px-2 py-1 rounded shadow-lg">
+             <div className="absolute top-1 right-1 z-10 bg-[#208692] text-white text-xs px-2 py-1 rounded shadow-lg">
                Resizing...
              </div>
            )}
           <iframe
             src={currentLiveViewUrl}
-            sandbox="allow-same-origin allow-scripts"
-            allow="clipboard-read; clipboard-write"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-pointer-lock"
+            allow="clipboard-read; clipboard-write; fullscreen; camera; microphone"
             className={`w-full h-full border-0 flex-1 transition-opacity duration-200 ${isResizing ? 'opacity-70' : 'opacity-100'}`}
             title="Live Browser View"
             onLoad={() => console.log('✅ Live view iframe loaded successfully:', currentLiveViewUrl)}
             onError={(e) => console.error('❌ Live view iframe error:', e)}
             style={{
-              minHeight: '400px',
-              maxHeight: '100%',
-              width: '100%'
+              height: '100%',
+              width: '100%',
+              display: 'block',
+              border: 'none'
             }}
+            scrolling="yes"
           />
         </div>
       </div>
@@ -904,7 +916,7 @@ export function DashboardDualPane({
              </CardHeader>
             <CardContent className="p-3 flex flex-col h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
               {/* File Upload Section for Mobile */}
-              <div className="mb-3 p-3 border border-slate-200 rounded-lg bg-slate-50">
+              <div className="mb-3 p-3 border border-border rounded-lg bg-muted">
                 <div className="space-y-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -914,7 +926,7 @@ export function DashboardDualPane({
                       type="file"
                       accept="image/*,.pdf"
                       onChange={handleFileChange}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                      className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-secondary file:text-destructive hover:file:bg-muted"
                     />
                   </div>
                   
@@ -936,7 +948,7 @@ export function DashboardDualPane({
                   <Button
                     onClick={handleImageUpload}
                     disabled={!selectedFile || isUploading}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white"
+                    className="w-full bg-destructive hover:bg-destructive/90 text-white"
                   >
                     {isUploading ? (
                       <>
@@ -949,7 +961,7 @@ export function DashboardDualPane({
                   </Button>
                   
                   {uploadError && (
-                    <div className="text-sm text-red-600 bg-red-50 p-2 rounded border border-red-200">
+                    <div className="text-sm text-destructive bg-secondary p-2 rounded border border-destructive">
                       {uploadError}
                     </div>
                   )}
@@ -961,18 +973,18 @@ export function DashboardDualPane({
                 <div className="mb-3">
                   <div className={`flex items-center gap-3 p-2 rounded-lg ${
                     ocrSuccess 
-                      ? 'bg-green-50 border border-green-200 text-green-700' 
+                      ? 'border border-[#C7D8D0] text-[#527779]' 
                       : isProcessing 
-                        ? 'bg-blue-50 border border-blue-200 text-blue-700'
+                        ? 'bg-[#E5EADF]/30 border border-[#C7D8D0] text-[#527779]'
                         : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
-                  }`}>
+                  }`} style={ocrSuccess ? { backgroundColor: '#E5EADF' } : {}}>
                     <div className={`w-3 h-3 rounded-full ${
                       ocrSuccess 
-                        ? 'bg-green-500' 
+                        ? '' 
                         : isProcessing 
-                          ? 'bg-blue-500 animate-pulse'
+                          ? 'animate-pulse'
                           : 'bg-yellow-500'
-                    }`}></div>
+                    }`} style={ocrSuccess ? { backgroundColor: '#208692' } : isProcessing ? { backgroundColor: '#208692' } : {}}></div>
                     <span className="text-sm font-medium">{ocrStatus}</span>
                   </div>
                 </div>
@@ -983,7 +995,7 @@ export function DashboardDualPane({
                 <div className="mb-3 p-3 border border-slate-200 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50">
                   <div className="text-center">
                     <h4 className="text-base font-semibold text-gray-800 mb-2 flex items-center justify-center gap-2">
-                      <Zap className="w-4 h-4 text-blue-600" />
+                      <Zap className="w-4 h-4 text-primary" />
                       Start Agent Task
                     </h4>
                     
@@ -994,7 +1006,7 @@ export function DashboardDualPane({
                           Model
                         </label>
                         <select 
-                          className="block w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="block w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                           defaultValue="gpt-4o-mini"
                         >
                           <option value="gpt-4o-mini">GPT-4o Mini</option>
@@ -1007,7 +1019,7 @@ export function DashboardDualPane({
                           Max Steps
                         </label>
                         <select 
-                          className="block w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="block w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                           defaultValue="30"
                         >
                           <option value="20">20</option>
@@ -1021,7 +1033,7 @@ export function DashboardDualPane({
                     <Button
                       onClick={handleStartAgentTask}
                       disabled={!vendorUrl || !ocrSuccess || isStartingAgent}
-                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
                     >
                       {isStartingAgent ? (
                         <>
@@ -1038,10 +1050,10 @@ export function DashboardDualPane({
                     
                     {/* Status Messages */}
                     {!vendorUrl && (
-                      <p className="text-xs text-red-600 mt-2">Please enter the vendor website URL first</p>
+                      <p className="text-xs text-destructive mt-2">Please enter the vendor website URL first</p>
                     )}
                     {!ocrSuccess && vendorUrl && (
-                      <p className="text-xs text-red-600 mt-2">Please complete OCR processing first</p>
+                      <p className="text-xs text-destructive mt-2">Please complete OCR processing first</p>
                     )}
                     {taskState.status === 'running' && (
                       <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
@@ -1070,9 +1082,9 @@ export function DashboardDualPane({
                     {taskMessage && (
                       <div className={`mt-2 p-2 rounded border ${
                         taskMessage.type === 'success' 
-                          ? 'bg-green-50 border-green-200 text-green-700' 
+                          ? 'bg-green-50 border-accent-foreground text-green-700' 
                           : taskMessage.type === 'error'
-                          ? 'bg-red-50 border-red-200 text-red-700'
+                          ? 'bg-secondary border-destructive text-destructive'
                           : 'bg-blue-50 border-blue-200 text-blue-700'
                       }`}>
                         <p className="text-xs font-medium">
@@ -1089,8 +1101,8 @@ export function DashboardDualPane({
               
               {/* Extracted Ticket Information Display - Mobile Layout - EDITABLE */}
               {/* Editable Fields Notice - Mobile */}
-              <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center gap-2 text-blue-700">
+              <div className="mb-3 p-2 rounded-lg border" style={{ backgroundColor: '#E5EADF', borderColor: '#C7D8D0' }}>
+                <div className="flex items-center gap-2" style={{ color: '#208692' }}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -1098,7 +1110,7 @@ export function DashboardDualPane({
                 </div>
               </div>
               
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2" style={{ backgroundColor: '#F5F5F5' }}>
                 {/* Mesa/Folio */}
                 <FieldWithCopy
                   label="Mesa/Folio"
@@ -1206,11 +1218,11 @@ export function DashboardDualPane({
               </div>
               
               {/* Full Raw Text Display - New Component */}
-              <div className="flex-1 min-h-0 flex flex-col">
-                <div className="bg-gray-50 border border-red-200 rounded-lg p-2 flex-1 flex flex-col">
+              <div className="flex-1 min-h-0 flex flex-col" style={{ backgroundColor: '#F5F5F5' }}>
+                <div className="bg-gray-50 border border-destructive rounded-lg p-2 flex-1 flex flex-col">
                   <label className="block text-xs font-medium text-gray-700 mb-1 flex-shrink-0">Full Raw Text</label>
                   <div className="flex items-start gap-2">
-                    <div className="flex-1 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
+                    <div className="flex-1 px-2 py-1 bg-white border border-destructive rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
                       {rawText ? (
                         <pre className="whitespace-pre-wrap text-xs leading-relaxed">
                           {rawText}
@@ -1233,9 +1245,9 @@ export function DashboardDualPane({
           {/* Browser View Section - Show when task is active OR manual URL is present */}
           {(taskState.status !== 'idle' || currentLiveViewUrl) && (
             <Card className="flex-1 min-h-0 border-2 border-slate-200/60 shadow-lg bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden">
-              <CardHeader className="pb-2 bg-gradient-to-r from-teal-50 to-teal-100 border-b border-slate-200/40 flex-shrink-0">
+              <CardHeader className="pb-2 bg-gradient-to-r from-secondary to-muted border-b border-slate-200/40 flex-shrink-0">
                 <CardTitle className="flex items-center space-x-2 text-base">
-                  <div className="w-6 h-6 bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
+                  <div className="w-6 h-6 bg-gradient-to-r from-primary to-primary rounded-lg flex items-center justify-center">
                     <Monitor className="w-3 h-3 text-white" />
                   </div>
                   <span>Live Browser View</span>
@@ -1266,33 +1278,46 @@ export function DashboardDualPane({
   // Desktop layout - dual pane
   return (
     <div className={`h-full w-full overflow-hidden ${className}`}>
-      <Card className="border-2 border-slate-200/60 shadow-xl bg-white/90 backdrop-blur-sm h-full w-full rounded-xl overflow-hidden hover:shadow-2xl transition-all duration-300">
-        <CardHeader className="pb-3 flex-shrink-0 bg-gradient-to-r from-teal-50 to-teal-100 border-b-2 border-slate-200/40">
+      <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm h-full w-full rounded-xl overflow-hidden hover:shadow-2xl transition-all duration-300 border-l-4" style={{ borderLeftColor: '#208692' }}>
+        <CardHeader className="pb-3 flex-shrink-0 border-b-2" style={{ backgroundColor: '#208692', borderBottomColor: '#C7D8D0' }}>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center space-x-3 text-lg">
-              <div className="w-7 h-7 bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
-                <Activity className="w-4 h-4 text-white" />
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white">
+                <Activity className="w-4 h-4" style={{ color: '#208692' }} />
               </div>
-              <span>Dual Pane Task Monitor</span>
+              <span className="text-white">Dual Pane Task Monitor</span>
             </div>
-            {taskState.status !== 'idle' && (
-              <div className="flex items-center gap-3">
-                <Badge variant="outline" className="flex items-center gap-1 border-[#208692] text-[#208692] bg-[#E5EADF]">
-                  <Monitor className="w-3 h-3" />
-                  Task: {taskState.taskId?.slice(0, 8)}...
-                </Badge>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={resetTaskState}
-                  className="border-[#208692] text-[#208692] hover:bg-[#E5EADF]"
-                >
-                  New Task
-                </Button>
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              {taskState.status !== 'idle' && (
+                <>
+                  <Badge variant="outline" className="flex items-center gap-1" style={{ borderColor: '#208692', color: '#208692', backgroundColor: '#E5EADF' }}>
+                    <Monitor className="w-3 h-3" />
+                    Task: {taskState.taskId?.slice(0, 8)}...
+                  </Badge>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={resetTaskState}
+                    style={{ borderColor: '#208692', color: '#208692' }}
+                    className="hover:bg-[#E5EADF]"
+                  >
+                    New Task
+                  </Button>
+                </>
+              )}
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={onBackToUpload}
+                style={{ borderColor: '#208692', color: '#208692' }}
+                className="hover:bg-[#E5EADF]"
+              >
+                ← Back to Upload
+              </Button>
+              {profileDropdown}
+            </div>
           </CardTitle>
-          <CardDescription className="text-slate-600 text-sm">
+          <CardDescription className="text-sm text-white opacity-90">
             {taskState.status === 'idle' 
               ? 'Create and monitor browser automation tasks in real-time with dual pane interface'
               : 'Monitor your browser automation task in real-time'
@@ -1300,7 +1325,7 @@ export function DashboardDualPane({
           </CardDescription>
         </CardHeader>
         
-        <CardContent className="p-0 flex-1 overflow-hidden" style={{ height: 'calc(100% - 90px)' }}>
+        <CardContent className="p-2 flex-1 overflow-hidden" style={{ height: 'calc(100% - 90px)' }}>
           <ResizablePanelGroup direction="horizontal" className="h-full w-full overflow-hidden">
             {/* Left Pane - Ticket Data Form (50% default) */}
             <ResizablePanel defaultSize={50} minSize={40} maxSize={60} className="overflow-hidden">
@@ -1309,14 +1334,14 @@ export function DashboardDualPane({
                   {/* Scrollable content container */}
                   <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                   {/* Header with icon and title */}
-                  <div className="p-3 border-b border-slate-200/50 bg-gradient-to-r from-red-50 to-red-100 flex-shrink-0">
+                  <div className="p-3 border-b border-slate-200/50 flex-shrink-0" style={{ backgroundColor: '#E5EADF' }}>
                     <div className="flex items-center space-x-3">
-                      <div className="w-7 h-7 bg-red-500 rounded-lg flex items-center justify-center">
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center">
+                        <svg className="w-4 h-4" style={{ color: '#208692' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                       </div>
-                      <h3 className="text-base font-semibold text-gray-800">Ticket Data</h3>
+                      <h3 className="text-base font-semibold" style={{ color: '#208692' }}>Ticket Data</h3>
                     </div>
                   </div>
                   
@@ -1325,19 +1350,19 @@ export function DashboardDualPane({
                     <div className="p-3 border-b border-slate-200/50 flex-shrink-0">
                       <div className={`flex items-center gap-3 p-2 rounded-lg ${
                         ocrSuccess 
-                          ? 'bg-green-50 border border-green-200 text-green-700' 
+                          ? 'border border-[#C7D8D0]' 
                           : isProcessing 
-                            ? 'bg-blue-50 border border-blue-200 text-blue-700'
+                            ? 'bg-[#E5EADF]/30 border border-[#C7D8D0] text-[#527779]'
                             : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
-                      }`}>
+                      }`} style={ocrSuccess ? { backgroundColor: '#F5F5F5', color: '#208692' } : {}}>
                         <div className={`w-3 h-3 rounded-full ${
                           ocrSuccess 
-                            ? 'bg-green-500' 
+                            ? '' 
                             : isProcessing 
-                              ? 'bg-blue-500 animate-pulse'
+                              ? 'animate-pulse'
                               : 'bg-yellow-500'
-                        }`}></div>
-                        <span className="text-sm font-medium">{ocrStatus}</span>
+                        }`} style={ocrSuccess ? { backgroundColor: '#22c55e' } : isProcessing ? { backgroundColor: '#208692' } : {}}></div>
+                        <span className="text-sm font-medium" style={{ color: '#26272A' }}>{ocrStatus}</span>
                       </div>
                     </div>
                   )}
@@ -1345,143 +1370,90 @@ export function DashboardDualPane({
                   {/* Start Agent Button Section - Top of Extracted Details */}
                   {ocrSuccess && (
                     <div className="p-3 border-b border-slate-200/50 flex-shrink-0">
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
-                        <div className="text-center">
-                          <h4 className="text-base font-semibold text-gray-800 mb-2 flex items-center justify-center gap-2">
-                            <Zap className="w-4 h-4 text-blue-600" />
-                            Start Agent Task
-                          </h4>
-                          
-                          {/* Vendor URL Display - Desktop */}
-                          <div className="mb-3">
-                            <label className="block text-xs font-medium text-gray-700 mb-1 text-left">
-                              Vendor Website URL
-                            </label>
-                            <div className="block w-full px-2 py-1 border border-gray-200 rounded-md text-xs bg-gray-50 text-gray-700">
-                              {vendorUrl || 'No vendor URL provided'}
-                            </div>
-                          </div>
-                          
-                          {/* Agent Configuration */}
-                          <div className="grid grid-cols-2 gap-2 mb-3">
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1 text-left">
-                                Model
-                              </label>
-                              <select 
-                                className="w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                defaultValue="gpt-5-nano-2025-08-07"
-                              >
-                                {getModelsByProvider('openai').filter(m => m.category === 'latest' || m.category === 'standard').map(model => (
-                                  <option key={model.value} value={model.value}>
-                                    {model.label}
-                                    {model.isRecommended ? ' (Recomendado)' : ''}
-                                  </option>
-                                ))}
-                                {getModelsByProvider('anthropic').filter(m => m.category === 'latest' || m.category === 'standard').slice(0, 2).map(model => (
-                                  <option key={model.value} value={model.value}>
-                                    {model.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1 text-left">
-                                Max Steps
-                              </label>
-                              <select 
-                                className="w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                defaultValue="100"
-                              >
-                                <option value="20">20</option>
-                                <option value="50">50</option>
-                                <option value="100">100</option>
-                                <option value="150">150</option>
-                              </select>
-                            </div>
-                          </div>
-                          
-                          {/* Start Agent Button */}
-                          <Button
-                            onClick={handleStartAgentTask}
-                            disabled={!vendorUrl || !ocrSuccess || taskState.status === 'running' || taskState.status === 'connecting'}
-                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
-                          >
-                            {taskState.status === 'connecting' ? (
-                              <>
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                                Creating Task...
-                              </>
-                            ) : taskState.status === 'running' ? (
-                              <>
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                                Agent Running...
-                              </>
-                            ) : (
-                              <>
-                                <Zap className="w-4 h-4 mr-2" />
-                                Start Agent Task
-                              </>
-                            )}
-                          </Button>
-                          
-                          {/* Status Messages */}
-                          {!vendorUrl && (
-                            <p className="text-xs text-red-600 mt-2">Please enter the vendor website URL first</p>
+                      <div className="text-center">
+                        {/* Start Agent Button */}
+                        <Button
+                          onClick={handleStartAgentTask}
+                          disabled={!vendorUrl || !ocrSuccess || taskState.status === 'running' || taskState.status === 'connecting'}
+                          className="text-white font-semibold py-2 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
+                          style={{ backgroundColor: '#D4D970' }}
+                          onMouseEnter={(e) => e.target.style.backgroundColor = '#C4C960'}
+                          onMouseLeave={(e) => e.target.style.backgroundColor = '#D4D970'}
+                        >
+                          {taskState.status === 'connecting' ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                              Creating Task...
+                            </>
+                          ) : taskState.status === 'running' ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                              Agent Running...
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="w-4 h-4 mr-2" />
+                              Start Agent Task
+                            </>
                           )}
-                          {!ocrSuccess && vendorUrl && (
-                            <p className="text-xs text-red-600 mt-2">Please complete OCR processing first</p>
-                          )}
-                          {/* Task Status and Control Buttons */}
-                          {(taskState.status === 'running' || taskState.status === 'connecting') && (
-                            <div className="mt-2 p-3 bg-blue-50 rounded border border-blue-200">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-xs text-blue-700">
-                                    <strong>Task Status:</strong> {taskState.status}
-                                    {taskState.taskId && (
-                                      <span className="block mt-1">Task ID: {taskState.taskId.slice(0, 8)}...</span>
-                                    )}
-                                  </p>
-                                </div>
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={handleStopTask}
-                                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-3 rounded border"
-                                    type="button"
-                                  >
-                                    🛑 Stop
-                                  </button>
-                                  <button
-                                    onClick={resetTaskState}
-                                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-semibold py-2 px-3 rounded border"
-                                    type="button"
-                                  >
-                                    Reset
-                                  </button>
-                                </div>
+                        </Button>
+                        
+                        {/* Status Messages */}
+                        {!vendorUrl && (
+                          <p className="text-xs text-destructive mt-2">Please enter the vendor website URL first</p>
+                        )}
+                        {!ocrSuccess && vendorUrl && (
+                          <p className="text-xs text-destructive mt-2">Please complete OCR processing first</p>
+                        )}
+                        {/* Task Status and Control Buttons */}
+                        {(taskState.status === 'running' || taskState.status === 'connecting') && (
+                          <div className="mt-2 p-3 bg-blue-50 rounded border border-blue-200">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs text-blue-700">
+                                  <strong>Task Status:</strong> {taskState.status}
+                                  {taskState.taskId && (
+                                    <span className="block mt-1">Task ID: {taskState.taskId.slice(0, 8)}...</span>
+                                  )}
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleStopTask}
+                                  className="bg-destructive hover:bg-destructive/90 text-white text-xs font-semibold py-2 px-3 rounded border"
+                                  type="button"
+                                >
+                                  🛑 Stop
+                                </button>
+                                <button
+                                  onClick={resetTaskState}
+                                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-semibold py-2 px-3 rounded border"
+                                  type="button"
+                                >
+                                  Reset
+                                </button>
                               </div>
                             </div>
-                          )}
-                          
-                          {/* Task Message Display */}
-                          {taskMessage && (
-                            <div className={`mt-2 p-3 rounded border ${
-                              taskMessage.type === 'success' 
-                                ? 'bg-green-50 border-green-200 text-green-700' 
-                                : taskMessage.type === 'error'
-                                ? 'bg-red-50 border-red-200 text-red-700'
-                                : 'bg-blue-50 border-blue-200 text-blue-700'
-                            }`}>
-                              <p className="text-sm font-medium">
-                                {taskMessage.type === 'success' && '✅ '}
-                                {taskMessage.type === 'error' && '❌ '}
-                                {taskMessage.type === 'info' && 'ℹ️ '}
-                                {taskMessage.message}
-                              </p>
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
+                        
+                        {/* Task Message Display */}
+                        {taskMessage && (
+                          <div className={`mt-2 p-3 rounded border ${
+                            taskMessage.type === 'success' 
+                              ? 'bg-green-50 border-accent-foreground text-green-700' 
+                              : taskMessage.type === 'error'
+                              ? 'bg-secondary border-destructive text-destructive'
+                              : 'bg-blue-50 border-blue-200 text-blue-700'
+                          }`}>
+                            <p className="text-sm font-medium">
+                              {taskMessage.type === 'success' && '✅ '}
+                              {taskMessage.type === 'error' && '❌ '}
+                              {taskMessage.type === 'info' && 'ℹ️ '}
+                              {taskMessage.message}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1489,8 +1461,8 @@ export function DashboardDualPane({
                   {/* Extracted Ticket Information Display - 2x2 Grid - EDITABLE */}
                   <div className="p-3 flex flex-col h-full" style={{ minHeight: '400px' }}>
                     {/* Editable Fields Notice */}
-                    <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="flex items-center gap-2 text-blue-700">
+                    <div className="mb-3 p-2 rounded-lg border" style={{ backgroundColor: '#E5EADF', borderColor: '#C7D8D0' }}>
+                      <div className="flex items-center gap-2" style={{ color: '#208692' }}>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -1606,11 +1578,11 @@ export function DashboardDualPane({
                     </div>
                     
                     {/* Full Raw Text Display - New Component */}
-                    <div className="flex-1 min-h-0 flex flex-col">
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-2 flex-1 flex flex-col">
+                    <div className="flex-1 min-h-0 flex flex-col" style={{ backgroundColor: '#F5F5F5' }}>
+                      <div className="bg-gray-50 border border-destructive rounded-lg p-2 flex-1 flex flex-col">
                         <label className="block text-xs font-medium text-gray-700 mb-1 flex-shrink-0">Full Raw Text</label>
                         <div className="flex items-start gap-2">
-                          <div className="flex-1 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
+                          <div className="flex-1 px-2 py-1 bg-white border border-destructive rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
                             {rawText ? (
                               <pre className="whitespace-pre-wrap text-xs leading-relaxed">
                                 {rawText}
@@ -1631,16 +1603,16 @@ export function DashboardDualPane({
               </div>
             </ResizablePanel>
 
-            <ResizableHandle withHandle className="w-2 bg-gradient-to-b from-teal-100 to-teal-200 hover:bg-gradient-b hover:from-teal-200 hover:to-teal-300 transition-all duration-200" data-panel-resize-handle />
+            <ResizableHandle withHandle className="w-2 bg-gradient-to-b from-muted to-border hover:bg-gradient-b hover:from-border hover:to-muted-foreground transition-all duration-200" data-panel-resize-handle />
 
             {/* Right Pane - Live View with URL Input (65% default) */}
             <ResizablePanel defaultSize={50} minSize={40} maxSize={60} className="overflow-hidden" data-panel="live-view">
-              <div className="h-full p-3 bg-gradient-to-b from-white to-slate-50/30 overflow-hidden">
-                <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden">
+              <div className="h-full p-2 bg-gradient-to-b from-white to-slate-50/30 overflow-hidden">
+                <div className="h-full bg-white rounded-lg border border-slate-200/30 shadow-sm overflow-hidden">
                   <div className="h-full flex flex-col" data-viewport="live-view">
                     {/* Browser Mode Switch Header */}
-                    <div className="p-3 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-                      <div className="flex items-center justify-between mb-3">
+                    <div className="p-2 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+                      <div className="flex items-center justify-between mb-2">
                         <h3 className="text-base font-semibold">Browser Mode</h3>
                         <BrowserModeSwitch 
                           value={browserMode}
@@ -1666,7 +1638,7 @@ export function DashboardDualPane({
                         /* Local Browser Mode Content */
                         <div className="h-full flex items-center justify-center">
                           <div className="text-center max-w-md">
-                            <Monitor className="mx-auto h-16 w-16 text-green-600 mb-4" />
+                            <Monitor className="mx-auto h-16 w-16 text-primary mb-4" />
                             <h3 className="text-lg font-semibold text-gray-900 mb-2">
                               Local Browser Mode
                             </h3>

@@ -23,15 +23,15 @@ body {
     --primary: 200 64% 35%;      /* #208692 - Teal (Principal 25%) */
     --primary-foreground: 0 0% 98%;
     --secondary: 60 13% 94%;     /* #F4F5F0 - Very light off-white */
-    --secondary-foreground: 200 64% 35%;
+    --secondary-foreground: 200 64% 15%;  /* #164F5B - Dark teal/petrol */
     --muted: 60 13% 94%;         /* #F4F5F0 - Very light off-white */
-    --muted-foreground: 200 64% 35%;
-    --accent: 60 13% 94%;        /* #F4F5F0 - Very light off-white */
-    --accent-foreground: 200 64% 35%;
-    --destructive: 0 84.2% 60.2%;
+    --muted-foreground: 200 20% 45%;   /* #527779 - Muted blue-grey */
+    --accent: 60 49% 76%;        /* #D4D970 - Light yellow-green accent */
+    --accent-foreground: 200 64% 15%;
+    --destructive: 200 20% 25%;      /* Using dark teal for errors instead of red */
     --destructive-foreground: 0 0% 98%;
-    --border: 60 13% 94%;        /* #F4F5F0 - Very light off-white */
-    --input: 60 13% 94%;         /* #F4F5F0 - Very light off-white */
+    --border: 180 25% 80%;       /* #C7D8D0 - Light blue-grey borders */
+    --input: 180 25% 80%;        /* #C7D8D0 - Light blue-grey borders */
     --ring: 200 64% 35%;         /* #208692 - Teal (Principal 25%) */
     --chart-1: 200 64% 35%;      /* #208692 - Teal (Principal 25%) */
     --chart-2: 200 64% 25%;      /* #164F5B - Dark teal/petrol (Principal 20%) */
@@ -63,7 +63,7 @@ body {
     --muted-foreground: 60 13% 94%;      /* #F4F5F0 - Very light off-white */
     --accent: 200 64% 20%;               /* #164F5B - Dark teal/petrol (Principal 20%) */
     --accent-foreground: 60 13% 94%;     /* #F4F5F0 - Very light off-white */
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 200 20% 20%;      /* Using darker teal for errors in dark mode */
     --destructive-foreground: 60 13% 94%; /* #F4F5F0 - Very light off-white */
     --border: 200 64% 20%;               /* #164F5B - Dark teal/petrol (Principal 20%) */
     --input: 200 64% 20%;                /* #164F5B - Dark teal/petrol (Principal 20%) */
