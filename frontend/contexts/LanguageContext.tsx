@@ -3,8 +3,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { Translations } from '@/types/translations'
 import enTranslations from '@/lib/translations/en'
+import esTranslations from '@/lib/translations/es'
 
-export type Language = 'en'
+export type Language = 'en' | 'es'
 
 interface LanguageContextType {
   language: Language
@@ -45,7 +46,8 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
       
       // Use static imports instead of dynamic
       const translationMap = {
-        'en': enTranslations
+        'en': enTranslations,
+        'es': esTranslations
       }
       
       const loadedTranslations = translationMap[lang]
@@ -68,9 +70,12 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
   // Initialize language - HYDRATION SAFE APPROACH
   useEffect(() => {
     const initializeLanguage = () => {
-      // Always use English for consistent server-client rendering
-      setLanguageState('en')
-      setTranslations(enTranslations)
+      // Check for saved language preference
+      const savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) as Language
+      const initialLanguage = savedLanguage && ['en', 'es'].includes(savedLanguage) ? savedLanguage : 'en'
+      
+      setLanguageState(initialLanguage)
+      loadTranslations(initialLanguage)
     }
 
     initializeLanguage()
@@ -79,18 +84,20 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
 
 
 
-  // Set language function - only supports English
+  // Set language function - supports English and Spanish
   const setLanguage = (lang: Language) => {
-    // Only English is supported
-    if (lang !== 'en') {
-      console.warn('Only English language is supported')
+    if (!['en', 'es'].includes(lang)) {
+      console.warn('Only English and Spanish languages are supported')
       return
     }
     
     try {
       setIsLoading(true)
       setLanguageState(lang)
-      setTranslations(enTranslations)
+      loadTranslations(lang)
+      
+      // Save language preference to localStorage
+      localStorage.setItem(LANGUAGE_STORAGE_KEY, lang)
     } catch (error) {
       console.error('Failed to set language:', error)
       setIsLoading(false)

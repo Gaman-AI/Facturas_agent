@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { tokenManager } from '@/utils/tokenManager';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ProfileDropdown } from '@/components/ProfileDropdown';
+import { LanguageToggle } from '@/components/LanguageToggle';
 
 export default function DashboardPage() {
   return (
@@ -167,13 +168,14 @@ function DashboardContent() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold mb-1">
-                    Welcome back, {displayName}! 👋
+                    {t('dashboard.welcome', 'Welcome back')}, {displayName}! 👋
                   </h2>
                   <p className="text-sm opacity-90">
                     {t('dashboard.subtitle')}
                   </p>
                 </div>
                 <div className="flex items-center space-x-4">
+                  <LanguageToggle />
                   <ProfileDropdown />
                 </div>
               </div>
@@ -223,10 +225,10 @@ function DashboardContent() {
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center space-x-2 text-xl">
                     <CloudUpload className="w-6 h-6 text-[#208692]" />
-                    <span>Upload Ticket for OCR</span>
+                    <span>{t('upload.title', 'Upload Ticket for OCR')}</span>
                   </CardTitle>
                   <CardDescription className="text-[#527779]">
-                    Choose a receipt image or PDF and provide the vendor URL. We'll extract details and open the dual pane.
+                    {t('upload.description', 'Choose a receipt image or PDF and provide the vendor URL. We\'ll extract details and open the dual pane.')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -235,7 +237,7 @@ function DashboardContent() {
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-[#527779] flex items-center gap-2">
                         <LinkIcon className="w-4 h-4 text-[#208692]" /> 
-                        Vendor URL <span className="text-red-500 font-semibold">*</span>
+                        {t('upload.vendorUrl', 'Vendor URL')} <span className="text-red-500 font-semibold">*</span>
                       </label>
                       <Input
                         type="url"
@@ -246,14 +248,14 @@ function DashboardContent() {
                         required
                       />
                       {!vendorUrl && (
-                        <p className="text-xs text-red-500">Vendor URL is required</p>
+                        <p className="text-xs text-red-500">{t('upload.vendorUrlRequired', 'Vendor URL is required')}</p>
                       )}
                     </div>
 
                     {/* Dropzone-like uploader */}
                     <div className="rounded-lg border-2 border-dashed border-[#C7D8D0] bg-[#E5EADF]/30 p-6 text-center">
-                      <p className="text-sm text-[#527779] font-medium">Select or drag-and-drop your receipt</p>
-                      <p className="text-xs text-[#527779] mt-1">Supported types: JPG, PNG, PDF</p>
+                      <p className="text-sm text-[#527779] font-medium">{t('upload.selectFile', 'Select or drag-and-drop your receipt')}</p>
+                      <p className="text-xs text-[#527779] mt-1">{t('upload.supportedTypes', 'Supported types: JPG, PNG, PDF')}</p>
                       <input
                         id="ticket-file"
                         type="file"
@@ -268,22 +270,22 @@ function DashboardContent() {
                           className="cursor-pointer border-[#A8C5C0] text-[#527779] hover:bg-[#E5EADF] hover:border-[#208692]"
                           onClick={() => fileInputRef.current?.click()}
                         >
-                          Choose File
+                          {t('upload.chooseFile', 'Choose File')}
                         </Button>
                         <Button onClick={handleUploadTicket} disabled={!selectedFile || !vendorUrl || isUploading} className="bg-[#208692] hover:bg-[#164F5B] text-white">
                           {isUploading ? (
                             <span className="inline-flex items-center gap-2">
                               <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                              Uploading…
+                              {t('upload.uploading', 'Uploading…')}
                             </span>
                           ) : (
-                            'Upload & Open Dual Pane'
+                            t('upload.uploadAndOpen', 'Upload & Open Dual Pane')
                           )}
                         </Button>
                       </div>
 
                       {selectedFile && (
-                        <div className="mt-3 text-xs text-[#527779]">Selected: {selectedFile.name}</div>
+                        <div className="mt-3 text-xs text-[#527779]">{t('upload.selected', 'Selected')}: {selectedFile.name}</div>
                       )}
                     </div>
 

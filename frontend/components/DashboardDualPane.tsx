@@ -15,6 +15,7 @@ import { LiveViewPane } from './LiveViewPane'
 import { BrowserModeSwitch } from '@/components/ui/browser-mode-switch'
 import { tokenManager } from '@/utils/tokenManager'
 import { toast } from 'react-toastify'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 // Fullscreen Modal Component
 interface FullscreenModalProps {
@@ -351,7 +352,7 @@ export function DashboardDualPane({
     setUploadedTicketId(null)
     setIsProcessing(true)
     setOcrSuccess(false)
-    setOcrStatus('Processing image with OCR...')
+    setOcrStatus(t('ocr.processing', 'Processing image with OCR...'))
     
     try {
       const token = await tokenManager.getValidToken()
@@ -413,7 +414,7 @@ export function DashboardDualPane({
         
         setTicketData(extractedData)
         setOcrSuccess(true)
-        setOcrStatus('OCR completed successfully!')
+        setOcrStatus(t('ocr.completed'))
         console.log('✅ Ticket data mapped from OCR:', extractedData)
         
         // Show success message
@@ -433,14 +434,14 @@ export function DashboardDualPane({
       } else {
         console.warn('⚠️ No extracted_data found in API response')
         console.log('📋 Full API response:', data)
-        setOcrStatus('OCR completed but no data extracted')
+        setOcrStatus(t('ocr.completedNoData'))
       }
       
       console.log('✅ Upload success:', data)
     } catch (err: any) {
       console.error('❌ Upload error:', err)
       setUploadError(err?.message || 'Upload failed')
-      setOcrStatus('OCR processing failed')
+      setOcrStatus(t('ocr.failed', 'OCR processing failed'))
     } finally {
       setIsUploading(false)
       setIsProcessing(false)
@@ -487,7 +488,7 @@ export function DashboardDualPane({
       
       // Set OCR success state
       setOcrSuccess(true)
-      setOcrStatus('OCR completed successfully!')
+      setOcrStatus(t('ocr.completed'))
       
       console.log('✅ Ticket data initialized:', mappedData)
       console.log('✅ Raw text length:', rawTextData.length)
@@ -791,11 +792,11 @@ export function DashboardDualPane({
          <div className="h-full flex items-center justify-center bg-[#E5EADF] rounded-lg border-2 border-dashed border-[#C7D8D0]">
                        <div className="text-center text-[#527779]">
                <Monitor className="w-12 h-12 mx-auto mb-3 text-[#A8C5C0]" />
-               <h3 className="text-lg font-medium mb-2 text-[#164F5B]">No Live View Available</h3>
+               <h3 className="text-lg font-medium mb-2 text-[#164F5B]">{t('browser.noLiveView')}</h3>
                <p className="text-sm mb-3 text-[#527779]">
                  {browserMode === 'local' 
-                   ? 'Local browser mode - no live view available' 
-                   : 'Waiting for task to start and generate live view URL...'
+                   ? t('browser.localMode') + ' - ' + t('browser.noLiveView').toLowerCase()
+                   : t('browser.waitingForTask')
                  }
                </p>
              </div>
@@ -809,12 +810,12 @@ export function DashboardDualPane({
          <div className="h-full flex items-center justify-center bg-[#E5EADF] rounded-lg border-2 border-dashed border-[#C7D8D0]">
            <div className="text-center text-[#527779]">
              <Monitor className="w-16 h-16 mx-auto mb-4 text-[#208692]" />
-             <h3 className="text-lg font-medium mb-2 text-[#164F5B]">Local Browser Mode Active</h3>
+             <h3 className="text-lg font-medium mb-2 text-[#164F5B]">{t('browser.localModeActive')}</h3>
              <p className="text-sm mb-3 text-[#527779]">Task is running in your local browser</p>
              <div className="mt-4 p-3 bg-[#C7D8D0] rounded border border-[#C7D8D0]">
-               <p className="text-xs text-[#164F5B] font-medium">Local Mode Info:</p>
-               <p className="text-xs text-[#527779]">No live view available for local browser</p>
-               <p className="text-xs text-[#527779]">Check your local browser for automation progress</p>
+               <p className="text-xs text-[#164F5B] font-medium">{t('browser.localModeInfo', 'Local Mode Info')}:</p>
+               <p className="text-xs text-[#527779]">{t('browser.noLiveViewLocal', 'No live view available for local browser')}</p>
+               <p className="text-xs text-[#527779]">{t('browser.checkLocalBrowser', 'Check your local browser for automation progress')}</p>
              </div>
            </div>
          </div>
@@ -996,7 +997,7 @@ export function DashboardDualPane({
                   <div className="text-center">
                     <h4 className="text-base font-semibold text-gray-800 mb-2 flex items-center justify-center gap-2">
                       <Zap className="w-4 h-4 text-primary" />
-                      Start Agent Task
+                      {t('task.startAgent')}
                     </h4>
                     
                     {/* Agent Configuration */}
@@ -1043,7 +1044,7 @@ export function DashboardDualPane({
                       ) : (
                         <>
                           <Zap className="w-4 h-4 mr-2" />
-                          Start Agent Task
+                          {t('task.startAgent')}
                         </>
                       )}
                     </Button>
@@ -1113,106 +1114,106 @@ export function DashboardDualPane({
               <div className="grid grid-cols-3 gap-2" style={{ backgroundColor: '#F5F5F5' }}>
                 {/* Mesa/Folio */}
                 <FieldWithCopy
-                  label="Mesa/Folio"
+                  label={t('ticket.mesaFolio')}
                   value={ticketData['Mesa_Folio'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': value }))}
-                  placeholder="Enter Mesa/Folio"
+                  placeholder={t('ticket.enterMesaFolio')}
                 />
                 
                 {/* Fecha */}
                 <FieldWithCopy
-                  label="Fecha"
+                  label={t('ticket.fecha')}
                   value={ticketData['Fecha'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Fecha': value }))}
-                  placeholder="Enter Fecha"
+                  placeholder={t('ticket.enterFecha')}
                 />
                 
                 {/* ID Ticket */}
                 <FieldWithCopy
-                  label="ID Ticket"
+                  label={t('ticket.idTicket')}
                   value={ticketData['ID_Ticket'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'ID_Ticket': value }))}
-                  placeholder="Enter ID Ticket"
+                  placeholder={t('ticket.enterIdTicket')}
                 />
                 
                 {/* Total */}
                 <FieldWithCopy
-                  label="Total"
+                  label={t('ticket.total')}
                   value={ticketData['Total'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Total': value }))}
-                  placeholder="Enter Total"
+                  placeholder={t('ticket.enterTotal')}
                 />
                 
                 {/* Store/Branch/Plaza */}
                 <FieldWithCopy
-                  label="Store/Branch/Plaza"
+                  label={t('ticket.storeBranchPlaza')}
                   value={ticketData['Store_Branch_Plaza'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': value }))}
-                  placeholder="Enter Store/Branch/Plaza"
+                  placeholder={t('ticket.enterStoreBranchPlaza')}
                 />
                 
                 {/* Register/Station/Terminal */}
                 <FieldWithCopy
-                  label="Register/Station/Terminal"
+                  label={t('ticket.registerStationTerminal')}
                   value={ticketData['Register_Station_Terminal'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': value }))}
-                  placeholder="Enter Register/Station/Terminal"
+                  placeholder={t('ticket.enterRegisterStationTerminal')}
                 />
                 
                 {/* Payment Type */}
                 <FieldWithCopy
-                  label="Payment Type"
+                  label={t('ticket.paymentType')}
                   value={ticketData['Payment_Type'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Payment_Type': value }))}
-                  placeholder="Enter Payment Type"
+                  placeholder={t('ticket.enterPaymentType')}
                 />
                 
                 {/* Last 4 digits of card */}
                 <FieldWithCopy
-                  label="Card Last 4 Digits"
+                  label={t('ticket.cardLast4Digits')}
                   value={ticketData['Card_Last_4_Digits'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': value }))}
-                  placeholder="Enter Card Last 4 Digits"
+                  placeholder={t('ticket.enterCardLast4Digits')}
                 />
                 
                 {/* TC# */}
                 <FieldWithCopy
-                  label="TC#"
+                  label={t('ticket.tc')}
                   value={ticketData['TC#'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'TC#': value }))}
-                  placeholder="Enter TC#"
+                  placeholder={t('ticket.enterTc')}
                 />
                 
                 {/* TR# */}
                 <FieldWithCopy
-                  label="TR#"
+                  label={t('ticket.tr')}
                   value={ticketData['TR#'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'TR#': value }))}
-                  placeholder="Enter TR#"
+                  placeholder={t('ticket.enterTr')}
                 />
                 
                 {/* ID */}
                 <FieldWithCopy
-                  label="ID"
+                  label={t('ticket.id')}
                   value={ticketData['ID'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'ID': value }))}
-                  placeholder="Enter ID"
+                  placeholder={t('ticket.enterId')}
                 />
                 
                 {/* Fol_Vta */}
                 <FieldWithCopy
-                  label="Fol_Vta"
+                  label={t('ticket.folVta')}
                   value={ticketData['Fol_Vta'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Fol_Vta': value }))}
-                  placeholder="Enter Fol_Vta"
+                  placeholder={t('ticket.enterFolVta')}
                 />
                 
                 {/* Comercio - Full width */}
                 <FieldWithCopy
-                  label="Comercio"
+                  label={t('ticket.comercio')}
                   value={ticketData['Comercio'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Comercio': value }))}
-                  placeholder="Enter Comercio"
+                  placeholder={t('ticket.enterComercio')}
                   fullWidth={true}
                 />
               </div>
@@ -1220,7 +1221,7 @@ export function DashboardDualPane({
               {/* Full Raw Text Display - New Component */}
               <div className="flex-1 min-h-0 flex flex-col" style={{ backgroundColor: '#F5F5F5' }}>
                 <div className="bg-gray-50 border border-destructive rounded-lg p-2 flex-1 flex flex-col">
-                  <label className="block text-xs font-medium text-gray-700 mb-1 flex-shrink-0">Full Raw Text</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex-shrink-0">{t('ticketData.fullRawText', 'Full Raw Text')}</label>
                   <div className="flex items-start gap-2">
                     <div className="flex-1 px-2 py-1 bg-white border border-destructive rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
                       {rawText ? (
@@ -1285,14 +1286,25 @@ export function DashboardDualPane({
               <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white">
                 <Activity className="w-4 h-4" style={{ color: '#208692' }} />
               </div>
-              <span className="text-white">Dual Pane Task Monitor</span>
+              <span className="text-white">{t('tasks.monitor.title')}</span>
             </div>
             <div className="flex items-center gap-3">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={onBackToUpload}
+                style={{ borderColor: '#208692', color: '#208692' }}
+                className="hover:bg-[#E5EADF]"
+              >
+                ← {t('common.back')} {t('common.to')} {t('common.upload')}
+              </Button>
+              <LanguageToggle />
+              {profileDropdown}
               {taskState.status !== 'idle' && (
                 <>
                   <Badge variant="outline" className="flex items-center gap-1" style={{ borderColor: '#208692', color: '#208692', backgroundColor: '#E5EADF' }}>
                     <Monitor className="w-3 h-3" />
-                    Task: {taskState.taskId?.slice(0, 8)}...
+                    {t('monitor.sidebar.taskId')}: {taskState.taskId?.slice(0, 8)}...
                   </Badge>
                   <Button 
                     size="sm" 
@@ -1301,26 +1313,16 @@ export function DashboardDualPane({
                     style={{ borderColor: '#208692', color: '#208692' }}
                     className="hover:bg-[#E5EADF]"
                   >
-                    New Task
+                    {t('tasks.create')}
                   </Button>
                 </>
               )}
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={onBackToUpload}
-                style={{ borderColor: '#208692', color: '#208692' }}
-                className="hover:bg-[#E5EADF]"
-              >
-                ← Back to Upload
-              </Button>
-              {profileDropdown}
             </div>
           </CardTitle>
           <CardDescription className="text-sm text-white opacity-90">
             {taskState.status === 'idle' 
-              ? 'Create and monitor browser automation tasks in real-time with dual pane interface'
-              : 'Monitor your browser automation task in real-time'
+              ? t('tasks.monitor.description', 'Create and monitor browser automation tasks in real-time with dual pane interface')
+              : t('tasks.monitor.activeDescription', 'Monitor your browser automation task in real-time')
             }
           </CardDescription>
         </CardHeader>
@@ -1341,7 +1343,7 @@ export function DashboardDualPane({
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                       </div>
-                      <h3 className="text-base font-semibold" style={{ color: '#208692' }}>Ticket Data</h3>
+                      <h3 className="text-base font-semibold" style={{ color: '#208692' }}>{t('ticketData.title')}</h3>
                     </div>
                   </div>
                   
@@ -1393,7 +1395,7 @@ export function DashboardDualPane({
                           ) : (
                             <>
                               <Zap className="w-4 h-4 mr-2" />
-                              Start Agent Task
+                              {t('task.startAgent')}
                             </>
                           )}
                         </Button>
@@ -1473,106 +1475,106 @@ export function DashboardDualPane({
                     <div className="grid grid-cols-2 gap-2 flex-shrink-0 mb-4">
                       {/* Mesa/Folio */}
                       <FieldWithCopy
-                        label="Mesa/Folio"
+                        label={t('ticket.mesaFolio')}
                         value={ticketData['Mesa_Folio'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': value }))}
-                        placeholder="Enter Mesa/Folio"
+                        placeholder={t('ticket.enterMesaFolio')}
                       />
                       
                       {/* Fecha */}
                       <FieldWithCopy
-                        label="Fecha"
+                        label={t('ticket.fecha')}
                         value={ticketData['Fecha'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Fecha': value }))}
-                        placeholder="Enter Fecha"
+                        placeholder={t('ticket.enterFecha')}
                       />
                       
                       {/* ID Ticket */}
                       <FieldWithCopy
-                        label="ID Ticket"
+                        label={t('ticket.idTicket')}
                         value={ticketData['ID_Ticket'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'ID_Ticket': value }))}
-                        placeholder="Enter ID Ticket"
+                        placeholder={t('ticket.enterIdTicket')}
                       />
                       
                       {/* Total */}
                       <FieldWithCopy
-                        label="Total"
+                        label={t('ticket.total')}
                         value={ticketData['Total'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Total': value }))}
-                        placeholder="Enter Total"
+                        placeholder={t('ticket.enterTotal')}
                       />
                       
                       {/* Store/Branch/Plaza */}
                       <FieldWithCopy
-                        label="Store/Branch/Plaza"
+                        label={t('ticket.storeBranchPlaza')}
                         value={ticketData['Store_Branch_Plaza'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': value }))}
-                        placeholder="Enter Store/Branch/Plaza"
+                        placeholder={t('ticket.enterStoreBranchPlaza')}
                       />
                       
                       {/* Register/Station/Terminal */}
                       <FieldWithCopy
-                        label="Register/Station/Terminal"
+                        label={t('ticket.registerStationTerminal')}
                         value={ticketData['Register_Station_Terminal'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': value }))}
-                        placeholder="Enter Register/Station/Terminal"
+                        placeholder={t('ticket.enterRegisterStationTerminal')}
                       />
                       
                       {/* Payment Type */}
                       <FieldWithCopy
-                        label="Payment Type"
+                        label={t('ticket.paymentType')}
                         value={ticketData['Payment_Type'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Payment_Type': value }))}
-                        placeholder="Enter Payment Type"
+                        placeholder={t('ticket.enterPaymentType')}
                       />
                       
                       {/* Last 4 digits of card */}
                       <FieldWithCopy
-                        label="Card Last 4 Digits"
+                        label={t('ticket.cardLast4Digits')}
                         value={ticketData['Card_Last_4_Digits'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': value }))}
-                        placeholder="Enter Card Last 4 Digits"
+                        placeholder={t('ticket.enterCardLast4Digits')}
                       />
                       
                       {/* TC# */}
                       <FieldWithCopy
-                        label="TC#"
+                        label={t('ticket.tc')}
                         value={ticketData['TC#'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'TC#': value }))}
-                        placeholder="Enter TC#"
+                        placeholder={t('ticket.enterTc')}
                       />
                       
                       {/* TR# */}
                       <FieldWithCopy
-                        label="TR#"
+                        label={t('ticket.tr')}
                         value={ticketData['TR#'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'TR#': value }))}
-                        placeholder="Enter TR#"
+                        placeholder={t('ticket.enterTr')}
                       />
                       
                       {/* ID */}
                       <FieldWithCopy
-                        label="ID"
+                        label={t('ticket.id')}
                         value={ticketData['ID'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'ID': value }))}
-                        placeholder="Enter ID"
+                        placeholder={t('ticket.enterId')}
                       />
                       
                       {/* Fol_Vta */}
                       <FieldWithCopy
-                        label="Fol_Vta"
+                        label={t('ticket.folVta')}
                         value={ticketData['Fol_Vta'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Fol_Vta': value }))}
-                        placeholder="Enter Fol_Vta"
+                        placeholder={t('ticket.enterFolVta')}
                       />
                       
                       {/* Comercio - Full width */}
                       <FieldWithCopy
-                        label="Comercio"
+                        label={t('ticket.comercio')}
                         value={ticketData['Comercio'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Comercio': value }))}
-                        placeholder="Enter Comercio"
+                        placeholder={t('ticket.enterComercio')}
                         fullWidth={true}
                       />
                     </div>
@@ -1580,7 +1582,7 @@ export function DashboardDualPane({
                     {/* Full Raw Text Display - New Component */}
                     <div className="flex-1 min-h-0 flex flex-col" style={{ backgroundColor: '#F5F5F5' }}>
                       <div className="bg-gray-50 border border-destructive rounded-lg p-2 flex-1 flex flex-col">
-                        <label className="block text-xs font-medium text-gray-700 mb-1 flex-shrink-0">Full Raw Text</label>
+                        <label className="block text-xs font-medium text-gray-700 mb-1 flex-shrink-0">{t('ticketData.fullRawText', 'Full Raw Text')}</label>
                         <div className="flex items-start gap-2">
                           <div className="flex-1 px-2 py-1 bg-white border border-destructive rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
                             {rawText ? (
@@ -1613,7 +1615,7 @@ export function DashboardDualPane({
                     {/* Browser Mode Switch Header */}
                     <div className="p-2 border-b border-gray-200 bg-gray-50 flex-shrink-0">
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-base font-semibold">Browser Mode</h3>
+                        <h3 className="text-base font-semibold">{t('browser.mode')}</h3>
                         <BrowserModeSwitch 
                           value={browserMode}
                           onChange={setBrowserMode}

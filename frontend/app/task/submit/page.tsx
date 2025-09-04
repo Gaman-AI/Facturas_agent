@@ -7,12 +7,18 @@ import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 export default function TaskSubmitPage() {
   const { t } = useLanguage();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-teal-100 to-teal-200">
+      {/* Language Toggle */}
+      <div className="absolute top-4 right-4 z-10">
+        <LanguageToggle />
+      </div>
+      
       <div className="max-w-4xl mx-auto p-6">
         <div className="mb-8">
           <h1 className="text-xl font-semibold text-teal-800">

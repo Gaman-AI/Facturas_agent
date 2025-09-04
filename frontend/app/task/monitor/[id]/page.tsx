@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from 'lucide-react'
 import ApiService from '@/services/api'
 import { Card, CardHeader } from '@/components/ui/card'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 export default function TaskMonitorPage() {
   const { t } = useLanguage()
@@ -157,6 +158,11 @@ export default function TaskMonitorPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-teal-50 via-teal-100 to-teal-200">
+        {/* Language Toggle */}
+        <div className="absolute top-4 right-4 z-10">
+          <LanguageToggle />
+        </div>
+        
         <div className="max-w-4xl mx-auto p-6">
           <div className="mb-6">
             <h1 className="text-xl font-semibold text-teal-800">

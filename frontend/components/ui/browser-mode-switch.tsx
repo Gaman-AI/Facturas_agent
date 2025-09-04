@@ -5,6 +5,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Monitor, Cloud, Info } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export interface BrowserModeSwitchProps {
   value: 'browserbase' | 'local'
@@ -19,6 +20,7 @@ export function BrowserModeSwitch({
   disabled = false,
   className = ''
 }: BrowserModeSwitchProps) {
+  const { t } = useLanguage()
   const isLocal = value === 'local'
 
   return (
@@ -29,7 +31,7 @@ export function BrowserModeSwitch({
           htmlFor="browser-mode-switch" 
           className={`text-sm font-medium cursor-pointer ${!isLocal ? 'text-gray-900' : 'text-gray-500'}`}
         >
-          Cloud
+          {t('browser.cloud', 'Cloud')}
         </Label>
       </div>
       
@@ -47,7 +49,7 @@ export function BrowserModeSwitch({
           htmlFor="browser-mode-switch" 
           className={`text-sm font-medium cursor-pointer ${isLocal ? 'text-gray-900' : 'text-gray-500'}`}
         >
-          Local
+          {t('browser.local', 'Local')}
         </Label>
         
         <TooltipProvider>
@@ -57,9 +59,9 @@ export function BrowserModeSwitch({
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-xs">
               <div className="text-xs">
-                <p className="font-medium mb-1">Browser Modes:</p>
-                <p><strong>Cloud:</strong> Uses Browserbase remote browser with live view</p>
-                <p><strong>Local:</strong> Uses your local browser (faster, no live view)</p>
+                <p className="font-medium mb-1">{t('browser.modes', 'Browser Modes')}:</p>
+                <p><strong>{t('browser.cloud', 'Cloud')}:</strong> {t('browser.cloudDescription', 'Uses Browserbase remote browser with live view')}</p>
+                <p><strong>{t('browser.local', 'Local')}:</strong> {t('browser.localDescription', 'Uses your local browser (faster, no live view)')}</p>
               </div>
             </TooltipContent>
           </Tooltip>

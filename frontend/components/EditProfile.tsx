@@ -18,6 +18,7 @@ import { useAuth, useUserProfile } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { REGIMENES_FISCALES, USOS_CFDI, ESTADOS_MEXICANOS } from '@/types/cfdi';
 import { UserProfile } from '@/types/auth';
+import { LanguageToggle } from '@/components/LanguageToggle';
 
 export function EditProfile() {
   const [mounted, setMounted] = useState(false);
@@ -219,15 +220,18 @@ export function EditProfile() {
               </div>
             </div>
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCancel}
-              className="border-slate-200 hover:bg-slate-50"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
-            </Button>
+            <div className="flex items-center space-x-3">
+              <LanguageToggle />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancel}
+                className="border-slate-200 hover:bg-slate-50"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Dashboard
+              </Button>
+            </div>
           </div>
         </div>
       </header>

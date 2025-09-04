@@ -5,12 +5,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Link from 'next/link'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { UserPlus } from 'lucide-react'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 export default function RegisterPage() {
   const { t } = useLanguage();
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 via-teal-100 to-teal-200 p-4">
+      {/* Language Toggle */}
+      <div className="absolute top-4 right-4 z-10">
+        <LanguageToggle />
+      </div>
+      
       <Card className="w-full max-w-4xl border-0 shadow-xl bg-white/80 backdrop-blur-sm">
         <CardHeader className="text-center pb-6">
           <div className="w-16 h-16 bg-teal-500 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">

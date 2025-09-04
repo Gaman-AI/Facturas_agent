@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { Lock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 export default function LoginPage() {
   const { t } = useLanguage();
@@ -13,6 +14,11 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-secondary via-muted to-border p-4">
+      {/* Language Toggle */}
+      <div className="absolute top-4 right-4 z-10">
+        <LanguageToggle />
+      </div>
+      
       <Card className="w-full max-w-md border-0 shadow-xl bg-white/80 backdrop-blur-sm">
         <CardHeader className="text-center pb-6">
           <div className="w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg" style={{ backgroundColor: '#208692' }}>

@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { LanguageToggle } from '@/components/LanguageToggle';
 
 export default function HomePage() {
   const { isAuthenticated, loading, isInitialized } = useAuth();
@@ -58,7 +59,10 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary via-muted to-border">
-
+      {/* Header with Language Toggle */}
+      <header className="absolute top-0 right-0 p-4 z-10">
+        <LanguageToggle />
+      </header>
       
       {/* Hero Section */}
       <section className="relative overflow-hidden">
@@ -80,14 +84,14 @@ export default function HomePage() {
               <Button asChild size="lg" className="px-8 bg-teal-500 hover:bg-teal-600 text-white">
                 <Link href="/register">
                   <UserPlus className="w-5 h-5 mr-2" />
-                  Register
+                  {getText('home.registerButton', 'Register')}
                 </Link>
               </Button>
               
               <Button asChild variant="outline" size="lg" className="px-8 border-teal-500 text-teal-700 hover:bg-teal-50">
                 <Link href="/login">
                   <LogIn className="w-5 h-5 mr-2" />
-                  Login
+                  {getText('home.loginButton', 'Login')}
                 </Link>
               </Button>
             </div>
@@ -115,11 +119,11 @@ export default function HomePage() {
                 <div className="mx-auto w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
                   <Shield className="w-6 h-6 text-primary" />
                 </div>
-                <CardTitle className="text-xl">Secure and Reliable</CardTitle>
+                <CardTitle className="text-xl">{getText('features.secure', 'Secure and Reliable')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  Enterprise-grade security and reliability
+                  {getText('home.feature2Description', 'Enterprise-grade security and reliability')}
                 </CardDescription>
               </CardContent>
             </Card>
@@ -129,11 +133,11 @@ export default function HomePage() {
                 <div className="mx-auto w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
                   <Zap className="w-6 h-6 text-primary" />
                 </div>
-                <CardTitle className="text-xl">Intelligent Automation</CardTitle>
+                <CardTitle className="text-xl">{getText('features.intelligent', 'Intelligent Automation')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  AI-powered automation for efficiency
+                  {getText('home.feature1Description', 'AI-powered automation for efficiency')}
                 </CardDescription>
               </CardContent>
             </Card>
@@ -143,11 +147,11 @@ export default function HomePage() {
                 <div className="mx-auto w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
                   <Globe className="w-6 h-6 text-primary" />
                 </div>
-                <CardTitle className="text-xl">Full Compatibility</CardTitle>
+                <CardTitle className="text-xl">{getText('features.compatible', 'Full Compatibility')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <CardDescription>
-                  Works with all major platforms
+                  {getText('home.feature3Description', 'Works with all major platforms')}
                 </CardDescription>
               </CardContent>
             </Card>

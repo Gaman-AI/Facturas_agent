@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth, useUserProfile } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { REGIMENES_FISCALES, USOS_CFDI, ESTADOS_MEXICANOS } from '@/types/cfdi';
+import { LanguageToggle } from '@/components/LanguageToggle';
 
 export function ViewProfile() {
   const [mounted, setMounted] = useState(false);
@@ -100,6 +101,7 @@ export function ViewProfile() {
             </div>
             
             <div className="flex items-center space-x-3">
+              <LanguageToggle />
               <Button
                 variant="outline"
                 size="sm"
