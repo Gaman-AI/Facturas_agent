@@ -15,6 +15,7 @@ import { LiveViewPane } from './LiveViewPane'
 import { BrowserModeSwitch } from '@/components/ui/browser-mode-switch'
 import { tokenManager } from '@/utils/tokenManager'
 import { toast } from 'react-toastify'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 // Fullscreen Modal Component
 interface FullscreenModalProps {
@@ -29,28 +30,34 @@ function FullscreenModal({ isOpen, onClose, url, title = 'Live Browser View' }: 
 
   return (
     <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center">
-      <div className="relative w-full h-full max-w-full max-h-full bg-white rounded-lg overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 bg-gray-50 border-b">
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">
-              Press ESC to exit fullscreen
-            </span>
-            <Button size="sm" variant="outline" onClick={onClose}>
-              ✕ Close
-            </Button>
-          </div>
-        </div>
+               <div className="relative w-full h-full max-w-full max-h-full bg-white rounded-lg overflow-hidden">
+           {/* Header */}
+           <div className="flex items-center justify-between p-2 bg-[#E5EADF] border-b border-[#C7D8D0]">
+             <h2 className="text-lg font-semibold text-[#164F5B]">{title}</h2>
+             <div className="flex items-center gap-2">
+               <span className="text-sm text-[#527779]">
+                 Press ESC to exit fullscreen
+               </span>
+               <Button size="sm" variant="outline" onClick={onClose} className="border-[#208692] text-[#208692] hover:bg-[#E5EADF]">
+                 ✕ Close
+               </Button>
+             </div>
+           </div>
 
         {/* Iframe Content */}
-        <div className="w-full h-full" style={{ height: 'calc(100vh - 80px)' }}>
+        <div className="w-full h-full" style={{ height: 'calc(100vh - 60px)', margin: 0, padding: 0 }}>
           <iframe
             src={url}
-            sandbox="allow-same-origin allow-scripts"
-            allow="clipboard-read; clipboard-write"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-pointer-lock"
+            allow="clipboard-read; clipboard-write; fullscreen; camera; microphone"
             className="w-full h-full border-0"
             title={title}
+            style={{
+              margin: 0,
+              padding: 0,
+              border: 'none',
+              display: 'block'
+            }}
           />
         </div>
       </div>
@@ -64,6 +71,8 @@ export interface DashboardDualPaneProps {
   initialTicketData?: any
   vendorUrl?: string
   userProfile?: any
+  onBackToUpload?: () => void
+  profileDropdown?: React.ReactNode
 }
 
 interface TaskState {
@@ -124,13 +133,13 @@ function CopyButton({ value, className = '', size = 'sm' }: CopyButtonProps) {
       size={size}
       onClick={handleCopy}
       disabled={!value}
-      className={`h-6 w-6 p-0 hover:bg-gray-100 ${className}`}
+      className={`h-6 w-6 p-0 hover:bg-muted ${className}`}
       title="Copy to clipboard"
     >
       {copied ? (
-        <Check className="h-3 w-3 text-green-600" />
+        <Check className="h-3 w-3 text-[#208692]" />
       ) : (
-        <Copy className="h-3 w-3 text-gray-500 hover:text-gray-700" />
+        <Copy className="h-3 w-3 text-[#527779] hover:text-[#164F5B]" />
       )}
     </Button>
   )
@@ -148,16 +157,16 @@ interface FieldWithCopyProps {
 
 function FieldWithCopy({ label, value, onChange, placeholder, className = '', fullWidth = false }: FieldWithCopyProps) {
   return (
-    <div className={`bg-gray-50 border border-red-200 rounded-lg p-2 ${fullWidth ? 'col-span-2' : ''} ${className}`}>
-      <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          className="flex-1 h-8 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-          placeholder={placeholder}
-        />
+         <div className={`bg-gradient-to-b from-white to-slate-50/30 border border-[#C7D8D0] rounded-lg p-2 ${fullWidth ? 'col-span-2' : ''} ${className}`}>
+       <label className="block text-xs font-medium text-[#527779] mb-1">{label}</label>
+       <div className="flex items-center gap-2">
+         <input
+           type="text"
+           value={value || ''}
+           onChange={(e) => onChange(e.target.value)}
+           className="flex-1 h-8 px-2 py-1 bg-white border border-[#C7D8D0] rounded text-xs text-[#527779] focus:outline-none focus:ring-2 focus:ring-[#208692] focus:border-transparent"
+           placeholder={placeholder}
+         />
         <CopyButton value={value} />
       </div>
     </div>
@@ -169,7 +178,9 @@ export function DashboardDualPane({
   className = '',
   initialTicketData,
   vendorUrl = '',
-  userProfile
+  userProfile,
+  onBackToUpload,
+  profileDropdown
 }: DashboardDualPaneProps) {
   const { t } = useLanguage()
   const [isMobile, setIsMobile] = useState(false)
@@ -341,7 +352,7 @@ export function DashboardDualPane({
     setUploadedTicketId(null)
     setIsProcessing(true)
     setOcrSuccess(false)
-    setOcrStatus('Processing image with OCR...')
+    setOcrStatus(t('ocr.processing', 'Processing image with OCR...'))
     
     try {
       const token = await tokenManager.getValidToken()
@@ -403,7 +414,7 @@ export function DashboardDualPane({
         
         setTicketData(extractedData)
         setOcrSuccess(true)
-        setOcrStatus('OCR completed successfully!')
+        setOcrStatus(t('ocr.completed'))
         console.log('✅ Ticket data mapped from OCR:', extractedData)
         
         // Show success message
@@ -423,14 +434,14 @@ export function DashboardDualPane({
       } else {
         console.warn('⚠️ No extracted_data found in API response')
         console.log('📋 Full API response:', data)
-        setOcrStatus('OCR completed but no data extracted')
+        setOcrStatus(t('ocr.completedNoData'))
       }
       
       console.log('✅ Upload success:', data)
     } catch (err: any) {
       console.error('❌ Upload error:', err)
       setUploadError(err?.message || 'Upload failed')
-      setOcrStatus('OCR processing failed')
+      setOcrStatus(t('ocr.failed', 'OCR processing failed'))
     } finally {
       setIsUploading(false)
       setIsProcessing(false)
@@ -477,7 +488,7 @@ export function DashboardDualPane({
       
       // Set OCR success state
       setOcrSuccess(true)
-      setOcrStatus('OCR completed successfully!')
+      setOcrStatus(t('ocr.completed'))
       
       console.log('✅ Ticket data initialized:', mappedData)
       console.log('✅ Raw text length:', rawTextData.length)
@@ -776,106 +787,108 @@ export function DashboardDualPane({
 
   // Render live view iframe when URL is available
   const renderLiveView = () => {
-    if (!currentLiveViewUrl) {
-      return (
-        <div className="h-full flex items-center justify-center bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-                      <div className="text-center text-gray-500">
-              <Monitor className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-              <h3 className="text-lg font-medium mb-2">No Live View Available</h3>
-              <p className="text-sm mb-3">
-                {browserMode === 'local' 
-                  ? 'Local browser mode - no live view available' 
-                  : 'Waiting for task to start and generate live view URL...'
-                }
-              </p>
-            </div>
-        </div>
-      )
-    }
+         if (!currentLiveViewUrl) {
+       return (
+         <div className="h-full flex items-center justify-center bg-[#E5EADF] rounded-lg border-2 border-dashed border-[#C7D8D0]">
+                       <div className="text-center text-[#527779]">
+               <Monitor className="w-12 h-12 mx-auto mb-3 text-[#A8C5C0]" />
+               <h3 className="text-lg font-medium mb-2 text-[#164F5B]">{t('browser.noLiveView')}</h3>
+               <p className="text-sm mb-3 text-[#527779]">
+                 {browserMode === 'local' 
+                   ? t('browser.localMode') + ' - ' + t('browser.noLiveView').toLowerCase()
+                   : t('browser.waitingForTask')
+                 }
+               </p>
+             </div>
+         </div>
+       )
+     }
 
-    // For local mode, show a different message since there's no live view
-    if (browserMode === 'local') {
-      return (
-        <div className="h-full flex items-center justify-center bg-green-50 rounded-lg border-2 border-dashed border-green-300">
-          <div className="text-center text-green-600">
-            <Monitor className="w-16 h-16 mx-auto mb-4 text-green-400" />
-            <h3 className="text-lg font-medium mb-2">Local Browser Mode Active</h3>
-            <p className="text-sm mb-3">Task is running in your local browser</p>
-            <div className="mt-4 p-3 bg-green-100 rounded border border-green-200">
-              <p className="text-xs text-green-700 font-medium">Local Mode Info:</p>
-              <p className="text-xs text-green-600">No live view available for local browser</p>
-              <p className="text-xs text-green-600">Check your local browser for automation progress</p>
-            </div>
-          </div>
-        </div>
-      )
-    }
+         // For local mode, show a different message since there's no live view
+     if (browserMode === 'local') {
+       return (
+         <div className="h-full flex items-center justify-center bg-[#E5EADF] rounded-lg border-2 border-dashed border-[#C7D8D0]">
+           <div className="text-center text-[#527779]">
+             <Monitor className="w-16 h-16 mx-auto mb-4 text-[#208692]" />
+             <h3 className="text-lg font-medium mb-2 text-[#164F5B]">{t('browser.localModeActive')}</h3>
+             <p className="text-sm mb-3 text-[#527779]">Task is running in your local browser</p>
+             <div className="mt-4 p-3 bg-[#C7D8D0] rounded border border-[#C7D8D0]">
+               <p className="text-xs text-[#164F5B] font-medium">{t('browser.localModeInfo', 'Local Mode Info')}:</p>
+               <p className="text-xs text-[#527779]">{t('browser.noLiveViewLocal', 'No live view available for local browser')}</p>
+               <p className="text-xs text-[#527779]">{t('browser.checkLocalBrowser', 'Check your local browser for automation progress')}</p>
+             </div>
+           </div>
+         </div>
+       )
+     }
 
-    // Validate URL format for Browserbase mode
-    const isValidBrowserbaseUrl = currentLiveViewUrl.includes('browserbase.com/devtools/inspector.html')
-    
-    if (!isValidBrowserbaseUrl) {
-      return (
-        <div className="h-full flex items-center justify-center bg-yellow-50 rounded-lg border-2 border-dashed border-yellow-300">
-          <div className="text-center text-yellow-600">
-            <Monitor className="w-16 h-16 mx-auto mb-4 text-yellow-400" />
-            <h3 className="text-lg font-medium mb-2">Invalid Live View URL Format</h3>
-            <p className="text-sm">Expected Browserbase devtools URL format</p>
-            <div className="mt-4 p-3 bg-yellow-100 rounded border border-yellow-200">
-              <p className="text-xs text-yellow-700 font-medium">Invalid URL Format</p>
-              <p className="text-xs text-yellow-600 mt-2">Expected Browserbase devtools URL format</p>
-            </div>
-          </div>
-        </div>
-      )
-    }
+         // Validate URL format for Browserbase mode
+     const isValidBrowserbaseUrl = currentLiveViewUrl.includes('browserbase.com/devtools/inspector.html')
+     
+     if (!isValidBrowserbaseUrl) {
+       return (
+         <div className="h-full flex items-center justify-center bg-[#E5EADF] rounded-lg border-2 border-dashed border-[#C7D8D0]">
+           <div className="text-center text-[#527779]">
+             <Monitor className="w-16 h-16 mx-auto mb-4 text-[#208692]" />
+             <h3 className="text-lg font-medium mb-2 text-[#164F5B]">Invalid Live View URL Format</h3>
+             <p className="text-sm text-[#527779]">Expected Browserbase devtools URL format</p>
+             <div className="mt-4 p-3 bg-[#C7D8D0] rounded border border-[#C7D8D0]">
+               <p className="text-xs text-[#164F5B] font-medium">Invalid URL Format</p>
+               <p className="text-xs text-[#527779] mt-2">Expected Browserbase devtools URL format</p>
+             </div>
+           </div>
+         </div>
+       )
+     }
 
-    return (
-      <div className="h-full bg-white rounded-lg border border-gray-200 overflow-hidden flex flex-col">
-        <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <Monitor className="w-4 h-4 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">Live Browser View</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-              {taskState.status}
-            </Badge>
-            <Button size="sm" variant="outline" onClick={handleRefreshView}>
-              🔄 Refresh
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setIsFullscreenModal(true)} disabled={!currentLiveViewUrl}>
-              ⛶ Fullscreen
-            </Button>
-            {viewportSize.width > 0 && viewportSize.height > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {Math.round(viewportSize.width)}×{Math.round(viewportSize.height)}
-              </Badge>
-            )}
-          </div>
-        </div>
+         return (
+       <div className="h-full bg-white rounded-lg border border-[#C7D8D0] overflow-hidden flex flex-col">
+         <div className="p-3 bg-[#E5EADF] border-b border-[#C7D8D0] flex items-center justify-between flex-shrink-0">
+           <div className="flex items-center gap-2">
+             <Monitor className="w-4 h-4 text-[#527779]" />
+             <span className="text-sm font-medium text-[#164F5B]">Live Browser View</span>
+           </div>
+           <div className="flex items-center gap-2">
+             <Badge variant="outline" className="text-xs border-[#208692] text-[#208692] bg-[#E5EADF]">
+               {taskState.status}
+             </Badge>
+             <Button size="sm" variant="outline" onClick={handleRefreshView} className="border-[#208692] text-[#208692] hover:bg-[#E5EADF]">
+               🔄 Refresh
+             </Button>
+             <Button size="sm" variant="outline" onClick={() => setIsFullscreenModal(true)} disabled={!currentLiveViewUrl} className="border-[#208692] text-[#208692] hover:bg-[#E5EADF]">
+               ⛶ Fullscreen
+             </Button>
+             {viewportSize.width > 0 && viewportSize.height > 0 && (
+               <Badge variant="secondary" className="text-xs bg-[#C7D8D0] text-[#164F5B]">
+                 {Math.round(viewportSize.width)}×{Math.round(viewportSize.height)}
+               </Badge>
+             )}
+           </div>
+         </div>
         
 
         
-        <div className="flex-1 relative overflow-hidden flex flex-col" style={{ minHeight: '500px' }}>
-          {isResizing && (
-            <div className="absolute top-2 right-2 z-10 bg-blue-500 text-white text-xs px-2 py-1 rounded shadow-lg">
-              Resizing...
-            </div>
-          )}
+        <div className="flex-1 relative overflow-hidden flex flex-col">
+                     {isResizing && (
+             <div className="absolute top-1 right-1 z-10 bg-[#208692] text-white text-xs px-2 py-1 rounded shadow-lg">
+               Resizing...
+             </div>
+           )}
           <iframe
             src={currentLiveViewUrl}
-            sandbox="allow-same-origin allow-scripts"
-            allow="clipboard-read; clipboard-write"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-pointer-lock"
+            allow="clipboard-read; clipboard-write; fullscreen; camera; microphone"
             className={`w-full h-full border-0 flex-1 transition-opacity duration-200 ${isResizing ? 'opacity-70' : 'opacity-100'}`}
             title="Live Browser View"
             onLoad={() => console.log('✅ Live view iframe loaded successfully:', currentLiveViewUrl)}
             onError={(e) => console.error('❌ Live view iframe error:', e)}
             style={{
-              minHeight: '400px',
-              maxHeight: '100%',
-              width: '100%'
+              height: '100%',
+              width: '100%',
+              display: 'block',
+              border: 'none'
             }}
+            scrolling="yes"
           />
         </div>
       </div>
@@ -886,25 +899,25 @@ export function DashboardDualPane({
   if (isMobile) {
     return (
       <div className={`h-full w-full overflow-hidden ${className}`}>
-        <div className="flex flex-col h-full gap-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100" style={{ minHeight: '1000px' }}>
+                 <div className="flex flex-col h-full gap-6 overflow-y-auto scrollbar-thin scrollbar-thumb-[#A8C5C0] scrollbar-track-[#E5EADF]" style={{ minHeight: '1000px' }}>
           {/* Ticket Data Form Section */}
-          <Card className="border-2 border-slate-200/60 shadow-lg bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden flex-shrink-0">
-            <CardHeader className="pb-3 bg-gradient-to-r from-red-50 to-rose-50 border-b border-slate-200/40 flex-shrink-0">
-              <CardTitle className="flex items-center space-x-2 text-lg">
-                <div className="w-7 h-7 bg-red-500 rounded-lg flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <span>Ticket Data</span>
-              </CardTitle>
-              <CardDescription className="text-slate-600 text-sm">
-                Ingrese los datos del ticket en los campos correspondientes.
-              </CardDescription>
-            </CardHeader>
+                     <Card className="border-2 border-[#C7D8D0] shadow-lg bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden flex-shrink-0">
+             <CardHeader className="pb-3 bg-gradient-to-r from-[#E5EADF] to-[#C7D8D0] border-b border-[#C7D8D0] flex-shrink-0">
+               <CardTitle className="flex items-center space-x-2 text-lg">
+                 <div className="w-7 h-7 bg-[#208692] rounded-lg flex items-center justify-center">
+                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                   </svg>
+                 </div>
+                 <span className="text-[#26272A]">Ticket Data</span>
+               </CardTitle>
+               <CardDescription className="text-[#527779] text-sm">
+                 Ingrese los datos del ticket en los campos correspondientes.
+               </CardDescription>
+             </CardHeader>
             <CardContent className="p-3 flex flex-col h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
               {/* File Upload Section for Mobile */}
-              <div className="mb-3 p-3 border border-slate-200 rounded-lg bg-slate-50">
+              <div className="mb-3 p-3 border border-border rounded-lg bg-muted">
                 <div className="space-y-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -914,7 +927,7 @@ export function DashboardDualPane({
                       type="file"
                       accept="image/*,.pdf"
                       onChange={handleFileChange}
-                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100"
+                      className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-secondary file:text-destructive hover:file:bg-muted"
                     />
                   </div>
                   
@@ -936,7 +949,7 @@ export function DashboardDualPane({
                   <Button
                     onClick={handleImageUpload}
                     disabled={!selectedFile || isUploading}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white"
+                    className="w-full bg-destructive hover:bg-destructive/90 text-white"
                   >
                     {isUploading ? (
                       <>
@@ -949,7 +962,7 @@ export function DashboardDualPane({
                   </Button>
                   
                   {uploadError && (
-                    <div className="text-sm text-red-600 bg-red-50 p-2 rounded border border-red-200">
+                    <div className="text-sm text-destructive bg-secondary p-2 rounded border border-destructive">
                       {uploadError}
                     </div>
                   )}
@@ -961,18 +974,18 @@ export function DashboardDualPane({
                 <div className="mb-3">
                   <div className={`flex items-center gap-3 p-2 rounded-lg ${
                     ocrSuccess 
-                      ? 'bg-green-50 border border-green-200 text-green-700' 
+                      ? 'border border-[#C7D8D0] text-[#527779]' 
                       : isProcessing 
-                        ? 'bg-blue-50 border border-blue-200 text-blue-700'
+                        ? 'bg-[#E5EADF]/30 border border-[#C7D8D0] text-[#527779]'
                         : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
-                  }`}>
+                  }`} style={ocrSuccess ? { backgroundColor: '#E5EADF' } : {}}>
                     <div className={`w-3 h-3 rounded-full ${
                       ocrSuccess 
-                        ? 'bg-green-500' 
+                        ? '' 
                         : isProcessing 
-                          ? 'bg-blue-500 animate-pulse'
+                          ? 'animate-pulse'
                           : 'bg-yellow-500'
-                    }`}></div>
+                    }`} style={ocrSuccess ? { backgroundColor: '#208692' } : isProcessing ? { backgroundColor: '#208692' } : {}}></div>
                     <span className="text-sm font-medium">{ocrStatus}</span>
                   </div>
                 </div>
@@ -983,8 +996,8 @@ export function DashboardDualPane({
                 <div className="mb-3 p-3 border border-slate-200 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50">
                   <div className="text-center">
                     <h4 className="text-base font-semibold text-gray-800 mb-2 flex items-center justify-center gap-2">
-                      <Zap className="w-4 h-4 text-blue-600" />
-                      Start Agent Task
+                      <Zap className="w-4 h-4 text-primary" />
+                      {t('task.startAgent')}
                     </h4>
                     
                     {/* Agent Configuration */}
@@ -994,7 +1007,7 @@ export function DashboardDualPane({
                           Model
                         </label>
                         <select 
-                          className="block w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="block w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                           defaultValue="gpt-4o-mini"
                         >
                           <option value="gpt-4o-mini">GPT-4o Mini</option>
@@ -1007,7 +1020,7 @@ export function DashboardDualPane({
                           Max Steps
                         </label>
                         <select 
-                          className="block w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="block w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                           defaultValue="30"
                         >
                           <option value="20">20</option>
@@ -1021,7 +1034,7 @@ export function DashboardDualPane({
                     <Button
                       onClick={handleStartAgentTask}
                       disabled={!vendorUrl || !ocrSuccess || isStartingAgent}
-                      className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
                     >
                       {isStartingAgent ? (
                         <>
@@ -1031,17 +1044,17 @@ export function DashboardDualPane({
                       ) : (
                         <>
                           <Zap className="w-4 h-4 mr-2" />
-                          Start Agent Task
+                          {t('task.startAgent')}
                         </>
                       )}
                     </Button>
                     
                     {/* Status Messages */}
                     {!vendorUrl && (
-                      <p className="text-xs text-red-600 mt-2">Please enter the vendor website URL first</p>
+                      <p className="text-xs text-destructive mt-2">Please enter the vendor website URL first</p>
                     )}
                     {!ocrSuccess && vendorUrl && (
-                      <p className="text-xs text-red-600 mt-2">Please complete OCR processing first</p>
+                      <p className="text-xs text-destructive mt-2">Please complete OCR processing first</p>
                     )}
                     {taskState.status === 'running' && (
                       <div className="mt-2 p-2 bg-blue-50 rounded border border-blue-200">
@@ -1070,9 +1083,9 @@ export function DashboardDualPane({
                     {taskMessage && (
                       <div className={`mt-2 p-2 rounded border ${
                         taskMessage.type === 'success' 
-                          ? 'bg-green-50 border-green-200 text-green-700' 
+                          ? 'bg-green-50 border-accent-foreground text-green-700' 
                           : taskMessage.type === 'error'
-                          ? 'bg-red-50 border-red-200 text-red-700'
+                          ? 'bg-secondary border-destructive text-destructive'
                           : 'bg-blue-50 border-blue-200 text-blue-700'
                       }`}>
                         <p className="text-xs font-medium">
@@ -1089,8 +1102,8 @@ export function DashboardDualPane({
               
               {/* Extracted Ticket Information Display - Mobile Layout - EDITABLE */}
               {/* Editable Fields Notice - Mobile */}
-              <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center gap-2 text-blue-700">
+              <div className="mb-3 p-2 rounded-lg border" style={{ backgroundColor: '#E5EADF', borderColor: '#C7D8D0' }}>
+                <div className="flex items-center gap-2" style={{ color: '#208692' }}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -1098,119 +1111,119 @@ export function DashboardDualPane({
                 </div>
               </div>
               
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2" style={{ backgroundColor: '#F5F5F5' }}>
                 {/* Mesa/Folio */}
                 <FieldWithCopy
-                  label="Mesa/Folio"
+                  label={t('ticket.mesaFolio')}
                   value={ticketData['Mesa_Folio'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': value }))}
-                  placeholder="Enter Mesa/Folio"
+                  placeholder={t('ticket.enterMesaFolio')}
                 />
                 
                 {/* Fecha */}
                 <FieldWithCopy
-                  label="Fecha"
+                  label={t('ticket.fecha')}
                   value={ticketData['Fecha'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Fecha': value }))}
-                  placeholder="Enter Fecha"
+                  placeholder={t('ticket.enterFecha')}
                 />
                 
                 {/* ID Ticket */}
                 <FieldWithCopy
-                  label="ID Ticket"
+                  label={t('ticket.idTicket')}
                   value={ticketData['ID_Ticket'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'ID_Ticket': value }))}
-                  placeholder="Enter ID Ticket"
+                  placeholder={t('ticket.enterIdTicket')}
                 />
                 
                 {/* Total */}
                 <FieldWithCopy
-                  label="Total"
+                  label={t('ticket.total')}
                   value={ticketData['Total'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Total': value }))}
-                  placeholder="Enter Total"
+                  placeholder={t('ticket.enterTotal')}
                 />
                 
                 {/* Store/Branch/Plaza */}
                 <FieldWithCopy
-                  label="Store/Branch/Plaza"
+                  label={t('ticket.storeBranchPlaza')}
                   value={ticketData['Store_Branch_Plaza'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': value }))}
-                  placeholder="Enter Store/Branch/Plaza"
+                  placeholder={t('ticket.enterStoreBranchPlaza')}
                 />
                 
                 {/* Register/Station/Terminal */}
                 <FieldWithCopy
-                  label="Register/Station/Terminal"
+                  label={t('ticket.registerStationTerminal')}
                   value={ticketData['Register_Station_Terminal'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': value }))}
-                  placeholder="Enter Register/Station/Terminal"
+                  placeholder={t('ticket.enterRegisterStationTerminal')}
                 />
                 
                 {/* Payment Type */}
                 <FieldWithCopy
-                  label="Payment Type"
+                  label={t('ticket.paymentType')}
                   value={ticketData['Payment_Type'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Payment_Type': value }))}
-                  placeholder="Enter Payment Type"
+                  placeholder={t('ticket.enterPaymentType')}
                 />
                 
                 {/* Last 4 digits of card */}
                 <FieldWithCopy
-                  label="Card Last 4 Digits"
+                  label={t('ticket.cardLast4Digits')}
                   value={ticketData['Card_Last_4_Digits'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': value }))}
-                  placeholder="Enter Card Last 4 Digits"
+                  placeholder={t('ticket.enterCardLast4Digits')}
                 />
                 
                 {/* TC# */}
                 <FieldWithCopy
-                  label="TC#"
+                  label={t('ticket.tc')}
                   value={ticketData['TC#'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'TC#': value }))}
-                  placeholder="Enter TC#"
+                  placeholder={t('ticket.enterTc')}
                 />
                 
                 {/* TR# */}
                 <FieldWithCopy
-                  label="TR#"
+                  label={t('ticket.tr')}
                   value={ticketData['TR#'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'TR#': value }))}
-                  placeholder="Enter TR#"
+                  placeholder={t('ticket.enterTr')}
                 />
                 
                 {/* ID */}
                 <FieldWithCopy
-                  label="ID"
+                  label={t('ticket.id')}
                   value={ticketData['ID'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'ID': value }))}
-                  placeholder="Enter ID"
+                  placeholder={t('ticket.enterId')}
                 />
                 
                 {/* Fol_Vta */}
                 <FieldWithCopy
-                  label="Fol_Vta"
+                  label={t('ticket.folVta')}
                   value={ticketData['Fol_Vta'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Fol_Vta': value }))}
-                  placeholder="Enter Fol_Vta"
+                  placeholder={t('ticket.enterFolVta')}
                 />
                 
                 {/* Comercio - Full width */}
                 <FieldWithCopy
-                  label="Comercio"
+                  label={t('ticket.comercio')}
                   value={ticketData['Comercio'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Comercio': value }))}
-                  placeholder="Enter Comercio"
+                  placeholder={t('ticket.enterComercio')}
                   fullWidth={true}
                 />
               </div>
               
               {/* Full Raw Text Display - New Component */}
-              <div className="flex-1 min-h-0 flex flex-col">
-                <div className="bg-gray-50 border border-red-200 rounded-lg p-2 flex-1 flex flex-col">
-                  <label className="block text-xs font-medium text-gray-700 mb-1 flex-shrink-0">Full Raw Text</label>
+              <div className="flex-1 min-h-0 flex flex-col" style={{ backgroundColor: '#F5F5F5' }}>
+                <div className="bg-gray-50 border border-destructive rounded-lg p-2 flex-1 flex flex-col">
+                  <label className="block text-xs font-medium text-gray-700 mb-1 flex-shrink-0">{t('ticketData.fullRawText', 'Full Raw Text')}</label>
                   <div className="flex items-start gap-2">
-                    <div className="flex-1 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
+                    <div className="flex-1 px-2 py-1 bg-white border border-destructive rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
                       {rawText ? (
                         <pre className="whitespace-pre-wrap text-xs leading-relaxed">
                           {rawText}
@@ -1233,9 +1246,9 @@ export function DashboardDualPane({
           {/* Browser View Section - Show when task is active OR manual URL is present */}
           {(taskState.status !== 'idle' || currentLiveViewUrl) && (
             <Card className="flex-1 min-h-0 border-2 border-slate-200/60 shadow-lg bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden">
-              <CardHeader className="pb-2 bg-gradient-to-r from-pink-50 to-rose-50 border-b border-slate-200/40 flex-shrink-0">
+              <CardHeader className="pb-2 bg-gradient-to-r from-secondary to-muted border-b border-slate-200/40 flex-shrink-0">
                 <CardTitle className="flex items-center space-x-2 text-base">
-                  <div className="w-6 h-6 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
+                  <div className="w-6 h-6 bg-gradient-to-r from-primary to-primary rounded-lg flex items-center justify-center">
                     <Monitor className="w-3 h-3 text-white" />
                   </div>
                   <span>Live Browser View</span>
@@ -1266,57 +1279,71 @@ export function DashboardDualPane({
   // Desktop layout - dual pane
   return (
     <div className={`h-full w-full overflow-hidden ${className}`}>
-      <Card className="border-2 border-slate-200/60 shadow-xl bg-white/90 backdrop-blur-sm h-full w-full rounded-xl overflow-hidden hover:shadow-2xl transition-all duration-300">
-        <CardHeader className="pb-3 flex-shrink-0 bg-gradient-to-r from-pink-50 to-rose-50 border-b-2 border-slate-200/40">
+      <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm h-full w-full rounded-xl overflow-hidden hover:shadow-2xl transition-all duration-300 border-l-4" style={{ borderLeftColor: '#208692' }}>
+        <CardHeader className="pb-3 flex-shrink-0 border-b-2" style={{ backgroundColor: '#208692', borderBottomColor: '#C7D8D0' }}>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center space-x-3 text-lg">
-              <div className="w-7 h-7 bg-gradient-to-r from-pink-500 to-rose-500 rounded-lg flex items-center justify-center">
-                <Activity className="w-4 h-4 text-white" />
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white">
+                <Activity className="w-4 h-4" style={{ color: '#208692' }} />
               </div>
-              <span>Dual Pane Task Monitor</span>
+              <span className="text-white">{t('tasks.monitor.title')}</span>
             </div>
-            {taskState.status !== 'idle' && (
-              <div className="flex items-center gap-3">
-                <Badge variant="outline" className="flex items-center gap-1 border-pink-300 text-pink-700 bg-pink-50">
-                  <Monitor className="w-3 h-3" />
-                  Task: {taskState.taskId?.slice(0, 8)}...
-                </Badge>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={resetTaskState}
-                  className="border-pink-300 text-pink-700 hover:bg-pink-50"
-                >
-                  New Task
-                </Button>
-              </div>
-            )}
+            <div className="flex items-center gap-3">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={onBackToUpload}
+                style={{ borderColor: '#208692', color: '#208692' }}
+                className="hover:bg-[#E5EADF]"
+              >
+                ← {t('common.back')} {t('common.to')} {t('common.upload')}
+              </Button>
+              <LanguageToggle />
+              {profileDropdown}
+              {taskState.status !== 'idle' && (
+                <>
+                  <Badge variant="outline" className="flex items-center gap-1" style={{ borderColor: '#208692', color: '#208692', backgroundColor: '#E5EADF' }}>
+                    <Monitor className="w-3 h-3" />
+                    {t('monitor.sidebar.taskId')}: {taskState.taskId?.slice(0, 8)}...
+                  </Badge>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={resetTaskState}
+                    style={{ borderColor: '#208692', color: '#208692' }}
+                    className="hover:bg-[#E5EADF]"
+                  >
+                    {t('tasks.create')}
+                  </Button>
+                </>
+              )}
+            </div>
           </CardTitle>
-          <CardDescription className="text-slate-600 text-sm">
+          <CardDescription className="text-sm text-white opacity-90">
             {taskState.status === 'idle' 
-              ? 'Create and monitor browser automation tasks in real-time with dual pane interface'
-              : 'Monitor your browser automation task in real-time'
+              ? t('tasks.monitor.description', 'Create and monitor browser automation tasks in real-time with dual pane interface')
+              : t('tasks.monitor.activeDescription', 'Monitor your browser automation task in real-time')
             }
           </CardDescription>
         </CardHeader>
         
-        <CardContent className="p-0 flex-1 overflow-hidden" style={{ height: 'calc(100% - 90px)' }}>
+        <CardContent className="p-2 flex-1 overflow-hidden" style={{ height: 'calc(100% - 90px)' }}>
           <ResizablePanelGroup direction="horizontal" className="h-full w-full overflow-hidden">
-            {/* Left Pane - Ticket Data Form (35% default) */}
-            <ResizablePanel defaultSize={35} minSize={25} maxSize={50} className="overflow-hidden">
+            {/* Left Pane - Ticket Data Form (50% default) */}
+            <ResizablePanel defaultSize={50} minSize={40} maxSize={60} className="overflow-hidden">
               <div className="h-full p-3 border-r-2 border-slate-200/40 bg-gradient-to-b from-white to-slate-50/30 overflow-hidden">
                 <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden flex flex-col">
                   {/* Scrollable content container */}
                   <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                   {/* Header with icon and title */}
-                  <div className="p-3 border-b border-slate-200/50 bg-gradient-to-r from-red-50 to-red-100 flex-shrink-0">
+                  <div className="p-3 border-b border-slate-200/50 flex-shrink-0" style={{ backgroundColor: '#E5EADF' }}>
                     <div className="flex items-center space-x-3">
-                      <div className="w-7 h-7 bg-red-500 rounded-lg flex items-center justify-center">
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center">
+                        <svg className="w-4 h-4" style={{ color: '#208692' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                       </div>
-                      <h3 className="text-base font-semibold text-gray-800">Ticket Data</h3>
+                      <h3 className="text-base font-semibold" style={{ color: '#208692' }}>{t('ticketData.title')}</h3>
                     </div>
                   </div>
                   
@@ -1325,19 +1352,19 @@ export function DashboardDualPane({
                     <div className="p-3 border-b border-slate-200/50 flex-shrink-0">
                       <div className={`flex items-center gap-3 p-2 rounded-lg ${
                         ocrSuccess 
-                          ? 'bg-green-50 border border-green-200 text-green-700' 
+                          ? 'border border-[#C7D8D0]' 
                           : isProcessing 
-                            ? 'bg-blue-50 border border-blue-200 text-blue-700'
+                            ? 'bg-[#E5EADF]/30 border border-[#C7D8D0] text-[#527779]'
                             : 'bg-yellow-50 border border-yellow-200 text-yellow-700'
-                      }`}>
+                      }`} style={ocrSuccess ? { backgroundColor: '#F5F5F5', color: '#208692' } : {}}>
                         <div className={`w-3 h-3 rounded-full ${
                           ocrSuccess 
-                            ? 'bg-green-500' 
+                            ? '' 
                             : isProcessing 
-                              ? 'bg-blue-500 animate-pulse'
+                              ? 'animate-pulse'
                               : 'bg-yellow-500'
-                        }`}></div>
-                        <span className="text-sm font-medium">{ocrStatus}</span>
+                        }`} style={ocrSuccess ? { backgroundColor: '#22c55e' } : isProcessing ? { backgroundColor: '#208692' } : {}}></div>
+                        <span className="text-sm font-medium" style={{ color: '#26272A' }}>{ocrStatus}</span>
                       </div>
                     </div>
                   )}
@@ -1345,143 +1372,90 @@ export function DashboardDualPane({
                   {/* Start Agent Button Section - Top of Extracted Details */}
                   {ocrSuccess && (
                     <div className="p-3 border-b border-slate-200/50 flex-shrink-0">
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
-                        <div className="text-center">
-                          <h4 className="text-base font-semibold text-gray-800 mb-2 flex items-center justify-center gap-2">
-                            <Zap className="w-4 h-4 text-blue-600" />
-                            Start Agent Task
-                          </h4>
-                          
-                          {/* Vendor URL Display - Desktop */}
-                          <div className="mb-3">
-                            <label className="block text-xs font-medium text-gray-700 mb-1 text-left">
-                              Vendor Website URL
-                            </label>
-                            <div className="block w-full px-2 py-1 border border-gray-200 rounded-md text-xs bg-gray-50 text-gray-700">
-                              {vendorUrl || 'No vendor URL provided'}
-                            </div>
-                          </div>
-                          
-                          {/* Agent Configuration */}
-                          <div className="grid grid-cols-2 gap-2 mb-3">
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1 text-left">
-                                Model
-                              </label>
-                              <select 
-                                className="w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                defaultValue="gpt-5-nano-2025-08-07"
-                              >
-                                {getModelsByProvider('openai').filter(m => m.category === 'latest' || m.category === 'standard').map(model => (
-                                  <option key={model.value} value={model.value}>
-                                    {model.label}
-                                    {model.isRecommended ? ' (Recomendado)' : ''}
-                                  </option>
-                                ))}
-                                {getModelsByProvider('anthropic').filter(m => m.category === 'latest' || m.category === 'standard').slice(0, 2).map(model => (
-                                  <option key={model.value} value={model.value}>
-                                    {model.label}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1 text-left">
-                                Max Steps
-                              </label>
-                              <select 
-                                className="w-full px-2 py-1 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                defaultValue="100"
-                              >
-                                <option value="20">20</option>
-                                <option value="50">50</option>
-                                <option value="100">100</option>
-                                <option value="150">150</option>
-                              </select>
-                            </div>
-                          </div>
-                          
-                          {/* Start Agent Button */}
-                          <Button
-                            onClick={handleStartAgentTask}
-                            disabled={!vendorUrl || !ocrSuccess || taskState.status === 'running' || taskState.status === 'connecting'}
-                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
-                          >
-                            {taskState.status === 'connecting' ? (
-                              <>
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                                Creating Task...
-                              </>
-                            ) : taskState.status === 'running' ? (
-                              <>
-                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                                Agent Running...
-                              </>
-                            ) : (
-                              <>
-                                <Zap className="w-4 h-4 mr-2" />
-                                Start Agent Task
-                              </>
-                            )}
-                          </Button>
-                          
-                          {/* Status Messages */}
-                          {!vendorUrl && (
-                            <p className="text-xs text-red-600 mt-2">Please enter the vendor website URL first</p>
+                      <div className="text-center">
+                        {/* Start Agent Button */}
+                        <Button
+                          onClick={handleStartAgentTask}
+                          disabled={!vendorUrl || !ocrSuccess || taskState.status === 'running' || taskState.status === 'connecting'}
+                          className="text-white font-semibold py-2 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
+                          style={{ backgroundColor: '#D4D970' }}
+                          onMouseEnter={(e) => e.target.style.backgroundColor = '#C4C960'}
+                          onMouseLeave={(e) => e.target.style.backgroundColor = '#D4D970'}
+                        >
+                          {taskState.status === 'connecting' ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                              Creating Task...
+                            </>
+                          ) : taskState.status === 'running' ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                              Agent Running...
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="w-4 h-4 mr-2" />
+                              {t('task.startAgent')}
+                            </>
                           )}
-                          {!ocrSuccess && vendorUrl && (
-                            <p className="text-xs text-red-600 mt-2">Please complete OCR processing first</p>
-                          )}
-                          {/* Task Status and Control Buttons */}
-                          {(taskState.status === 'running' || taskState.status === 'connecting') && (
-                            <div className="mt-2 p-3 bg-blue-50 rounded border border-blue-200">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-xs text-blue-700">
-                                    <strong>Task Status:</strong> {taskState.status}
-                                    {taskState.taskId && (
-                                      <span className="block mt-1">Task ID: {taskState.taskId.slice(0, 8)}...</span>
-                                    )}
-                                  </p>
-                                </div>
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={handleStopTask}
-                                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold py-2 px-3 rounded border"
-                                    type="button"
-                                  >
-                                    🛑 Stop
-                                  </button>
-                                  <button
-                                    onClick={resetTaskState}
-                                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-semibold py-2 px-3 rounded border"
-                                    type="button"
-                                  >
-                                    Reset
-                                  </button>
-                                </div>
+                        </Button>
+                        
+                        {/* Status Messages */}
+                        {!vendorUrl && (
+                          <p className="text-xs text-destructive mt-2">Please enter the vendor website URL first</p>
+                        )}
+                        {!ocrSuccess && vendorUrl && (
+                          <p className="text-xs text-destructive mt-2">Please complete OCR processing first</p>
+                        )}
+                        {/* Task Status and Control Buttons */}
+                        {(taskState.status === 'running' || taskState.status === 'connecting') && (
+                          <div className="mt-2 p-3 bg-blue-50 rounded border border-blue-200">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs text-blue-700">
+                                  <strong>Task Status:</strong> {taskState.status}
+                                  {taskState.taskId && (
+                                    <span className="block mt-1">Task ID: {taskState.taskId.slice(0, 8)}...</span>
+                                  )}
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleStopTask}
+                                  className="bg-destructive hover:bg-destructive/90 text-white text-xs font-semibold py-2 px-3 rounded border"
+                                  type="button"
+                                >
+                                  🛑 Stop
+                                </button>
+                                <button
+                                  onClick={resetTaskState}
+                                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-semibold py-2 px-3 rounded border"
+                                  type="button"
+                                >
+                                  Reset
+                                </button>
                               </div>
                             </div>
-                          )}
-                          
-                          {/* Task Message Display */}
-                          {taskMessage && (
-                            <div className={`mt-2 p-3 rounded border ${
-                              taskMessage.type === 'success' 
-                                ? 'bg-green-50 border-green-200 text-green-700' 
-                                : taskMessage.type === 'error'
-                                ? 'bg-red-50 border-red-200 text-red-700'
-                                : 'bg-blue-50 border-blue-200 text-blue-700'
-                            }`}>
-                              <p className="text-sm font-medium">
-                                {taskMessage.type === 'success' && '✅ '}
-                                {taskMessage.type === 'error' && '❌ '}
-                                {taskMessage.type === 'info' && 'ℹ️ '}
-                                {taskMessage.message}
-                              </p>
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
+                        
+                        {/* Task Message Display */}
+                        {taskMessage && (
+                          <div className={`mt-2 p-3 rounded border ${
+                            taskMessage.type === 'success' 
+                              ? 'bg-green-50 border-accent-foreground text-green-700' 
+                              : taskMessage.type === 'error'
+                              ? 'bg-secondary border-destructive text-destructive'
+                              : 'bg-blue-50 border-blue-200 text-blue-700'
+                          }`}>
+                            <p className="text-sm font-medium">
+                              {taskMessage.type === 'success' && '✅ '}
+                              {taskMessage.type === 'error' && '❌ '}
+                              {taskMessage.type === 'info' && 'ℹ️ '}
+                              {taskMessage.message}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1489,8 +1463,8 @@ export function DashboardDualPane({
                   {/* Extracted Ticket Information Display - 2x2 Grid - EDITABLE */}
                   <div className="p-3 flex flex-col h-full" style={{ minHeight: '400px' }}>
                     {/* Editable Fields Notice */}
-                    <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="flex items-center gap-2 text-blue-700">
+                    <div className="mb-3 p-2 rounded-lg border" style={{ backgroundColor: '#E5EADF', borderColor: '#C7D8D0' }}>
+                      <div className="flex items-center gap-2" style={{ color: '#208692' }}>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -1501,116 +1475,116 @@ export function DashboardDualPane({
                     <div className="grid grid-cols-2 gap-2 flex-shrink-0 mb-4">
                       {/* Mesa/Folio */}
                       <FieldWithCopy
-                        label="Mesa/Folio"
+                        label={t('ticket.mesaFolio')}
                         value={ticketData['Mesa_Folio'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': value }))}
-                        placeholder="Enter Mesa/Folio"
+                        placeholder={t('ticket.enterMesaFolio')}
                       />
                       
                       {/* Fecha */}
                       <FieldWithCopy
-                        label="Fecha"
+                        label={t('ticket.fecha')}
                         value={ticketData['Fecha'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Fecha': value }))}
-                        placeholder="Enter Fecha"
+                        placeholder={t('ticket.enterFecha')}
                       />
                       
                       {/* ID Ticket */}
                       <FieldWithCopy
-                        label="ID Ticket"
+                        label={t('ticket.idTicket')}
                         value={ticketData['ID_Ticket'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'ID_Ticket': value }))}
-                        placeholder="Enter ID Ticket"
+                        placeholder={t('ticket.enterIdTicket')}
                       />
                       
                       {/* Total */}
                       <FieldWithCopy
-                        label="Total"
+                        label={t('ticket.total')}
                         value={ticketData['Total'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Total': value }))}
-                        placeholder="Enter Total"
+                        placeholder={t('ticket.enterTotal')}
                       />
                       
                       {/* Store/Branch/Plaza */}
                       <FieldWithCopy
-                        label="Store/Branch/Plaza"
+                        label={t('ticket.storeBranchPlaza')}
                         value={ticketData['Store_Branch_Plaza'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': value }))}
-                        placeholder="Enter Store/Branch/Plaza"
+                        placeholder={t('ticket.enterStoreBranchPlaza')}
                       />
                       
                       {/* Register/Station/Terminal */}
                       <FieldWithCopy
-                        label="Register/Station/Terminal"
+                        label={t('ticket.registerStationTerminal')}
                         value={ticketData['Register_Station_Terminal'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': value }))}
-                        placeholder="Enter Register/Station/Terminal"
+                        placeholder={t('ticket.enterRegisterStationTerminal')}
                       />
                       
                       {/* Payment Type */}
                       <FieldWithCopy
-                        label="Payment Type"
+                        label={t('ticket.paymentType')}
                         value={ticketData['Payment_Type'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Payment_Type': value }))}
-                        placeholder="Enter Payment Type"
+                        placeholder={t('ticket.enterPaymentType')}
                       />
                       
                       {/* Last 4 digits of card */}
                       <FieldWithCopy
-                        label="Card Last 4 Digits"
+                        label={t('ticket.cardLast4Digits')}
                         value={ticketData['Card_Last_4_Digits'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': value }))}
-                        placeholder="Enter Card Last 4 Digits"
+                        placeholder={t('ticket.enterCardLast4Digits')}
                       />
                       
                       {/* TC# */}
                       <FieldWithCopy
-                        label="TC#"
+                        label={t('ticket.tc')}
                         value={ticketData['TC#'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'TC#': value }))}
-                        placeholder="Enter TC#"
+                        placeholder={t('ticket.enterTc')}
                       />
                       
                       {/* TR# */}
                       <FieldWithCopy
-                        label="TR#"
+                        label={t('ticket.tr')}
                         value={ticketData['TR#'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'TR#': value }))}
-                        placeholder="Enter TR#"
+                        placeholder={t('ticket.enterTr')}
                       />
                       
                       {/* ID */}
                       <FieldWithCopy
-                        label="ID"
+                        label={t('ticket.id')}
                         value={ticketData['ID'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'ID': value }))}
-                        placeholder="Enter ID"
+                        placeholder={t('ticket.enterId')}
                       />
                       
                       {/* Fol_Vta */}
                       <FieldWithCopy
-                        label="Fol_Vta"
+                        label={t('ticket.folVta')}
                         value={ticketData['Fol_Vta'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Fol_Vta': value }))}
-                        placeholder="Enter Fol_Vta"
+                        placeholder={t('ticket.enterFolVta')}
                       />
                       
                       {/* Comercio - Full width */}
                       <FieldWithCopy
-                        label="Comercio"
+                        label={t('ticket.comercio')}
                         value={ticketData['Comercio'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Comercio': value }))}
-                        placeholder="Enter Comercio"
+                        placeholder={t('ticket.enterComercio')}
                         fullWidth={true}
                       />
                     </div>
                     
                     {/* Full Raw Text Display - New Component */}
-                    <div className="flex-1 min-h-0 flex flex-col">
-                      <div className="bg-gray-50 border border-red-200 rounded-lg p-2 flex-1 flex flex-col">
-                        <label className="block text-xs font-medium text-gray-700 mb-1 flex-shrink-0">Full Raw Text</label>
+                    <div className="flex-1 min-h-0 flex flex-col" style={{ backgroundColor: '#F5F5F5' }}>
+                      <div className="bg-gray-50 border border-destructive rounded-lg p-2 flex-1 flex flex-col">
+                        <label className="block text-xs font-medium text-gray-700 mb-1 flex-shrink-0">{t('ticketData.fullRawText', 'Full Raw Text')}</label>
                         <div className="flex items-start gap-2">
-                          <div className="flex-1 px-2 py-1 bg-white border border-red-200 rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
+                          <div className="flex-1 px-2 py-1 bg-white border border-destructive rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
                             {rawText ? (
                               <pre className="whitespace-pre-wrap text-xs leading-relaxed">
                                 {rawText}
@@ -1631,17 +1605,17 @@ export function DashboardDualPane({
               </div>
             </ResizablePanel>
 
-            <ResizableHandle withHandle className="w-2 bg-gradient-to-b from-pink-100 to-rose-100 hover:bg-gradient-to-b hover:from-pink-200 hover:to-rose-200 transition-all duration-200" data-panel-resize-handle />
+            <ResizableHandle withHandle className="w-2 bg-gradient-to-b from-muted to-border hover:bg-gradient-b hover:from-border hover:to-muted-foreground transition-all duration-200" data-panel-resize-handle />
 
             {/* Right Pane - Live View with URL Input (65% default) */}
-            <ResizablePanel defaultSize={65} minSize={50} maxSize={75} className="overflow-hidden" data-panel="live-view">
-              <div className="h-full p-3 bg-gradient-to-b from-white to-slate-50/30 overflow-hidden">
-                <div className="h-full bg-white rounded-lg border border-slate-200/50 shadow-sm overflow-hidden">
+            <ResizablePanel defaultSize={50} minSize={40} maxSize={60} className="overflow-hidden" data-panel="live-view">
+              <div className="h-full p-2 bg-gradient-to-b from-white to-slate-50/30 overflow-hidden">
+                <div className="h-full bg-white rounded-lg border border-slate-200/30 shadow-sm overflow-hidden">
                   <div className="h-full flex flex-col" data-viewport="live-view">
                     {/* Browser Mode Switch Header */}
-                    <div className="p-3 border-b border-gray-200 bg-gray-50 flex-shrink-0">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-base font-semibold">Browser Mode</h3>
+                    <div className="p-2 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-base font-semibold">{t('browser.mode')}</h3>
                         <BrowserModeSwitch 
                           value={browserMode}
                           onChange={setBrowserMode}
@@ -1666,7 +1640,7 @@ export function DashboardDualPane({
                         /* Local Browser Mode Content */
                         <div className="h-full flex items-center justify-center">
                           <div className="text-center max-w-md">
-                            <Monitor className="mx-auto h-16 w-16 text-green-600 mb-4" />
+                            <Monitor className="mx-auto h-16 w-16 text-primary mb-4" />
                             <h3 className="text-lg font-semibold text-gray-900 mb-2">
                               Local Browser Mode
                             </h3>

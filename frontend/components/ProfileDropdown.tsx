@@ -63,31 +63,29 @@ export const ProfileDropdown = () => {
       {/* Profile Button */}
       <Button
         variant="ghost"
-        className="flex items-center space-x-2 bg-white/60 backdrop-blur-sm hover:bg-white/80 border border-slate-200/50 px-3 py-2 h-auto"
+        className="w-10 h-10 p-0 bg-white hover:bg-white border rounded-full shadow-sm"
+        style={{ borderColor: '#C7D8D0' }}
         onClick={() => setIsOpen(!isOpen)}
       >
-        <div className="w-8 h-8 bg-gradient-to-r from-pink-400 to-rose-400 rounded-full flex items-center justify-center">
+        <div 
+          className="w-8 h-8 rounded-full flex items-center justify-center"
+          style={{ 
+            background: 'linear-gradient(135deg, #B8E060 0%, #3CB371 100%)'
+          }}
+        >
           <User className="w-4 h-4 text-white" />
         </div>
-        <span className="text-sm font-medium text-slate-700">
-          {displayName}
-        </span>
-        <ChevronDown 
-          className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${
-            isOpen ? 'rotate-180' : ''
-          }`} 
-        />
       </Button>
 
              {/* Dropdown Menu */}
        {isOpen && (
-         <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-slate-200/50 z-[9999]">
+         <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border z-[9999]" style={{ borderColor: '#C7D8D0' }}>
           {/* User Info Section */}
-          <div className="px-4 py-3 border-b border-slate-100">
-            <div className="font-semibold text-slate-900 text-base">
+          <div className="px-4 py-3 border-b" style={{ borderBottomColor: '#E5EADF' }}>
+            <div className="font-semibold text-base" style={{ color: '#164F5B' }}>
               {displayName}
             </div>
-            <div className="text-sm text-slate-500">
+            <div className="text-sm" style={{ color: '#527779' }}>
               {userEmail}
             </div>
           </div>
@@ -96,36 +94,48 @@ export const ProfileDropdown = () => {
            <div className="py-2">
              <button
                onClick={handleEditProfile}
-               className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center space-x-3 transition-colors duration-150"
+               className="w-full px-4 py-2 text-left text-sm flex items-center space-x-3 transition-colors duration-150"
+               style={{ color: '#164F5B' }}
+               onMouseEnter={(e) => e.target.style.backgroundColor = '#E5EADF'}
+               onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
              >
-               <User className="w-4 h-4 text-slate-500" />
+               <User className="w-4 h-4" style={{ color: '#527779' }} />
                <span>My Profile</span>
              </button>
 
             <button
               onClick={handleViewHistory}
-              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center space-x-3 transition-colors duration-150"
+              className="w-full px-4 py-2 text-left text-sm flex items-center space-x-3 transition-colors duration-150"
+              style={{ color: '#164F5B' }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#E5EADF'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
             >
-              <BarChart3 className="w-4 h-4 text-slate-500" />
+              <BarChart3 className="w-4 h-4" style={{ color: '#527779' }} />
               <span>View History</span>
             </button>
 
             <button
               onClick={handleActiveTasks}
-              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center space-x-3 transition-colors duration-150"
+              className="w-full px-4 py-2 text-left text-sm flex items-center space-x-3 transition-colors duration-150"
+              style={{ color: '#164F5B' }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#E5EADF'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
             >
-              <Monitor className="w-4 h-4 text-slate-500" />
+              <Monitor className="w-4 h-4" style={{ color: '#527779' }} />
               <span>Active Tasks</span>
             </button>
 
             {/* Logout Button */}
-            <div className="border-t border-slate-100 mt-2 pt-2">
+            <div className="border-t mt-2 pt-2" style={{ borderTopColor: '#E5EADF' }}>
               <button
                 onClick={handleLogout}
                 disabled={loading}
-                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-3 transition-colors duration-150 disabled:opacity-50"
+                className="w-full px-4 py-2 text-left text-sm flex items-center space-x-3 transition-colors duration-150 disabled:opacity-50"
+                style={{ color: '#dc2626' }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = '#fef2f2'}
+                onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
               >
-                <LogOut className="w-4 h-4 text-red-500" />
+                <LogOut className="w-4 h-4" style={{ color: '#dc2626' }} />
                 <span>Logout</span>
               </button>
             </div>

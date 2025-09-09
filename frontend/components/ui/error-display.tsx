@@ -37,25 +37,25 @@ export function ErrorDisplay({
 
   const colors = {
     error: {
-      bg: 'bg-red-50',
-      border: 'border-red-200',
-      text: 'text-red-800',
-      icon: 'text-red-500',
-      button: 'text-red-600 hover:text-red-800'
+      bg: 'bg-secondary',
+      border: 'border-destructive',
+      text: 'text-destructive',
+      icon: 'text-destructive',
+      button: 'text-destructive hover:text-destructive/80'
     },
     warning: {
-      bg: 'bg-yellow-50',
-      border: 'border-yellow-200',
-      text: 'text-yellow-800',
-      icon: 'text-yellow-500',
-      button: 'text-yellow-600 hover:text-yellow-800'
+      bg: 'bg-accent',
+      border: 'border-accent-foreground',
+      text: 'text-accent-foreground',
+      icon: 'text-accent-foreground',
+      button: 'text-accent-foreground hover:text-accent-foreground/80'
     },
     info: {
-      bg: 'bg-blue-50',
-      border: 'border-blue-200',
-      text: 'text-blue-800',
-      icon: 'text-blue-500',
-      button: 'text-blue-600 hover:text-blue-800'
+      bg: 'bg-muted',
+      border: 'border-primary',
+      text: 'text-primary',
+      icon: 'text-primary',
+      button: 'text-primary hover:text-primary/80'
     }
   };
 
@@ -230,28 +230,28 @@ export interface ToastProps {
 export function Toast({ message, type = 'info', onClose }: ToastProps) {
   const configs = {
     success: {
-      bg: 'bg-green-50',
-      border: 'border-green-200',
-      text: 'text-green-800',
-      icon: 'text-green-500'
+      bg: 'bg-accent',
+      border: 'border-accent-foreground',
+      text: 'text-accent-foreground',
+      icon: 'text-accent-foreground'
     },
     error: {
-      bg: 'bg-red-50',
-      border: 'border-red-200',
-      text: 'text-red-800',
-      icon: 'text-red-500'
+      bg: 'bg-secondary',
+      border: 'border-destructive',
+      text: 'text-destructive',
+      icon: 'text-destructive'
     },
     warning: {
-      bg: 'bg-yellow-50',
-      border: 'border-yellow-200',
-      text: 'text-yellow-800',
-      icon: 'text-yellow-500'
+      bg: 'bg-accent',
+      border: 'border-accent-foreground',
+      text: 'text-accent-foreground',
+      icon: 'text-accent-foreground'
     },
     info: {
-      bg: 'bg-blue-50',
-      border: 'border-blue-200',
-      text: 'text-blue-800',
-      icon: 'text-blue-500'
+      bg: 'bg-muted',
+      border: 'border-primary',
+      text: 'text-primary',
+      icon: 'text-primary'
     }
   };
 

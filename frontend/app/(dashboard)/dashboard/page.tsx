@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { tokenManager } from '@/utils/tokenManager';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ProfileDropdown } from '@/components/ProfileDropdown';
+import { LanguageToggle } from '@/components/LanguageToggle';
 
 export default function DashboardPage() {
   return (
@@ -62,6 +63,10 @@ function DashboardContent() {
 
   const handleUploadTicket = async () => {
     if (!selectedFile) return;
+    if (!vendorUrl || vendorUrl.trim() === '') {
+      setUploadError('Vendor URL is required');
+      return;
+    }
     setIsUploading(true);
     setUploadError(null);
     setUploadedTicketId(null);
@@ -69,7 +74,7 @@ function DashboardContent() {
       const token = await tokenManager.getValidToken();
       const formData = new FormData();
       formData.append('file', selectedFile);
-      if (vendorUrl) formData.append('vendor_url', vendorUrl);
+      formData.append('vendor_url', vendorUrl.trim());
 
       const response = await fetch(`${API_BASE_URL}/api/v1/tickets/upload`, {
         method: 'POST',
@@ -128,114 +133,129 @@ function DashboardContent() {
 
 
 
+  // Custom display name function for welcome message
+  const getWelcomeDisplayName = () => {
+    // Try to get firstname from user's full_name
+    if (user?.full_name) {
+      const firstName = user.full_name.split(' ')[0];
+      return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+    }
+    
+    // Fallback to email username (first part before @)
+    if (user?.email) {
+      const emailName = user.email.split('@')[0];
+      return emailName.charAt(0).toUpperCase() + emailName.slice(1).toLowerCase();
+    }
+    
+    // Final fallback
+    return 'User';
+  };
+
   // Show dashboard even without profile (profile is optional now)
-  const displayName = profile ? getDisplayName() : 'User'
+  const displayName = getWelcomeDisplayName()
   const hasProfile = !!profile
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-slate-200/50 relative z-[9998]">
-        <div className="w-full mx-auto px-2 sm:px-4 lg:px-6">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl flex items-center justify-center shadow-lg">
-                <FileText className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-slate-900">
-                  {t('dashboard.title')}
-                </h1>
-                <p className="text-sm text-slate-500">AI-Powered Task Management</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <ProfileDropdown />
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="h-screen bg-gradient-to-br from-secondary via-muted to-border flex flex-col">
+
 
       {/* Main Content */}
-      <main className="w-full mx-auto px-2 sm:px-4 lg:px-6 py-8">
-        {/* Welcome Section */}
-        <div className="mb-6">
-          <div className="bg-gradient-to-r from-pink-400 to-rose-400 rounded-xl p-6 text-white shadow-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold mb-2">
-                  {t('dashboard.welcome')}, {displayName}! 👋
-                </h2>
-                <p className="text-pink-100 text-base">
-                  {t('dashboard.subtitle')}
-                </p>
-              </div>
-              <div className="hidden md:block">
-                <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
-                  <CloudUpload className="w-10 h-10 text-white" />
+      <main className="w-full mx-auto px-2 sm:px-4 lg:px-6 py-4 flex-1 flex flex-col min-h-0">
+        {/* Welcome Section - Only show when NOT in dual pane mode */}
+        {!useDualPane && (
+          <div className="mb-4">
+            <div className="rounded-lg p-4 text-white shadow-md" style={{ backgroundColor: '#208692' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold mb-1">
+                    {t('dashboard.welcome', 'Welcome back')}, {displayName}! 👋
+                  </h2>
+                  <p className="text-sm opacity-90">
+                    {t('dashboard.subtitle')}
+                  </p>
+                </div>
+                <div className="flex items-center space-x-4">
+                  <LanguageToggle />
+                  <ProfileDropdown />
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Ticket Upload / Dual Pane Section */}
-        <div className="mb-12">
-          {useDualPane ? (
-            <div className="h-[750px] mb-4 relative z-10 w-full">
-              {/* Reset Button */}
-              <div className="mb-4 flex justify-end">
+        {/* Profile Management Card - Only show when NOT in dual pane mode */}
+        {hasProfile && !useDualPane && (
+          <div className="mb-6">
+                          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm border-l-4 border-l-primary">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center space-x-2 text-xl">
+                  <User className="w-6 h-6 text-[#208692]" />
+                  <span>Profile Management</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <Button 
-                  onClick={handleResetToUpload}
+                  onClick={handleUpdateProfile}
                   variant="outline"
-                  className="border-pink-300 text-pink-700 hover:bg-pink-50"
+                  className="border-[#208692] text-[#527779] hover:bg-[#E5EADF] hover:border-[#164F5B]"
                 >
-                  ← Back to Upload
+                  Edit Profile
                 </Button>
-              </div>
-              
-              <DashboardDualPane 
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Main Content Area */}
+        <div className="flex-1 min-h-0">
+          {useDualPane ? (
+            <div className="h-full">
+              <DashboardDualPane
                 onTaskSubmit={handleTaskSubmit}
                 className="h-full w-full"
                 initialTicketData={extractedTicketData}
                 vendorUrl={vendorUrl}
                 userProfile={profile}
+                onBackToUpload={() => setUseDualPane(false)}
+                profileDropdown={<ProfileDropdown />}
               />
             </div>
           ) : (
-              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm mb-6">
+              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm mb-6 border-l-4 border-l-primary">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center space-x-2 text-xl">
-                    <CloudUpload className="w-6 h-6 text-pink-500" />
-                    <span>Upload Ticket for OCR</span>
+                    <CloudUpload className="w-6 h-6 text-[#208692]" />
+                    <span>{t('upload.title', 'Upload Ticket for OCR')}</span>
                   </CardTitle>
-                  <CardDescription className="text-slate-600">
-                    Choose a receipt image or PDF and optionally provide the vendor URL. We’ll extract details and open the dual pane.
+                  <CardDescription className="text-[#527779]">
+                    {t('upload.description', 'Choose a receipt image or PDF and provide the vendor URL. We\'ll extract details and open the dual pane.')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {/* Vendor URL */}
                     <div className="space-y-1">
-                      <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                        <LinkIcon className="w-4 h-4 text-slate-500" /> Vendor URL (optional)
+                      <label className="text-sm font-medium text-[#527779] flex items-center gap-2">
+                        <LinkIcon className="w-4 h-4 text-[#208692]" /> 
+                        {t('upload.vendorUrl', 'Vendor URL')} <span className="text-red-500 font-semibold">*</span>
                       </label>
                       <Input
                         type="url"
                         placeholder="https://facturacion.walmartmexico.com.mx/"
                         value={vendorUrl}
                         onChange={(e) => setVendorUrl(e.target.value)}
+                        className={!vendorUrl ? "border-red-300 focus:border-red-500" : "focus:border-[#208692] focus:ring-[#208692]"}
+                        required
                       />
+                      {!vendorUrl && (
+                        <p className="text-xs text-red-500">{t('upload.vendorUrlRequired', 'Vendor URL is required')}</p>
+                      )}
                     </div>
 
                     {/* Dropzone-like uploader */}
-                    <div className="rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
-                      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-pink-100">
-                        <CloudUpload className="h-6 w-6 text-pink-600" />
-                      </div>
-                      <p className="text-sm text-slate-700 font-medium">Select or drag-and-drop your receipt</p>
-                      <p className="text-xs text-slate-500 mt-1">Supported types: JPG, PNG, PDF</p>
+                    <div className="rounded-lg border-2 border-dashed border-[#C7D8D0] bg-[#E5EADF]/30 p-6 text-center">
+                      <p className="text-sm text-[#527779] font-medium">{t('upload.selectFile', 'Select or drag-and-drop your receipt')}</p>
+                      <p className="text-xs text-[#527779] mt-1">{t('upload.supportedTypes', 'Supported types: JPG, PNG, PDF')}</p>
                       <input
                         id="ticket-file"
                         type="file"
@@ -247,25 +267,25 @@ function DashboardContent() {
                       <div className="mt-4 flex items-center justify-center gap-3">
                         <Button
                           variant="outline"
-                          className="cursor-pointer"
+                          className="cursor-pointer border-[#A8C5C0] text-[#527779] hover:bg-[#E5EADF] hover:border-[#208692]"
                           onClick={() => fileInputRef.current?.click()}
                         >
-                          Choose File
+                          {t('upload.chooseFile', 'Choose File')}
                         </Button>
-                        <Button onClick={handleUploadTicket} disabled={!selectedFile || isUploading} className="bg-pink-600 hover:bg-pink-700">
+                        <Button onClick={handleUploadTicket} disabled={!selectedFile || !vendorUrl || isUploading} className="bg-[#208692] hover:bg-[#164F5B] text-white">
                           {isUploading ? (
                             <span className="inline-flex items-center gap-2">
                               <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                              Uploading…
+                              {t('upload.uploading', 'Uploading…')}
                             </span>
                           ) : (
-                            'Upload & Open Dual Pane'
+                            t('upload.uploadAndOpen', 'Upload & Open Dual Pane')
                           )}
                         </Button>
                       </div>
 
                       {selectedFile && (
-                        <div className="mt-3 text-xs text-slate-600">Selected: {selectedFile.name}</div>
+                        <div className="mt-3 text-xs text-[#527779]">{t('upload.selected', 'Selected')}: {selectedFile.name}</div>
                       )}
                     </div>
 
@@ -275,30 +295,17 @@ function DashboardContent() {
                         <AlertDescription>{uploadError}</AlertDescription>
                       </Alert>
                     )}
-                    {uploadedTicketId && (
-                      <Alert className="border-green-200 bg-green-50 text-green-800">
-                        <AlertDescription>Ticket created: {uploadedTicketId}</AlertDescription>
-                      </Alert>
-                    )}
+                                          {uploadedTicketId && (
+                        <Alert className="border-[#C7D8D0] bg-[#E5EADF] text-[#164F5B]">
+                          <AlertDescription>Ticket created: {uploadedTicketId}</AlertDescription>
+                        </Alert>
+                      )}
                   </div>
                 </CardContent>
               </Card>
           )}
         </div>
 
-        {/* Visual Separator */}
-        {useDualPane && (
-          <div className="mb-4">
-            <div className="h-px bg-gradient-to-r from-transparent via-pink-200 to-transparent"></div>
-            <div className="text-center mt-4">
-              <div className="inline-flex items-center px-4 py-2 bg-white/60 backdrop-blur-sm rounded-full border border-pink-200/50">
-                <div className="w-2 h-2 bg-pink-400 rounded-full mr-2"></div>
-                <span className="text-sm font-medium text-pink-700">Dashboard Overview</span>
-                <div className="w-2 h-2 bg-pink-400 rounded-full ml-2"></div>
-              </div>
-            </div>
-          </div>
-        )}
 
         
       </main>

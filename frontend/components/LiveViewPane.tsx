@@ -263,12 +263,12 @@ export function LiveViewPane({
 
   const getStatusColor = () => {
     switch (status) {
-      case 'running': return 'bg-green-500'
-      case 'paused': return 'bg-yellow-500'
-      case 'completed': return 'bg-blue-500'
-      case 'failed': return 'bg-red-500'
-      case 'connecting': return 'bg-orange-500'
-      default: return 'bg-slate-500'
+      case 'running': return 'bg-primary'
+      case 'paused': return 'bg-accent'
+      case 'completed': return 'bg-muted-foreground'
+      case 'failed': return 'bg-destructive'
+      case 'connecting': return 'bg-accent'
+      default: return 'bg-muted'
     }
   }
 
@@ -285,9 +285,9 @@ export function LiveViewPane({
 
   const getMessageIcon = (type: ChatMessage['type']) => {
     switch (type) {
-      case 'user': return <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">U</div>
-      case 'agent': return <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">A</div>
-      case 'system': return <div className="w-6 h-6 bg-slate-500 rounded-full flex items-center justify-center text-white text-xs font-bold">S</div>
+      case 'user': return <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-xs font-bold">U</div>
+      case 'agent': return <div className="w-6 h-6 bg-muted-foreground rounded-full flex items-center justify-center text-background text-xs font-bold">A</div>
+      case 'system': return <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center text-muted-foreground text-xs font-bold">S</div>
     }
   }
 
@@ -346,7 +346,7 @@ export function LiveViewPane({
         <CardHeader className="flex-shrink-0 border-b">
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-pink-600" />
+              <Zap className="w-5 h-5 text-primary" />
               <span>Create Task</span>
             </div>
             <div className="flex items-center gap-2">
@@ -378,7 +378,7 @@ export function LiveViewPane({
         <CardHeader className="flex-shrink-0 border-b">
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <MessageCircle className="w-5 h-5 text-pink-600" />
+              <MessageCircle className="w-5 h-5 text-primary" />
               <span>Agent Chat</span>
             </div>
             <div className="flex items-center gap-2">
