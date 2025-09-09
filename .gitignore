@@ -45,7 +45,13 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+venv/
+backend/venv/*
 backend/venv/
+backend/venv
+backend/browser_env/
+.venv/
 backend/browser_env/
 .venv/
 
