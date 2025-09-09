@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ArrowLeft, ExternalLink, Loader2, AlertCircle } from 'lucide-react'
 import ApiService from '@/services/api'
+import { Card, CardHeader } from '@/components/ui/card'
+import { LanguageToggle } from '@/components/LanguageToggle'
 
 export default function TaskMonitorPage() {
   const { t } = useLanguage()
@@ -20,6 +22,7 @@ export default function TaskMonitorPage() {
   const [sessionId, setSessionId] = useState<string>()
   const [liveViewUrl, setLiveViewUrl] = useState<string>()
   const [taskStatus, setTaskStatus] = useState<'pending' | 'running' | 'paused' | 'completed' | 'failed' | 'connecting'>('connecting')
+  const [task, setTask] = useState<any>(null)
 
   useEffect(() => {
     const loadTaskData = async () => {
@@ -57,6 +60,7 @@ export default function TaskMonitorPage() {
         if (taskResponse && taskResponse.success) {
           const task = taskResponse.data
           console.log('✅ Task data loaded:', task)
+          setTask(task)
           setTaskStatus(task.status as any)
           
           // Set up local browser automation session
@@ -96,36 +100,18 @@ export default function TaskMonitorPage() {
   if (isLoading) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-slate-50">
-          {/* Header */}
-          <header className="bg-white shadow-sm border-b">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex items-center h-16">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleBackToDashboard}
-                  className="mr-4"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  {t('common.back', 'Back')}
-                </Button>
-                <h1 className="text-xl font-semibold text-slate-900">
-                  {t('tasks.monitor.title', 'Task Monitor')}
-                </h1>
-              </div>
-            </div>
-          </header>
-
-          {/* Loading State */}
-          <main className="flex items-center justify-center py-20">
+        <div className="min-h-screen bg-gradient-to-br from-teal-50 via-teal-100 to-teal-200">
+          <div className="max-w-4xl mx-auto p-6">
             <div className="text-center">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary" />
-              <p className="text-slate-600">
-                {t('tasks.monitor.loading', 'Loading task monitoring interface...')}
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-teal-500" />
+              <h1 className="text-xl font-semibold text-teal-800">
+                Loading Task...
+              </h1>
+              <p className="text-teal-600">
+                Please wait while we fetch the task details.
               </p>
             </div>
-          </main>
+          </div>
         </div>
       </ProtectedRoute>
     )
@@ -134,47 +120,36 @@ export default function TaskMonitorPage() {
   if (error) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-slate-50">
-          {/* Header */}
-          <header className="bg-white shadow-sm border-b">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex items-center h-16">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleBackToDashboard}
-                  className="mr-4"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  {t('common.back', 'Back')}
-                </Button>
-                <h1 className="text-xl font-semibold text-slate-900">
-                  {t('tasks.monitor.title', 'Task Monitor')}
-                </h1>
-              </div>
+        <div className="min-h-screen bg-gradient-to-br from-teal-50 via-teal-100 to-teal-200">
+          <div className="max-w-4xl mx-auto p-6">
+            <div className="text-center">
+              <h1 className="text-xl font-semibold text-teal-800">
+                Error Loading Task
+              </h1>
+              <p className="text-teal-600">
+                {error}
+              </p>
             </div>
-          </header>
+          </div>
+        </div>
+      </ProtectedRoute>
+    )
+  }
 
-          {/* Error State */}
-          <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {t('tasks.monitor.error', 'Failed to load task monitoring interface')}: {error}
-              </AlertDescription>
-            </Alert>
-            
-            <div className="mt-6 space-y-3">
-              <Button onClick={handleBackToDashboard} className="w-full">
-                {t('common.backToDashboard', 'Back to Dashboard')}
-              </Button>
-              
-              <Button onClick={handleGoToLegacyMonitor} variant="outline" className="w-full">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                {t('tasks.monitor.useLegacy', 'Use Legacy Monitor')}
-              </Button>
+  if (!task) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gradient-to-br from-teal-50 via-teal-100 to-teal-200 flex flex-col">
+          <div className="max-w-4xl mx-auto p-6 flex-1">
+            <div className="text-center">
+              <h1 className="text-xl font-semibold text-teal-800">
+                Task Not Found
+              </h1>
+              <p className="text-teal-600">
+                The task you're looking for doesn't exist or has been removed.
+              </p>
             </div>
-          </main>
+          </div>
         </div>
       </ProtectedRoute>
     )
@@ -182,51 +157,32 @@ export default function TaskMonitorPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-slate-50 flex flex-col">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b flex-shrink-0">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleBackToDashboard}
-                  className="mr-4"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  {t('common.back', 'Back')}
-                </Button>
-                <h1 className="text-xl font-semibold text-slate-900">
-                  {t('tasks.monitor.title', 'Task Monitor')}
-                </h1>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={handleGoToLegacyMonitor}
-                  className="hidden sm:flex"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  {t('tasks.monitor.legacyView', 'Legacy View')}
-                </Button>
-              </div>
-            </div>
+      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-teal-100 to-teal-200">
+        {/* Language Toggle */}
+        <div className="absolute top-4 right-4 z-10">
+          <LanguageToggle />
+        </div>
+        
+        <div className="max-w-4xl mx-auto p-6">
+          <div className="mb-6">
+            <h1 className="text-xl font-semibold text-teal-800">
+              Task Monitor
+            </h1>
+            <p className="text-teal-600">
+              Monitor the progress of your automation task.
+            </p>
           </div>
-        </header>
 
-        {/* Task Status Display */}
-        <main className="flex-1 relative p-4">
-          <div className="h-full max-w-4xl mx-auto">
-            <div className="text-center py-8">
-              <h2 className="text-lg font-medium text-slate-700 mb-2">Task Monitoring</h2>
-              <p className="text-slate-500">Task ID: {taskId}</p>
-              <p className="text-slate-500">Status: {taskStatus}</p>
-            </div>
+          <div className="space-y-6">
+            <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+              <CardHeader>
+                <h2 className="text-lg font-medium text-teal-700 mb-2">Task Monitoring</h2>
+                <p className="text-teal-500">Task ID: {taskId}</p>
+                <p className="text-teal-500">Status: {taskStatus}</p>
+              </CardHeader>
+            </Card>
           </div>
-        </main>
+        </div>
       </div>
     </ProtectedRoute>
   )

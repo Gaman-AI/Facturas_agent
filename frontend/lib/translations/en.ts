@@ -19,11 +19,65 @@ const en: Translations = {
   'common.yes': 'Yes',
   'common.no': 'No',
   'common.charactersRemaining': 'characters remaining',
+  'common.to': 'to',
+  'common.upload': 'Upload',
   'common.personaFisica': 'Individual',
   'common.personaMoral': 'Company',
   'common.mexicanPeso': 'Mexican Peso',
   'common.usDollar': 'US Dollar',
   'common.euro': 'Euro',
+
+  // Home Page
+  'home.subtitle': 'Automate CFDI form filling with artificial intelligence',
+  'home.registerButton': 'Register',
+  'home.loginButton': 'Login',
+  'home.feature1Description': 'AI-powered automation for efficiency',
+  'home.feature2Description': 'Enterprise-grade security and reliability',
+  'home.feature3Description': 'Works with all major platforms',
+  'features.secure': 'Secure and Reliable',
+  'features.intelligent': 'Intelligent Automation',
+  'features.compatible': 'Full Compatibility',
+
+  // Upload
+  'upload.title': 'Upload Ticket for OCR',
+  'upload.description': 'Choose a receipt image or PDF and provide the vendor URL. We\'ll extract details and open the dual pane.',
+  'upload.vendorUrl': 'Vendor URL',
+  'upload.vendorUrlRequired': 'Vendor URL is required',
+  'upload.selectFile': 'Select or drag-and-drop your receipt',
+  'upload.supportedTypes': 'Supported types: JPG, PNG, PDF',
+  'upload.chooseFile': 'Choose File',
+  'upload.uploading': 'Uploading…',
+  'upload.uploadAndOpen': 'Upload & Open Dual Pane',
+  'upload.selected': 'Selected',
+
+  // OCR and Task
+  'ocr.completed': 'OCR completed successfully!',
+  'ocr.completedNoData': 'OCR completed but no data extracted',
+  'ocr.processing': 'Processing image with OCR...',
+  'ocr.failed': 'OCR processing failed',
+  'task.startAgent': 'Start Agent Task',
+  'task.verifyDetails': 'Verify and validate extracted details, update if necessary',
+  'ticketData.title': 'Ticket Data',
+  'ticketData.fullRawText': 'Full Raw Text',
+
+  // Browser Mode
+  'browser.mode': 'Browser Mode',
+  'browser.localMode': 'Local Browser Mode',
+  'browser.localModeActive': 'Local Browser Mode Active',
+  'browser.noLiveView': 'No Live View Available',
+  'browser.waitingForTask': 'Waiting for task to start and generate live view URL...',
+  'browser.cloud': 'Cloud',
+  'browser.local': 'Local',
+  'browser.modes': 'Browser Modes',
+  'browser.cloudDescription': 'Uses Browserbase remote browser with live view',
+  'browser.localDescription': 'Uses your local browser (faster, no live view)',
+  'browser.localModeInfo': 'Local Mode Info',
+  'browser.noLiveViewLocal': 'No live view available for local browser',
+  'browser.checkLocalBrowser': 'Check your local browser for automation progress',
+
+  // Dashboard
+  'dashboard.welcome': 'Welcome back',
+  'dashboard.subtitle': 'Ready to automate your browser tasks with AI? Let\'s get started!',
 
   // Navigation
   'nav.home': 'Home',
@@ -46,21 +100,27 @@ const en: Translations = {
   'auth.loginHere': 'Login here',
   'auth.loggingIn': 'Logging in...',
   'auth.registering': 'Registering...',
-  'auth.creatingAccount': 'Creating account...',
+  'auth.creatingAccount': 'Creating account',
 
   // Login Page
   'login.title': 'Login',
   'login.subtitle': 'Access your CFDI 4.0 System account',
+  'login.description': 'Sign in to your account to continue',
   'login.emailPlaceholder': 'your@email.com',
   'login.passwordPlaceholder': 'Your password',
   'login.loginButton': 'Login',
+  'login.noAccount': "Don't have an account?",
+  'login.registerHere': 'Register here',
   'login.error.invalidCredentials': 'Invalid credentials',
   'login.error.generic': 'Login error',
 
   // Registration Page
   'register.title': 'Create Your Account',
   'register.subtitle': 'Join our CFDI automation platform',
+  'register.description': 'Join our CFDI automation platform',
   'register.createAccountButton': 'Create Account',
+  'register.alreadyHaveAccount': 'Already have an account?',
+  'register.loginHere': 'Login here',
 
   // Registration Form Sections
   'register.accessInfo': 'Access Information',
@@ -239,6 +299,34 @@ const en: Translations = {
   'tasks.total': 'Total',
   'tasks.totalPlaceholder': '1160.00',
 
+  // Ticket Data Fields
+  'ticket.mesaFolio': 'Mesa/Folio',
+  'ticket.fecha': 'Fecha',
+  'ticket.idTicket': 'ID Ticket',
+  'ticket.total': 'Total',
+  'ticket.storeBranchPlaza': 'Store/Branch/Plaza',
+  'ticket.registerStationTerminal': 'Register/Station/Terminal',
+  'ticket.paymentType': 'Payment Type',
+  'ticket.cardLast4Digits': 'Card Last 4 Digits',
+  'ticket.tc': 'TC#',
+  'ticket.tr': 'TR#',
+  'ticket.id': 'ID',
+  'ticket.folVta': 'Fol_Vta',
+  'ticket.comercio': 'Comercio',
+  'ticket.enterMesaFolio': 'Enter Mesa/Folio',
+  'ticket.enterFecha': 'Enter Fecha',
+  'ticket.enterIdTicket': 'Enter ID Ticket',
+  'ticket.enterTotal': 'Enter Total',
+  'ticket.enterStoreBranchPlaza': 'Enter Store/Branch/Plaza',
+  'ticket.enterRegisterStationTerminal': 'Enter Register/Station/Terminal',
+  'ticket.enterPaymentType': 'Enter Payment Type',
+  'ticket.enterCardLast4Digits': 'Enter Card Last 4 Digits',
+  'ticket.enterTc': 'Enter TC#',
+  'ticket.enterTr': 'Enter TR#',
+  'ticket.enterId': 'Enter ID',
+  'ticket.enterFolVta': 'Enter Fol_Vta',
+  'ticket.enterComercio': 'Enter Comercio',
+
   // Simple Task Submission
   'tasks.simple.title': 'Quick Task Submission',
   'tasks.simple.description': 'Describe what you want the browser agent to do in plain language',
@@ -278,6 +366,8 @@ const en: Translations = {
   'tasks.monitor.legacyView': 'Legacy View',
   'tasks.monitor.useLegacy': 'Use Legacy Monitor',
   'tasks.monitor.backToDashboard': 'Back to Dashboard',
+  'tasks.monitor.description': 'Create and monitor browser automation tasks in real-time with dual pane interface',
+  'tasks.monitor.activeDescription': 'Monitor your browser automation task in real-time',
   
   // Monitor Status
   'monitor.status.running': 'Running',

@@ -424,6 +424,7 @@ export function RegisterForm() {
           type="submit"
           className="w-full"
           disabled={isLoading}
+          style={{ backgroundColor: '#208692', borderColor: '#208692' }}
         >
           {isLoading ? (
             <>

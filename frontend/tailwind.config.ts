@@ -62,6 +62,18 @@ const config: Config = {
   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
   				border: 'hsl(var(--sidebar-border))',
   				ring: 'hsl(var(--sidebar-ring))'
+  			},
+  			// Custom teal-based color palette
+  			teal: {
+  				'50': '#F4F5F0',    // Very light off-white (Texto / Background)
+  				'100': '#E5EADF',   // Light greenish-grey (Complementario 13%)
+  				'200': '#CFD0BF',   // Light beige-grey (Complementario 12%)
+  				'300': '#C7D8D0',   // Light blue-grey (Complementario 13%)
+  				'400': '#D4D970',   // Light yellow-green (Acento 5%)
+  				'500': '#208692',   // Teal (Principal 25%)
+  				'600': '#527779',   // Muted blue-grey (Complementario 12%)
+  				'700': '#164F5B',   // Dark teal/petrol (Principal 20%)
+  				'800': '#26272A',   // Very dark grey/almost black (Texto)
   			}
   		},
   		borderRadius: {
