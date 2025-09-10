@@ -1,273 +1,172 @@
-# CFDI Automation - Zeabur Deployment Guide
+# 🚀 Zeabur Deployment Guide for Facturas Agent
 
-## 🚀 **Complete Deployment Roadmap**
+## 🔧 Issue Resolution
 
-This guide provides step-by-step instructions for deploying your CFDI Automation application on Zeabur using GitHub as the code source.
-
-## 📋 **Prerequisites**
-
-1. **GitHub Repository**: Your code must be pushed to GitHub
-2. **Zeabur Account**: Sign up at [zeabur.com](https://zeabur.com)
-3. **Environment Variables**: Prepare all required API keys and configuration
-
-## 🏗️ **Architecture for Zeabur**
-
-Since Zeabur doesn't support Docker Compose, we'll deploy each service separately:
-
+### Problem
+Your deployment was failing because:
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Backend API   │    │ Python Browser  │
-│   (Next.js)     │    │   (Express)     │    │   (Playwright)  │
-│   Port: 3000    │    │   Port: 8000    │    │   Port: 9000    │
-│   Zeabur URL    │    │   Zeabur URL    │    │   Zeabur URL    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+⚠️  Python not available - browser automation will not work
+⚠️  Python executable not found - browser automation may not work
 ```
 
-## 🔧 **Step-by-Step Deployment**
+### Root Cause
+- Zeabur was only deploying the Node.js backend service
+- OCR functionality requires Python to be available in the same container
+- The original Dockerfile was Node.js only
 
-### **Step 1: Prepare Your Repository**
-
-1. **Ensure all files are committed and pushed to GitHub**
-2. **Verify Dockerfiles are correct** (we've fixed the empty frontend/Dockerfile)
-3. **Check that your repository structure is correct**
-
-### **Step 2: Deploy Frontend Service**
-
-1. **Go to Zeabur Dashboard**
-   - Visit [zeabur.com](https://zeabur.com)
-   - Sign in to your account
-
-2. **Create New Project**
-   - Click "New Project"
-   - Select "GitHub" as source
-   - Choose your repository: `Gaman-AI/Facturas_agent`
-
-3. **Configure Frontend Service**
-   - **Service Name**: `frontend`
-   - **Root Directory**: `frontend`
-   - **Build Command**: Leave empty (uses Dockerfile)
-   - **Start Command**: `node server.js`
-   - **Port**: `3000`
-
-4. **Set Environment Variables**
-   ```
-   NODE_ENV=production
-   NEXT_TELEMETRY_DISABLED=1
-   NEXT_PUBLIC_SUPABASE_URL=https://pffuarlnpdpfjrvewrqo.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   NEXT_PUBLIC_API_BASE_URL=https://your-backend-service.zeabur.app
-   NEXT_PUBLIC_WS_BASE_URL=wss://your-backend-service.zeabur.app
-   ```
-
-5. **Deploy**
-   - Click "Deploy"
-   - Wait for build to complete
-
-### **Step 3: Deploy Backend API Service**
-
-1. **Create Another Service**
-   - In the same project, click "Add Service"
-   - Select your GitHub repository again
-
-2. **Configure Backend Service**
-   - **Service Name**: `backend-api`
-   - **Root Directory**: `backend`
-   - **Build Command**: Leave empty (uses Dockerfile)
-   - **Start Command**: `node dist/index.js`
-   - **Port**: `8000`
-
-3. **Set Environment Variables**
-   ```
-   NODE_ENV=production
-   SUPABASE_URL=https://pffuarlnpdpfjrvewrqo.supabase.co
-   SUPABASE_ANON_KEY=your_supabase_anon_key
-   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-   JWT_SECRET=your_jwt_secret
-   PYTHON_SERVICE_URL=https://your-python-service.zeabur.app
-   ```
-
-4. **Deploy**
-   - Click "Deploy"
-   - Wait for build to complete
-
-### **Step 4: Deploy Python Browser Service**
-
-1. **Create Python Service**
-   - In the same project, click "Add Service"
-   - Select your GitHub repository again
-
-2. **Configure Python Service**
-   - **Service Name**: `python-browser`
-   - **Root Directory**: `backend`
-   - **Build Command**: Leave empty (uses Dockerfile)
-   - **Start Command**: `python api_server.py`
-   - **Port**: `9000`
-
-3. **Set Environment Variables**
-   ```
-   PYTHON_ENV=production
-   BROWSERBASE_API_KEY=your_browserbase_api_key
-   BROWSERBASE_PROJECT_ID=your_browserbase_project_id
-   OPENAI_API_KEY=your_openai_api_key
-   ANTHROPIC_API_KEY=your_anthropic_api_key
-   ```
-
-4. **Deploy**
-   - Click "Deploy"
-   - Wait for build to complete
-
-## 🔗 **Service Communication**
-
-### **Update Frontend Environment Variables**
-
-After deploying backend services, update the frontend environment variables with the actual Zeabur URLs:
-
-```
-NEXT_PUBLIC_API_BASE_URL=https://your-backend-service.zeabur.app
-NEXT_PUBLIC_WS_BASE_URL=wss://your-backend-service.zeabur.app
-```
-
-### **Update Backend Environment Variables**
-
-Update the backend service with the Python service URL:
-
-```
-PYTHON_SERVICE_URL=https://your-python-service.zeabur.app
-```
-
-## 🌐 **Domain Configuration**
-
-### **Custom Domains (Optional)**
-
-1. **Frontend Domain**
-   - Go to your frontend service settings
-   - Click "Custom Domain"
-   - Add your domain (e.g., `app.yourdomain.com`)
-
-2. **API Domain**
-   - Go to your backend service settings
-   - Click "Custom Domain"
-   - Add your API domain (e.g., `api.yourdomain.com`)
-
-## 🔍 **Troubleshooting**
-
-### **Common Issues and Solutions**
-
-#### **1. Build Failures**
-- **Issue**: Docker build fails
-- **Solution**: Check Dockerfile syntax and dependencies
-
-#### **2. Environment Variables**
-- **Issue**: Services can't connect to each other
-- **Solution**: Verify all URLs are correct and services are deployed
-
-#### **3. Port Configuration**
-- **Issue**: Services not accessible
-- **Solution**: Ensure correct ports are configured in Zeabur
-
-#### **4. Health Checks**
-- **Issue**: Services showing as unhealthy
-- **Solution**: Verify health check endpoints are working
-
-## 📊 **Monitoring and Logs**
-
-### **View Logs**
-1. Go to your service in Zeabur dashboard
-2. Click "Logs" tab
-3. Monitor real-time logs for debugging
-
-### **Health Monitoring**
-1. Go to your service in Zeabur dashboard
-2. Click "Metrics" tab
-3. Monitor performance and uptime
-
-## 🔐 **Security Considerations**
-
-### **Environment Variables**
-- Never commit sensitive data to GitHub
-- Use Zeabur's environment variable management
-- Rotate API keys regularly
-
-### **Service Communication**
-- Use HTTPS for all service communication
-- Implement proper authentication
-- Monitor for unauthorized access
-
-## 📈 **Scaling**
-
-### **Automatic Scaling**
-- Zeabur provides automatic scaling based on traffic
-- Monitor usage in the dashboard
-- Upgrade plans as needed
-
-### **Manual Scaling**
-- Go to service settings
-- Adjust resources as required
-- Monitor performance impact
-
-## 🎯 **Deployment Checklist**
-
-### **Pre-Deployment**
-- [ ] All code committed to GitHub
-- [ ] Dockerfiles are correct and tested
-- [ ] Environment variables prepared
-- [ ] API keys and secrets ready
-
-### **Deployment**
-- [ ] Frontend service deployed
-- [ ] Backend API service deployed
-- [ ] Python browser service deployed
-- [ ] Environment variables configured
-- [ ] Service URLs updated
-
-### **Post-Deployment**
-- [ ] Health checks passing
-- [ ] Services communicating correctly
-- [ ] Application functionality tested
-- [ ] Monitoring configured
-- [ ] Documentation updated
-
-## 🚀 **Quick Start Commands**
-
-### **Local Testing (Before Deployment)**
-```bash
-# Test frontend build
-cd frontend
-docker build -t frontend-test .
-
-# Test backend build
-cd backend
-docker build -f Dockerfile.nodejs -t backend-test .
-
-# Test python service build
-docker build -f Dockerfile.python -t python-test .
-```
-
-### **Zeabur CLI (Optional)**
-```bash
-# Install Zeabur CLI
-npm install -g @zeabur/cli
-
-# Login to Zeabur
-zeabur login
-
-# Deploy from CLI
-zeabur deploy
-```
-
-## 📞 **Support**
-
-### **Zeabur Support**
-- Documentation: [docs.zeabur.com](https://docs.zeabur.com)
-- Community: [discord.gg/zeabur](https://discord.gg/zeabur)
-- Email: support@zeabur.com
-
-### **Project Support**
-- GitHub Issues: [github.com/Gaman-AI/Facturas_agent/issues](https://github.com/Gaman-AI/Facturas_agent/issues)
-- Documentation: Check project README and docs
+### Solution
+Created a **unified Dockerfile** that includes both Node.js and Python in the same container.
 
 ---
 
-**Deployment Guide Created**: January 31, 2025  
-**Last Updated**: January 31, 2025  
-**Status**: Ready for Deployment 
+## 📁 Files Created/Modified
+
+### 1. Updated `backend/Dockerfile`
+- ✅ Added Python 3.11 support
+- ✅ Installed Python dependencies (requirements.txt + requirements_ocr.txt)
+- ✅ Added OCR-specific system dependencies
+- ✅ Set proper Python environment variables
+- ✅ Updated port to 8080 (Zeabur standard)
+
+### 2. Created `backend/Dockerfile.zeabur`
+- ✅ Alternative unified Dockerfile specifically for Zeabur
+- ✅ Optimized for single-container deployment
+
+### 3. Created `zeabur.json`
+- ✅ Zeabur deployment configuration
+- ✅ Health check configuration
+- ✅ Environment variables setup
+
+---
+
+## 🚀 Deployment Steps
+
+### Step 1: Update Your Zeabur Service
+1. Go to your Zeabur dashboard
+2. Select your `facturas-agent` service
+3. Go to **Settings** → **Build & Deploy**
+4. Update the **Dockerfile Path** to: `backend/Dockerfile`
+5. Set **Port** to: `8080`
+
+### Step 2: Environment Variables
+Make sure these environment variables are set in Zeabur:
+
+```bash
+# Required for OCR functionality
+OPENAI_API_KEY=your_openai_api_key_here
+AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=your_azure_endpoint_here
+AZURE_DOCUMENT_INTELLIGENCE_KEY=your_azure_key_here
+
+# Node.js configuration
+NODE_ENV=production
+PORT=8080
+START_WORKER=true
+
+# Python configuration
+PYTHONUNBUFFERED=1
+PYTHONDONTWRITEBYTECODE=1
+
+# Database (if using Supabase)
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Other required variables
+PYTHON_EXECUTABLE=python3
+```
+
+### Step 3: Deploy
+1. Click **Deploy** in Zeabur
+2. Monitor the build logs
+3. Verify Python is available: Look for Python installation in logs
+
+---
+
+## ✅ Verification
+
+### Check Python Availability
+After deployment, the logs should show:
+```
+✅ Python 3.x.x available
+✅ Python dependencies installed
+✅ OCR functionality ready
+```
+
+### Test OCR Endpoint
+```bash
+curl -X GET https://your-app.zeabur.app/api/v1/tickets/test-ocr
+```
+
+Expected response:
+```json
+{
+  "success": true,
+  "message": "OCR test completed successfully",
+  "result": {
+    "status": "success",
+    "message": "OCR module imported successfully"
+  }
+}
+```
+
+---
+
+## 🔍 Troubleshooting
+
+### If Python Still Not Available
+1. Check build logs for Python installation errors
+2. Verify `requirements_ocr.txt` exists and has correct dependencies
+3. Ensure environment variables are set correctly
+
+### If OCR Still Fails
+1. Test the OCR endpoint: `/api/v1/tickets/test-ocr`
+2. Check Python dependencies in logs
+3. Verify Azure and OpenAI API keys
+
+### If Build Fails
+1. Check Dockerfile syntax
+2. Verify all required files exist
+3. Check for missing dependencies
+
+---
+
+## 📊 Expected Logs After Fix
+
+```
+[Zeabur] Building with Dockerfile: backend/Dockerfile
+[Zeabur] Installing Python 3.x.x...
+[Zeabur] Installing Python dependencies...
+[Zeabur] Installing Node.js dependencies...
+[Zeabur] Starting application...
+
+🔌 WebSocket server initialized on /api/v1/browser-agent/ws
+✅ Environment configuration validated
+🚀 Starting CFDI Automation Backend...
+📝 Node.js version: v20.x.x
+🐍 Python version: 3.x.x
+✅ Python available - OCR functionality ready
+✅ Queue service initialized successfully
+🎯 Server listening on port 8080
+🚀 CFDI Automation Backend Server Started!
+```
+
+---
+
+## 🎯 Key Changes Made
+
+1. **Unified Container**: Node.js + Python in same container
+2. **Python Dependencies**: Added OCR requirements
+3. **Environment Variables**: Proper Python configuration
+4. **Port Configuration**: Updated to Zeabur standard (8080)
+5. **Health Checks**: Added proper health check endpoints
+
+---
+
+## 📞 Support
+
+If you still encounter issues:
+1. Check the build logs in Zeabur dashboard
+2. Verify all environment variables are set
+3. Test the OCR endpoint after deployment
+4. Check Python availability in container logs
+
+The OCR functionality should now work properly in your Zeabur deployment! 🎉

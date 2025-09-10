@@ -1,0 +1,22 @@
+{
+  "name": "facturas-agent",
+  "services": [
+    {
+      "name": "backend",
+      "source": {
+        "type": "dockerfile",
+        "dockerfile": "backend/Dockerfile"
+      },
+      "env": {
+        "NODE_ENV": "production",
+        "PORT": "8080",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "healthCheck": {
+        "path": "/health",
+        "port": 8080
+      }
+    }
+  ]
+}
