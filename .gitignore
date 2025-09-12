@@ -55,6 +55,15 @@ backend/browser_env/
 backend/browser_env/
 .venv/
 
+node_modules/
+backend/node_modules/
+backend/node_modules
+backend/node_modules/*
+backend/venv/
+backend/venv/*
+backend/venv
+backend/browser_env/
+
 # Environment variables
 .env
 .env.local
