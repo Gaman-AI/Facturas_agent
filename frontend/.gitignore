@@ -4,6 +4,16 @@
 
 # Dependencies (keep these local)
 node_modules/
+**/node_modules/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+**/venv/
+**/.venv/
+**/.env/
 
 # Next.js build artifacts (keep these local)
 .next/
