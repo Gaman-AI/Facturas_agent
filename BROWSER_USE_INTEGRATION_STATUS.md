@@ -79,7 +79,7 @@ After comprehensive analysis of both frontend and backend code, the browser-use 
 ```bash
 # Backend .env file:
 OPENAI_API_KEY=your_openai_key_here
-PYTHON_EXECUTABLE=python3
+PYTHON_EXECUTABLE=python
 
 # Dependencies already present:
 # - backend/browser-use/ (local implementation)

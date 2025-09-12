@@ -37,6 +37,10 @@ coverage/
 node_modules/
 jspm_packages/
 
+browser-use/browser_use/__pycache__
+*/__pycache__/
+__pycache__/
+
 # Optional npm cache directory
 .npm
 

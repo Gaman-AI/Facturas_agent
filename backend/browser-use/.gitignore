@@ -8,6 +8,8 @@ cookies.json
 gcp-login.json
 
 # Python cache and build artifacts (keep these local)
+*/__pycache__/
+
 __pycache__/
 *.py[cod]
 *$py.class
