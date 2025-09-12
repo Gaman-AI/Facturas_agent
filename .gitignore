@@ -41,11 +41,12 @@ wheels/
 *.egg
 MANIFEST
 
-# Virtual environments
+# Virtual environments (comprehensive patterns)
 .env
 .venv
-env/
+.venv/
 venv/
+env/
 ENV/
 env.bak/
 venv.bak/
@@ -58,7 +59,14 @@ backend/browser_env/
 .venv/
 backend/browser_env/
 .venv/
+backend/.venv/
+frontend/.venv/
+**/venv/
+**/env/
+**/.venv/
+**/.env/
 
+# Node modules (comprehensive patterns)
 node_modules/
 backend/node_modules/
 backend/node_modules
@@ -66,7 +74,11 @@ backend/node_modules/*
 backend/venv/
 backend/venv/*
 backend/venv
+frontend/node_modules/
+**/node_modules/
 backend/browser_env/
+frontend/browser_env/
+**/browser_env/
 
 # Environment variables
 .env

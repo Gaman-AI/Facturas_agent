@@ -19,8 +19,7 @@ llm = ChatOpenAI(
 )
 
 
-task = """go to google and search for figma and create a new account with email: rajuvenkatesh188@gmail.com and if asked for password: Hyderabad@8885 and after login, create a new project with name: My first project and create a website design which like amazon website and save. 
-"""
+task = """go to google and search for Carlos"""
 agent = Agent(task=task, llm=llm)
 
 
