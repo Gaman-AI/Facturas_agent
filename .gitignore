@@ -16,7 +16,9 @@ gcp-login.json
 !*.env.example
 
 # Python cache and build artifacts
-backend/browser-use/browser_use/__pycache__
+backend/browser-use/browser_use/**/__pycache__/
+backend/browser-use/browser_use/__pycache__/
+backend/**/__pycache__/
 */__pycache__/
 __pycache__/
 *.py[cod]
