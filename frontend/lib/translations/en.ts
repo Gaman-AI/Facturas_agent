@@ -59,6 +59,10 @@ const en: Translations = {
   'task.verifyDetails': 'Verify and validate extracted details, update if necessary',
   'ticketData.title': 'Ticket Data',
   'ticketData.fullRawText': 'Full Raw Text',
+  'ticketData.formattedText': 'Formatted Text',
+  'ticketData.formatText': 'Format Text',
+  'ticketData.showRaw': 'Show Raw',
+  'ticketData.formatting': 'Formatting...',
 
   // Browser Mode
   'browser.mode': 'Browser Mode',

@@ -24,6 +24,7 @@ class PythonBridge {
     // Use Python executable from configuration, with fallbacks
     this.pythonExecutables = [
       config.python.executable || 'python',
+      '.venv\\Scripts\\python.exe',  // Use .venv instead of venv
       'python',
       'python3',
       'venv\\Scripts\\python.exe'
