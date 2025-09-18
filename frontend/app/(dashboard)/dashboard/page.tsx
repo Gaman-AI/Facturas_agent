@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Building2, FileText, CloudUpload, Link as LinkIcon } from 'lucide-react';
+import { Building2, FileText, CloudUpload, Link as LinkIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -158,9 +158,6 @@ function DashboardContent() {
     router.push(`/task/monitor/${taskId}`);
   };
 
-  const handleUpdateProfile = () => {
-    router.push('/profile/edit');
-  };
 
 
 
@@ -214,28 +211,6 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Profile Management Card - Only show when NOT in dual pane mode */}
-        {hasProfile && !useDualPane && (
-          <div className="mb-6">
-                          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm border-l-4 border-l-primary">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center space-x-2 text-xl">
-                  <User className="w-6 h-6 text-[#208692]" />
-                  <span>Profile Management</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  onClick={handleUpdateProfile}
-                  variant="outline"
-                  className="border-[#208692] text-[#527779] hover:bg-[#E5EADF] hover:border-[#164F5B]"
-                >
-                  Edit Profile
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
         {/* Main Content Area */}
         <div className="flex-1 min-h-0">
