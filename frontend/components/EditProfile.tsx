@@ -54,6 +54,7 @@ export function EditProfile() {
     state: z.string().min(2, t('validation.state.minLength', { min: 2 })),
     tax_regime: z.string().min(1, t('validation.taxRegime.required')),
     cfdi_use: z.string().min(1, t('validation.cfdiUse.required')),
+    email: z.string().email(t('validation.email.invalid')),
     phone_number: z.string().min(1, t('validation.phoneNumber.required')),
   });
 
@@ -111,6 +112,7 @@ export function EditProfile() {
         state: profile.state || '',
         tax_regime: profile.tax_regime || '',
         cfdi_use: profile.cfdi_use || '',
+        email: profile.email || '',
         phone_number: profile.phone_number || '',
       };
 
@@ -146,6 +148,7 @@ export function EditProfile() {
         state: data.state,
         tax_regime: data.tax_regime,
         cfdi_use: data.cfdi_use,
+        email: data.email,
         phone_number: data.phone_number,
       };
 
@@ -158,11 +161,6 @@ export function EditProfile() {
       
       // Reset form to consider it clean
       reset(data);
-      
-      // Redirect back to dashboard after a short delay
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 2000);
       
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update profile';
@@ -328,6 +326,20 @@ export function EditProfile() {
                       <p className="text-sm text-red-600 mt-1">{errors.phone_number.message}</p>
                     )}
                   </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="email">Email Address *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    {...register('email')}
+                    placeholder="your.email@company.com"
+                    className={errors.email ? 'border-red-500' : ''}
+                  />
+                  {errors.email && (
+                    <p className="text-sm text-red-600 mt-1">{errors.email.message}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>

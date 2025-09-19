@@ -226,26 +226,111 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       safeSetError(null)
       safeSetLoading(true)
 
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .upsert({ 
-          user_id: user.id, 
-          ...profileData,
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .single()
+      // Prepare update payload (remove user_id for updates, only needed for inserts)
+      const basePayload = {
+        ...profileData,
+        // Ensure email is always included (required field)
+        email: profileData.email || user.email,
+        updated_at: new Date().toISOString()
+      }
+      
+      const updatePayload = profile?.id 
+        ? basePayload // For updates, don't include user_id
+        : { user_id: user.id, ...basePayload } // For inserts, include user_id
 
-      if (error) throw error
+      console.log('🔄 Attempting profile update with payload:', updatePayload)
+      console.log('🔍 profileData:', profileData)
+      console.log('🔍 profileData.rfc:', profileData.rfc)
+      console.log('🔍 typeof profileData.rfc:', typeof profileData.rfc)
+
+      // Check if RFC exists in the payload and if it already exists for another user
+      const rfcToCheck = basePayload.rfc || profileData.rfc;
+      if (rfcToCheck && rfcToCheck.trim() !== '') {
+        console.log('🔍 Checking RFC conflict for:', rfcToCheck)
+        console.log('🔍 Current profile RFC:', profile?.rfc)
+        console.log('🔍 RFC changed?', rfcToCheck !== profile?.rfc)
+        
+        // Only check for conflicts if the RFC is actually being changed
+        if (rfcToCheck !== profile?.rfc) {
+          console.log('🔍 RFC is being changed, checking for conflicts...')
+          
+          const { data: existingProfile, error: checkError } = await supabase
+            .from('user_profiles')
+            .select('user_id, rfc')
+            .eq('rfc', rfcToCheck)
+            .neq('user_id', user.id)
+
+          console.log('🔍 RFC check result:', { existingProfile, checkError })
+
+          if (checkError) {
+            console.error('❌ Error checking RFC:', checkError)
+            throw checkError
+          }
+
+          if (existingProfile && existingProfile.length > 0) {
+            const error = new Error(`El RFC ${rfcToCheck} ya está registrado por otro usuario. Por favor, usa un RFC diferente.`)
+            console.error('❌ RFC conflict detected:', existingProfile)
+            throw error
+          }
+        } else {
+          console.log('🔍 RFC unchanged, skipping conflict check')
+        }
+      }
+
+      // Use update instead of upsert for existing profiles
+      let data, error;
+      if (profile?.id) {
+        // Update existing profile
+        console.log('🔄 Updating existing profile with ID:', profile.id)
+        const result = await supabase
+          .from('user_profiles')
+          .update(updatePayload)
+          .eq('id', profile.id)
+          .select()
+          .single()
+        data = result.data;
+        error = result.error;
+      } else {
+        // Insert new profile
+        console.log('🔄 Creating new profile')
+        const result = await supabase
+          .from('user_profiles')
+          .insert(updatePayload)
+          .select()
+          .single()
+        data = result.data;
+        error = result.error;
+      }
+
+      if (error) {
+        console.error('❌ Profile update error:', error)
+        console.error('Error code:', error.code)
+        console.error('Error message:', error.message)
+        console.error('Error details:', error.details)
+        console.error('Error hint:', error.hint)
+        
+        // Handle specific error cases
+        if (error.code === '23505') {
+          if (error.message.includes('user_profiles_rfc_key')) {
+            const rfcValue = basePayload.rfc || 'desconocido';
+            throw new Error(`El RFC ${rfcValue} ya está registrado por otro usuario. Por favor, usa un RFC diferente.`)
+          }
+          throw new Error('Este valor ya está siendo usado por otro usuario. Por favor, cambia el valor e intenta de nuevo.')
+        }
+        throw error
+      }
+      
+      console.log('✅ Profile update successful:', data)
       safeSetProfile(data)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Profile update failed'
+      console.error('❌ Profile update failed:', err)
       safeSetError(message)
       throw err
     } finally {
       safeSetLoading(false)
     }
-  }, [user, safeSetError, safeSetLoading, safeSetProfile])
+  }, [user, profile, safeSetError, safeSetLoading, safeSetProfile])
 
   const refreshProfile = useCallback(async () => {
     if (!supabase) {
