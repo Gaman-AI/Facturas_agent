@@ -47,8 +47,10 @@ function generateTicketId() {
 
 async function runPythonOCR(imagePath) {
   try {
-    // Use the standalone Python script
-    const pythonExec = process.env.PYTHON_EXECUTABLE || 'python'
+    // Use the standalone Python script - prioritize virtual environment Python
+    const pythonExec = process.env.PYTHON_EXECUTABLE || 
+                      (process.platform === 'win32' ? '.venv\\Scripts\\python.exe' : '.venv/bin/python') ||
+                      'python'
     const ocrScriptPath = path.resolve(__dirname, '..', 'services', 'run_ocr.py')
     const backendDir = path.resolve(__dirname, '..')
     
@@ -332,6 +334,102 @@ except Exception as e:
       success: false,
       error: error.message,
       details: error.stack
+    })
+  }
+})
+
+// POST /api/v1/tickets/format-text
+router.post('/format-text', async (req, res) => {
+  try {
+    const { raw_text, vendor_type = 'auto' } = req.body
+    
+    if (!raw_text || !raw_text.trim()) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Raw text is required' 
+      })
+    }
+    
+    // Use the standalone Python script for text formatting
+    const pythonExec = process.env.PYTHON_EXECUTABLE || 
+                      (process.platform === 'win32' ? '.venv\\Scripts\\python.exe' : '.venv/bin/python') ||
+                      'python'
+    const formatterScriptPath = path.resolve(__dirname, '..', 'services', 'run_text_formatter.py')
+    const backendDir = path.resolve(__dirname, '..')
+    
+    console.log(`[TEXT_FORMATTER] Script path: ${formatterScriptPath}`)
+    console.log(`[TEXT_FORMATTER] Backend directory: ${backendDir}`)
+    console.log(`[TEXT_FORMATTER] Vendor type: ${vendor_type}`)
+    
+    // Ensure tmp directory exists
+    const tmpDir = path.join(backendDir, 'tmp')
+    await fs.mkdir(tmpDir, { recursive: true })
+    
+    // Create a temporary file with the raw text
+    const tempFilePath = path.join(tmpDir, `temp_text_${Date.now()}.txt`)
+    await fs.writeFile(tempFilePath, raw_text, 'utf8')
+    
+    console.log(`[TEXT_FORMATTER] Executing Python formatter script...`)
+    
+    // Execute the Python script with the text file
+    const result = execSync(`${pythonExec} "${formatterScriptPath}" "${tempFilePath}" "${vendor_type}"`, { 
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      shell: true,
+      cwd: backendDir,
+      env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+      maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+    })
+    
+    console.log(`[TEXT_FORMATTER] Python output length: ${result.length}`)
+    
+    // Clean up temporary file
+    try {
+      await fs.unlink(tempFilePath)
+    } catch (cleanupError) {
+      console.warn(`[TEXT_FORMATTER] Failed to cleanup temp file: ${cleanupError.message}`)
+    }
+    
+    // Check if result is empty or invalid
+    if (!result || result.trim() === '') {
+      throw new Error('Text formatter returned empty output')
+    }
+    
+    // Try to parse the JSON result
+    let formatResult
+    try {
+      const cleanedResult = result.trim()
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
+        .replace(/[\uFFFD]/g, '') // Remove replacement characters
+      
+      formatResult = JSON.parse(cleanedResult)
+    } catch (parseError) {
+      console.error(`[TEXT_FORMATTER] JSON parse error: ${parseError.message}`)
+      console.error(`[TEXT_FORMATTER] Raw output: ${result}`)
+      throw new Error(`Invalid JSON output from text formatter: ${parseError.message}`)
+    }
+    
+    // Check if the result contains an error
+    if (formatResult.error) {
+      throw new Error(`Text formatter error: ${formatResult.error}`)
+    }
+    
+    return res.json({
+      success: true,
+      data: {
+        formatted_text: formatResult.formatted_text,
+        vendor_type: formatResult.vendor_type,
+        original_length: raw_text.length,
+        formatted_length: formatResult.formatted_text ? formatResult.formatted_text.length : 0
+      }
+    })
+    
+  } catch (error) {
+    console.error('[TEXT_FORMATTER] Format error:', error)
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Text formatting failed',
+      details: error.message 
     })
   }
 })

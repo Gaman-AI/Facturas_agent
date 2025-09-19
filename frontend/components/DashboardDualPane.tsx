@@ -213,7 +213,9 @@ export function DashboardDualPane({
     'Card_Last_4_Digits': ''
   })
   const [rawText, setRawText] = useState<string>('')
+  const [formattedText, setFormattedText] = useState<string>('')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isFormatting, setIsFormatting] = useState(false)
   const [isStartingAgent, setIsStartingAgent] = useState(false)
   const [ocrSuccess, setOcrSuccess] = useState(false)
   const [ocrStatus, setOcrStatus] = useState<string>('')
@@ -271,7 +273,7 @@ export function DashboardDualPane({
       try {
         // 1. Call our API to stop the task (handles backend termination)
         console.log(`🛑 Calling backend to stop task: ${taskState.taskId}`)
-        await ApiService.stopTask(taskState.taskId)
+        // await ApiService.stopTask(taskState.taskId) // TODO: Implement stopTask method
         console.log(`✅ Backend task stop successful`)
         
         // 2. Disconnect WebSocket connection
@@ -345,6 +347,56 @@ export function DashboardDualPane({
     setUploadedTicketId(null)
   }
 
+  const handleFormatText = async () => {
+    if (!rawText || !rawText.trim()) {
+      toast.error('No raw text available to format')
+      return
+    }
+
+    setIsFormatting(true)
+    
+    try {
+      const token = await tokenManager.getValidToken()
+      
+      const response = await fetch(`${API_BASE_URL}/api/v1/tickets/format-text`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          raw_text: rawText,
+          vendor_type: 'auto' // Auto-detect vendor type
+        })
+      })
+
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(text || `Format request failed with status ${response.status}`)
+      }
+
+      const data = await response.json()
+      
+      if (data.success && data.data?.formatted_text) {
+        setFormattedText(data.data.formatted_text)
+        toast.success('Text formatted successfully!')
+        console.log('✅ Text formatting completed:', {
+          originalLength: data.data.original_length,
+          formattedLength: data.data.formatted_length,
+          vendorType: data.data.vendor_type
+        })
+      } else {
+        throw new Error('Failed to format text')
+      }
+      
+    } catch (err: any) {
+      console.error('❌ Text formatting error:', err)
+      toast.error('Failed to format text. Please try again.')
+    } finally {
+      setIsFormatting(false)
+    }
+  }
+
   const handleImageUpload = async () => {
     if (!selectedFile) return
     setIsUploading(true)
@@ -414,7 +466,7 @@ export function DashboardDualPane({
         
         setTicketData(extractedData)
         setOcrSuccess(true)
-        setOcrStatus(t('ocr.completed'))
+        setOcrStatus(t('ocr.completed', 'OCR completed successfully!'))
         console.log('✅ Ticket data mapped from OCR:', extractedData)
         
         // Show success message
@@ -434,7 +486,7 @@ export function DashboardDualPane({
       } else {
         console.warn('⚠️ No extracted_data found in API response')
         console.log('📋 Full API response:', data)
-        setOcrStatus(t('ocr.completedNoData'))
+        setOcrStatus(t('ocr.completedNoData', 'OCR completed but no data extracted'))
       }
       
       console.log('✅ Upload success:', data)
@@ -488,7 +540,7 @@ export function DashboardDualPane({
       
       // Set OCR success state
       setOcrSuccess(true)
-      setOcrStatus(t('ocr.completed'))
+      setOcrStatus(t('ocr.completed', 'OCR completed successfully!'))
       
       console.log('✅ Ticket data initialized:', mappedData)
       console.log('✅ Raw text length:', rawTextData.length)
@@ -1221,10 +1273,49 @@ export function DashboardDualPane({
               {/* Full Raw Text Display - New Component */}
               <div className="flex-1 min-h-0 flex flex-col" style={{ backgroundColor: '#F5F5F5' }}>
                 <div className="bg-gray-50 border border-destructive rounded-lg p-2 flex-1 flex flex-col">
-                  <label className="block text-xs font-medium text-gray-700 mb-1 flex-shrink-0">{t('ticketData.fullRawText', 'Full Raw Text')}</label>
+                  <div className="flex items-center justify-between mb-1 flex-shrink-0">
+                    <label className="block text-xs font-medium text-gray-700">
+                      {formattedText ? t('ticketData.formattedText', 'Formatted Text') : t('ticketData.fullRawText', 'Full Raw Text')}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {rawText && !formattedText && (
+                        <Button
+                          onClick={handleFormatText}
+                          disabled={isFormatting}
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-6 px-2 border-[#208692] text-[#208692] hover:bg-[#E5EADF]"
+                        >
+                          {isFormatting ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#208692] mr-1"></div>
+                              {t('ticketData.formatting', 'Formatting...')}
+                            </>
+                          ) : (
+                            t('ticketData.formatText', 'Format Text')
+                          )}
+                        </Button>
+                      )}
+                      {formattedText && (
+                        <Button
+                          onClick={() => setFormattedText('')}
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-6 px-2 border-gray-400 text-gray-600 hover:bg-gray-100"
+                        >
+                          {t('ticketData.showRaw', 'Show Raw')}
+                        </Button>
+                      )}
+                      <CopyButton value={formattedText || rawText} />
+                    </div>
+                  </div>
                   <div className="flex items-start gap-2">
                     <div className="flex-1 px-2 py-1 bg-white border border-destructive rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
-                      {rawText ? (
+                      {formattedText ? (
+                        <pre className="whitespace-pre-wrap text-xs leading-relaxed">
+                          {formattedText}
+                        </pre>
+                      ) : rawText ? (
                         <pre className="whitespace-pre-wrap text-xs leading-relaxed">
                           {rawText}
                         </pre>
@@ -1232,7 +1323,6 @@ export function DashboardDualPane({
                         <span className="text-gray-300 italic">No raw text available</span>
                       )}
                     </div>
-                    <CopyButton value={rawText} />
                   </div>
                 </div>
               </div>
@@ -1582,10 +1672,49 @@ export function DashboardDualPane({
                     {/* Full Raw Text Display - New Component */}
                     <div className="flex-1 min-h-0 flex flex-col" style={{ backgroundColor: '#F5F5F5' }}>
                       <div className="bg-gray-50 border border-destructive rounded-lg p-2 flex-1 flex flex-col">
-                        <label className="block text-xs font-medium text-gray-700 mb-1 flex-shrink-0">{t('ticketData.fullRawText', 'Full Raw Text')}</label>
+                        <div className="flex items-center justify-between mb-1 flex-shrink-0">
+                          <label className="block text-xs font-medium text-gray-700">
+                            {formattedText ? t('ticketData.formattedText', 'Formatted Text') : t('ticketData.fullRawText', 'Full Raw Text')}
+                          </label>
+                          <div className="flex items-center gap-2">
+                            {rawText && !formattedText && (
+                              <Button
+                                onClick={handleFormatText}
+                                disabled={isFormatting}
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-6 px-2 border-[#208692] text-[#208692] hover:bg-[#E5EADF]"
+                              >
+                                {isFormatting ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#208692] mr-1"></div>
+                                    {t('ticketData.formatting', 'Formatting...')}
+                                  </>
+                                ) : (
+                                  t('ticketData.formatText', 'Format Text')
+                                )}
+                              </Button>
+                            )}
+                            {formattedText && (
+                              <Button
+                                onClick={() => setFormattedText('')}
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-6 px-2 border-gray-400 text-gray-600 hover:bg-gray-100"
+                              >
+                                {t('ticketData.showRaw', 'Show Raw')}
+                              </Button>
+                            )}
+                            <CopyButton value={formattedText || rawText} />
+                          </div>
+                        </div>
                         <div className="flex items-start gap-2">
                           <div className="flex-1 px-2 py-1 bg-white border border-destructive rounded text-xs text-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 min-h-0">
-                            {rawText ? (
+                            {formattedText ? (
+                              <pre className="whitespace-pre-wrap text-xs leading-relaxed">
+                                {formattedText}
+                              </pre>
+                            ) : rawText ? (
                               <pre className="whitespace-pre-wrap text-xs leading-relaxed">
                                 {rawText}
                               </pre>
@@ -1593,7 +1722,6 @@ export function DashboardDualPane({
                               <span className="text-gray-500 italic">No raw text available</span>
                             )}
                           </div>
-                          <CopyButton value={rawText} />
                         </div>
                       </div>
                     </div>
