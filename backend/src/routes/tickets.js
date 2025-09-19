@@ -174,11 +174,24 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       total: ocrData?.Total || ocrData?.total || null,
       comercio: ocrData?.Comercio || ocrData?.comercio || null,
       
+      // Core confidence fields
+      mesa_folio_confidence: ocrData?.Mesa_Folio_Confidence || null,
+      fecha_confidence: ocrData?.Fecha_Confidence || null,
+      id_ticket_confidence: ocrData?.ID_Ticket_Confidence || null,
+      total_confidence: ocrData?.Total_Confidence || null,
+      comercio_confidence: ocrData?.Comercio_Confidence || null,
+      
       // Vendor-specific fields
       tc_number: ocrData?.['TC#'] || ocrData?.tc_number || null,
       tr_number: ocrData?.['TR#'] || ocrData?.tr_number || null,
       id: ocrData?.ID || ocrData?.id || null,
       folio_venta: ocrData?.Fol_Vta || ocrData?.folio_venta || null,
+      
+      // Vendor-specific confidence fields
+      tc_number_confidence: ocrData?.['TC#_Confidence'] || null,
+      tr_number_confidence: ocrData?.['TR#_Confidence'] || null,
+      id_confidence: ocrData?.ID_Confidence || null,
+      folio_venta_confidence: ocrData?.['Fol_Vta_Confidence'] || null,
       
       // New enhanced fields
       store_branch_plaza: ocrData?.Store_Branch_Plaza || ocrData?.store_branch_plaza || null,
@@ -186,11 +199,20 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       payment_type: ocrData?.Payment_Type || ocrData?.payment_type || null,
       card_last_4_digits: ocrData?.Card_Last_4_Digits || ocrData?.card_last_4_digits || null,
       
+      // Enhanced confidence fields
+      store_branch_plaza_confidence: ocrData?.Store_Branch_Plaza_Confidence || ocrData?.store_branch_plaza_confidence || null,
+      register_station_terminal_confidence: ocrData?.Register_Station_Terminal_Confidence || ocrData?.register_station_terminal_confidence || null,
+      payment_type_confidence: ocrData?.Payment_Type_Confidence || ocrData?.payment_type_confidence || null,
+      card_last_4_digits_confidence: ocrData?.Card_Last_4_Digits_Confidence || ocrData?.card_last_4_digits_confidence || null,
+      
       // Raw text and metadata
       raw_text: ocrData?.Full_Raw_Text || ocrData?.raw_text || ocrData?.full_text || null,
       vendor_type: ocrData?.vendor_type || null,
       extraction_method: ocrData?.extraction_method || null,
       text_length: ocrData?.text_length || null,
+      overall_document_confidence: ocrData?.overall_document_confidence || null,
+      total_confidence_sources: ocrData?.total_confidence_sources || null,
+      confidence_breakdown: ocrData?.confidence_breakdown || null,
       
       // Alternative field names for frontend compatibility
       Mesa_Folio: ocrData?.Mesa_Folio || null,
@@ -203,11 +225,28 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       'ID': ocrData?.ID || null,
       'Fol_Vta': ocrData?.Fol_Vta || null,
       
+      // Alternative confidence field names for frontend compatibility
+      Mesa_Folio_Confidence: ocrData?.Mesa_Folio_Confidence || null,
+      Fecha_Confidence: ocrData?.Fecha_Confidence || null,
+      ID_Ticket_Confidence: ocrData?.ID_Ticket_Confidence || null,
+      Total_Confidence: ocrData?.Total_Confidence || null,
+      Comercio_Confidence: ocrData?.Comercio_Confidence || null,
+      'TC#_Confidence': ocrData?.['TC#_Confidence'] || null,
+      'TR#_Confidence': ocrData?.['TR#_Confidence'] || null,
+      'ID_Confidence': ocrData?.ID_Confidence || null,
+      'Fol_Vta_Confidence': ocrData?.['Fol_Vta_Confidence'] || null,
+      
       // New enhanced fields with alternative names
       Store_Branch_Plaza: ocrData?.Store_Branch_Plaza || null,
       Register_Station_Terminal: ocrData?.Register_Station_Terminal || null,
       Payment_Type: ocrData?.Payment_Type || null,
-      Card_Last_4_Digits: ocrData?.Card_Last_4_Digits || null
+      Card_Last_4_Digits: ocrData?.Card_Last_4_Digits || null,
+      
+      // Enhanced confidence fields with alternative names
+      Store_Branch_Plaza_Confidence: ocrData?.Store_Branch_Plaza_Confidence || null,
+      Register_Station_Terminal_Confidence: ocrData?.Register_Station_Terminal_Confidence || null,
+      Payment_Type_Confidence: ocrData?.Payment_Type_Confidence || null,
+      Card_Last_4_Digits_Confidence: ocrData?.Card_Last_4_Digits_Confidence || null
     }
 
     ticketStore.set(ticketId, {

@@ -98,6 +98,23 @@ interface TicketData {
   'Register_Station_Terminal': string
   'Payment_Type': string
   'Card_Last_4_Digits': string
+  // Confidence scores for each field
+  'Comercio_Confidence'?: number
+  'Fecha_Confidence'?: number
+  'Total_Confidence'?: number
+  'TC#_Confidence'?: number
+  'TR#_Confidence'?: number
+  'ID_Confidence'?: number
+  'Fol_Vta_Confidence'?: number
+  'ID_Ticket_Confidence'?: number
+  'Mesa_Folio_Confidence'?: number
+  'Store_Branch_Plaza_Confidence'?: number
+  'Register_Station_Terminal_Confidence'?: number
+  'Payment_Type_Confidence'?: number
+  'Card_Last_4_Digits_Confidence'?: number
+  // Overall confidence metadata
+  'overall_document_confidence'?: number
+  'total_confidence_sources'?: number
 }
 
 // Copy Button Component
@@ -153,22 +170,62 @@ interface FieldWithCopyProps {
   placeholder: string
   className?: string
   fullWidth?: boolean
+  confidence?: number
 }
 
-function FieldWithCopy({ label, value, onChange, placeholder, className = '', fullWidth = false }: FieldWithCopyProps) {
+function FieldWithCopy({ label, value, onChange, placeholder, className = '', fullWidth = false, confidence }: FieldWithCopyProps) {
+  // Determine confidence level and styling
+  const getConfidenceLevel = (conf: number | undefined) => {
+    if (conf === undefined || conf === null) return { level: 'unknown', color: '#9CA3AF', bgColor: '#F3F4F6' }
+    if (conf >= 80) return { level: 'high', color: '#10B981', bgColor: '#D1FAE5' }
+    if (conf >= 50) return { level: 'medium', color: '#F59E0B', bgColor: '#FEF3C7' }
+    return { level: 'low', color: '#EF4444', bgColor: '#FEE2E2' }
+  }
+
+  const confidenceInfo = getConfidenceLevel(confidence)
+
   return (
-         <div className={`bg-gradient-to-b from-white to-slate-50/30 border border-[#C7D8D0] rounded-lg p-2 ${fullWidth ? 'col-span-2' : ''} ${className}`}>
-       <label className="block text-xs font-medium text-[#527779] mb-1">{label}</label>
-       <div className="flex items-center gap-2">
-         <input
-           type="text"
-           value={value || ''}
-           onChange={(e) => onChange(e.target.value)}
-           className="flex-1 h-8 px-2 py-1 bg-white border border-[#C7D8D0] rounded text-xs text-[#527779] focus:outline-none focus:ring-2 focus:ring-[#208692] focus:border-transparent"
-           placeholder={placeholder}
-         />
+    <div className={`bg-gradient-to-b from-white to-slate-50/30 border border-[#C7D8D0] rounded-lg p-2 ${fullWidth ? 'col-span-2' : ''} ${className}`}>
+      <div className="flex items-center justify-between mb-1">
+        <label className="block text-xs font-medium text-[#527779]">{label}</label>
+        {confidence !== undefined && confidence !== null && (
+          <div className="flex items-center gap-1">
+            <div 
+              className="w-2 h-2 rounded-full" 
+              style={{ backgroundColor: confidenceInfo.color }}
+            ></div>
+            <span 
+              className="text-xs font-medium" 
+              style={{ color: confidenceInfo.color }}
+            >
+              {Math.round(confidence)}%
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          className="flex-1 h-8 px-2 py-1 bg-white border border-[#C7D8D0] rounded text-xs text-[#527779] focus:outline-none focus:ring-2 focus:ring-[#208692] focus:border-transparent"
+          placeholder={placeholder}
+        />
         <CopyButton value={value} />
       </div>
+      {confidence !== undefined && confidence !== null && (
+        <div className="mt-1">
+          <div className="w-full bg-gray-200 rounded-full h-1">
+            <div 
+              className="h-1 rounded-full transition-all duration-300" 
+              style={{ 
+                width: `${Math.min(100, Math.max(0, confidence))}%`,
+                backgroundColor: confidenceInfo.color 
+              }}
+            ></div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -210,7 +267,24 @@ export function DashboardDualPane({
     'Store_Branch_Plaza': '',
     'Register_Station_Terminal': '',
     'Payment_Type': '',
-    'Card_Last_4_Digits': ''
+    'Card_Last_4_Digits': '',
+    // Confidence scores
+    'Comercio_Confidence': undefined,
+    'Fecha_Confidence': undefined,
+    'Total_Confidence': undefined,
+    'TC#_Confidence': undefined,
+    'TR#_Confidence': undefined,
+    'ID_Confidence': undefined,
+    'Fol_Vta_Confidence': undefined,
+    'ID_Ticket_Confidence': undefined,
+    'Mesa_Folio_Confidence': undefined,
+    'Store_Branch_Plaza_Confidence': undefined,
+    'Register_Station_Terminal_Confidence': undefined,
+    'Payment_Type_Confidence': undefined,
+    'Card_Last_4_Digits_Confidence': undefined,
+    // Overall confidence metadata
+    'overall_document_confidence': undefined,
+    'total_confidence_sources': undefined
   })
   const [rawText, setRawText] = useState<string>('')
   const [formattedText, setFormattedText] = useState<string>('')
@@ -461,7 +535,24 @@ export function DashboardDualPane({
           'Store_Branch_Plaza': ocrData.store_branch_plaza || ocrData['Store_Branch_Plaza'] || '',
           'Register_Station_Terminal': ocrData.register_station_terminal || ocrData['Register_Station_Terminal'] || '',
           'Payment_Type': ocrData.payment_type || ocrData['Payment_Type'] || '',
-          'Card_Last_4_Digits': ocrData.card_last_4_digits || ocrData['Card_Last_4_Digits'] || ''
+          'Card_Last_4_Digits': ocrData.card_last_4_digits || ocrData['Card_Last_4_Digits'] || '',
+          // Confidence scores
+          'Comercio_Confidence': ocrData.comercio_confidence || ocrData.Comercio_Confidence,
+          'Fecha_Confidence': ocrData.fecha_confidence || ocrData.Fecha_Confidence,
+          'Total_Confidence': ocrData.total_confidence || ocrData.Total_Confidence,
+          'TC#_Confidence': ocrData.tc_number_confidence || ocrData['TC#_Confidence'],
+          'TR#_Confidence': ocrData.tr_number_confidence || ocrData['TR#_Confidence'],
+          'ID_Confidence': ocrData.id_confidence || ocrData.ID_Confidence,
+          'Fol_Vta_Confidence': ocrData.folio_venta_confidence || ocrData['Fol_Vta_Confidence'],
+          'ID_Ticket_Confidence': ocrData.id_ticket_confidence || ocrData.ID_Ticket_Confidence,
+          'Mesa_Folio_Confidence': ocrData.mesa_folio_confidence || ocrData.Mesa_Folio_Confidence,
+          'Store_Branch_Plaza_Confidence': ocrData.store_branch_plaza_confidence || ocrData['Store_Branch_Plaza_Confidence'],
+          'Register_Station_Terminal_Confidence': ocrData.register_station_terminal_confidence || ocrData['Register_Station_Terminal_Confidence'],
+          'Payment_Type_Confidence': ocrData.payment_type_confidence || ocrData['Payment_Type_Confidence'],
+          'Card_Last_4_Digits_Confidence': ocrData.card_last_4_digits_confidence || ocrData['Card_Last_4_Digits_Confidence'],
+          // Overall confidence metadata
+          'overall_document_confidence': ocrData.overall_document_confidence,
+          'total_confidence_sources': ocrData.total_confidence_sources
         }
         
         setTicketData(extractedData)
@@ -522,7 +613,24 @@ export function DashboardDualPane({
         'Store_Branch_Plaza': initialTicketData.store_branch_plaza || initialTicketData['Store_Branch_Plaza'] || '',
         'Register_Station_Terminal': initialTicketData.register_station_terminal || initialTicketData['Register_Station_Terminal'] || '',
         'Payment_Type': initialTicketData.payment_type || initialTicketData['Payment_Type'] || '',
-        'Card_Last_4_Digits': initialTicketData.card_last_4_digits || initialTicketData['Card_Last_4_Digits'] || ''
+        'Card_Last_4_Digits': initialTicketData.card_last_4_digits || initialTicketData['Card_Last_4_Digits'] || '',
+        // Confidence scores
+        'Comercio_Confidence': initialTicketData.comercio_confidence || initialTicketData.Comercio_Confidence,
+        'Fecha_Confidence': initialTicketData.fecha_confidence || initialTicketData.Fecha_Confidence,
+        'Total_Confidence': initialTicketData.total_confidence || initialTicketData.Total_Confidence,
+        'TC#_Confidence': initialTicketData.tc_number_confidence || initialTicketData['TC#_Confidence'],
+        'TR#_Confidence': initialTicketData.tr_number_confidence || initialTicketData['TR#_Confidence'],
+        'ID_Confidence': initialTicketData.id_confidence || initialTicketData.ID_Confidence,
+        'Fol_Vta_Confidence': initialTicketData.folio_venta_confidence || initialTicketData['Fol_Vta_Confidence'],
+        'ID_Ticket_Confidence': initialTicketData.id_ticket_confidence || initialTicketData.ID_Ticket_Confidence,
+        'Mesa_Folio_Confidence': initialTicketData.mesa_folio_confidence || initialTicketData.Mesa_Folio_Confidence,
+        'Store_Branch_Plaza_Confidence': initialTicketData.store_branch_plaza_confidence || initialTicketData['Store_Branch_Plaza_Confidence'],
+        'Register_Station_Terminal_Confidence': initialTicketData.register_station_terminal_confidence || initialTicketData['Register_Station_Terminal_Confidence'],
+        'Payment_Type_Confidence': initialTicketData.payment_type_confidence || initialTicketData['Payment_Type_Confidence'],
+        'Card_Last_4_Digits_Confidence': initialTicketData.card_last_4_digits_confidence || initialTicketData['Card_Last_4_Digits_Confidence'],
+        // Overall confidence metadata
+        'overall_document_confidence': initialTicketData.overall_document_confidence,
+        'total_confidence_sources': initialTicketData.total_confidence_sources
       }
       
       setTicketData(mappedData)
@@ -1043,6 +1151,57 @@ export function DashboardDualPane({
                 </div>
               )}
               
+              {/* Confidence Summary for Mobile */}
+              {ocrSuccess && ticketData.overall_document_confidence !== undefined && (
+                <div className="mb-3">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold text-blue-800 flex items-center gap-2">
+                        <Cloud className="w-4 h-4" />
+                        Document Confidence
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className="w-3 h-3 rounded-full" 
+                          style={{ 
+                            backgroundColor: ticketData.overall_document_confidence >= 80 ? '#10B981' : 
+                                           ticketData.overall_document_confidence >= 50 ? '#F59E0B' : '#EF4444'
+                          }}
+                        ></div>
+                        <span 
+                          className="text-sm font-bold"
+                          style={{ 
+                            color: ticketData.overall_document_confidence >= 80 ? '#10B981' : 
+                                   ticketData.overall_document_confidence >= 50 ? '#F59E0B' : '#EF4444'
+                          }}
+                        >
+                          {Math.round(ticketData.overall_document_confidence)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                      <div 
+                        className="h-2 rounded-full transition-all duration-500" 
+                        style={{ 
+                          width: `${Math.min(100, Math.max(0, ticketData.overall_document_confidence))}%`,
+                          backgroundColor: ticketData.overall_document_confidence >= 80 ? '#10B981' : 
+                                         ticketData.overall_document_confidence >= 50 ? '#F59E0B' : '#EF4444'
+                        }}
+                      ></div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-blue-600">
+                      <span>
+                        {ticketData.overall_document_confidence >= 80 ? 'High Confidence' : 
+                         ticketData.overall_document_confidence >= 50 ? 'Medium Confidence' : 'Low Confidence'}
+                      </span>
+                      {ticketData.total_confidence_sources && (
+                        <span>{ticketData.total_confidence_sources} sources</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {/* Start Agent Button Section - Mobile - Top of Extracted Details */}
               {ocrSuccess && (
                 <div className="mb-3 p-3 border border-slate-200 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50">
@@ -1170,6 +1329,7 @@ export function DashboardDualPane({
                   value={ticketData['Mesa_Folio'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': value }))}
                   placeholder={t('ticket.enterMesaFolio')}
+                  confidence={ticketData['Mesa_Folio_Confidence']}
                 />
                 
                 {/* Fecha */}
@@ -1178,6 +1338,7 @@ export function DashboardDualPane({
                   value={ticketData['Fecha'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Fecha': value }))}
                   placeholder={t('ticket.enterFecha')}
+                  confidence={ticketData['Fecha_Confidence']}
                 />
                 
                 {/* ID Ticket */}
@@ -1186,6 +1347,7 @@ export function DashboardDualPane({
                   value={ticketData['ID_Ticket'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'ID_Ticket': value }))}
                   placeholder={t('ticket.enterIdTicket')}
+                  confidence={ticketData['ID_Ticket_Confidence']}
                 />
                 
                 {/* Total */}
@@ -1194,6 +1356,7 @@ export function DashboardDualPane({
                   value={ticketData['Total'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Total': value }))}
                   placeholder={t('ticket.enterTotal')}
+                  confidence={ticketData['Total_Confidence']}
                 />
                 
                 {/* Store/Branch/Plaza */}
@@ -1202,6 +1365,7 @@ export function DashboardDualPane({
                   value={ticketData['Store_Branch_Plaza'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': value }))}
                   placeholder={t('ticket.enterStoreBranchPlaza')}
+                  confidence={ticketData['Store_Branch_Plaza_Confidence']}
                 />
                 
                 {/* Register/Station/Terminal */}
@@ -1210,6 +1374,7 @@ export function DashboardDualPane({
                   value={ticketData['Register_Station_Terminal'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': value }))}
                   placeholder={t('ticket.enterRegisterStationTerminal')}
+                  confidence={ticketData['Register_Station_Terminal_Confidence']}
                 />
                 
                 {/* Payment Type */}
@@ -1218,6 +1383,7 @@ export function DashboardDualPane({
                   value={ticketData['Payment_Type'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Payment_Type': value }))}
                   placeholder={t('ticket.enterPaymentType')}
+                  confidence={ticketData['Payment_Type_Confidence']}
                 />
                 
                 {/* Last 4 digits of card */}
@@ -1226,6 +1392,7 @@ export function DashboardDualPane({
                   value={ticketData['Card_Last_4_Digits'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': value }))}
                   placeholder={t('ticket.enterCardLast4Digits')}
+                  confidence={ticketData['Card_Last_4_Digits_Confidence']}
                 />
                 
                 {/* TC# */}
@@ -1234,6 +1401,7 @@ export function DashboardDualPane({
                   value={ticketData['TC#'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'TC#': value }))}
                   placeholder={t('ticket.enterTc')}
+                  confidence={ticketData['TC#_Confidence']}
                 />
                 
                 {/* TR# */}
@@ -1242,6 +1410,7 @@ export function DashboardDualPane({
                   value={ticketData['TR#'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'TR#': value }))}
                   placeholder={t('ticket.enterTr')}
+                  confidence={ticketData['TR#_Confidence']}
                 />
                 
                 {/* ID */}
@@ -1250,6 +1419,7 @@ export function DashboardDualPane({
                   value={ticketData['ID'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'ID': value }))}
                   placeholder={t('ticket.enterId')}
+                  confidence={ticketData['ID_Confidence']}
                 />
                 
                 {/* Fol_Vta */}
@@ -1258,6 +1428,7 @@ export function DashboardDualPane({
                   value={ticketData['Fol_Vta'] || ''}
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Fol_Vta': value }))}
                   placeholder={t('ticket.enterFolVta')}
+                  confidence={ticketData['Fol_Vta_Confidence']}
                 />
                 
                 {/* Comercio - Full width */}
@@ -1267,6 +1438,7 @@ export function DashboardDualPane({
                   onChange={(value) => setTicketData(prev => ({ ...prev, 'Comercio': value }))}
                   placeholder={t('ticket.enterComercio')}
                   fullWidth={true}
+                  confidence={ticketData['Comercio_Confidence']}
                 />
               </div>
               
@@ -1459,6 +1631,57 @@ export function DashboardDualPane({
                     </div>
                   )}
                   
+                  {/* Confidence Summary */}
+                  {ocrSuccess && ticketData.overall_document_confidence !== undefined && (
+                    <div className="p-3 border-b border-slate-200/50 flex-shrink-0">
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-semibold text-blue-800 flex items-center gap-2">
+                            <Cloud className="w-4 h-4" />
+                            Document Confidence Summary
+                          </h4>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ 
+                                backgroundColor: ticketData.overall_document_confidence >= 80 ? '#10B981' : 
+                                               ticketData.overall_document_confidence >= 50 ? '#F59E0B' : '#EF4444'
+                              }}
+                            ></div>
+                            <span 
+                              className="text-sm font-bold"
+                              style={{ 
+                                color: ticketData.overall_document_confidence >= 80 ? '#10B981' : 
+                                       ticketData.overall_document_confidence >= 50 ? '#F59E0B' : '#EF4444'
+                              }}
+                            >
+                              {Math.round(ticketData.overall_document_confidence)}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                          <div 
+                            className="h-2 rounded-full transition-all duration-500" 
+                            style={{ 
+                              width: `${Math.min(100, Math.max(0, ticketData.overall_document_confidence))}%`,
+                              backgroundColor: ticketData.overall_document_confidence >= 80 ? '#10B981' : 
+                                             ticketData.overall_document_confidence >= 50 ? '#F59E0B' : '#EF4444'
+                            }}
+                          ></div>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-blue-600">
+                          <span>
+                            {ticketData.overall_document_confidence >= 80 ? 'High Confidence' : 
+                             ticketData.overall_document_confidence >= 50 ? 'Medium Confidence' : 'Low Confidence'}
+                          </span>
+                          {ticketData.total_confidence_sources && (
+                            <span>{ticketData.total_confidence_sources} sources analyzed</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Start Agent Button Section - Top of Extracted Details */}
                   {ocrSuccess && (
                     <div className="p-3 border-b border-slate-200/50 flex-shrink-0">
@@ -1569,6 +1792,7 @@ export function DashboardDualPane({
                         value={ticketData['Mesa_Folio'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': value }))}
                         placeholder={t('ticket.enterMesaFolio')}
+                        confidence={ticketData['Mesa_Folio_Confidence']}
                       />
                       
                       {/* Fecha */}
@@ -1577,6 +1801,7 @@ export function DashboardDualPane({
                         value={ticketData['Fecha'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Fecha': value }))}
                         placeholder={t('ticket.enterFecha')}
+                        confidence={ticketData['Fecha_Confidence']}
                       />
                       
                       {/* ID Ticket */}
@@ -1585,6 +1810,7 @@ export function DashboardDualPane({
                         value={ticketData['ID_Ticket'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'ID_Ticket': value }))}
                         placeholder={t('ticket.enterIdTicket')}
+                        confidence={ticketData['ID_Ticket_Confidence']}
                       />
                       
                       {/* Total */}
@@ -1593,6 +1819,7 @@ export function DashboardDualPane({
                         value={ticketData['Total'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Total': value }))}
                         placeholder={t('ticket.enterTotal')}
+                        confidence={ticketData['Total_Confidence']}
                       />
                       
                       {/* Store/Branch/Plaza */}
@@ -1601,6 +1828,7 @@ export function DashboardDualPane({
                         value={ticketData['Store_Branch_Plaza'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': value }))}
                         placeholder={t('ticket.enterStoreBranchPlaza')}
+                        confidence={ticketData['Store_Branch_Plaza_Confidence']}
                       />
                       
                       {/* Register/Station/Terminal */}
@@ -1609,6 +1837,7 @@ export function DashboardDualPane({
                         value={ticketData['Register_Station_Terminal'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': value }))}
                         placeholder={t('ticket.enterRegisterStationTerminal')}
+                        confidence={ticketData['Register_Station_Terminal_Confidence']}
                       />
                       
                       {/* Payment Type */}
@@ -1617,6 +1846,7 @@ export function DashboardDualPane({
                         value={ticketData['Payment_Type'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Payment_Type': value }))}
                         placeholder={t('ticket.enterPaymentType')}
+                        confidence={ticketData['Payment_Type_Confidence']}
                       />
                       
                       {/* Last 4 digits of card */}
@@ -1625,6 +1855,7 @@ export function DashboardDualPane({
                         value={ticketData['Card_Last_4_Digits'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': value }))}
                         placeholder={t('ticket.enterCardLast4Digits')}
+                        confidence={ticketData['Card_Last_4_Digits_Confidence']}
                       />
                       
                       {/* TC# */}
@@ -1633,6 +1864,7 @@ export function DashboardDualPane({
                         value={ticketData['TC#'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'TC#': value }))}
                         placeholder={t('ticket.enterTc')}
+                        confidence={ticketData['TC#_Confidence']}
                       />
                       
                       {/* TR# */}
@@ -1641,6 +1873,7 @@ export function DashboardDualPane({
                         value={ticketData['TR#'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'TR#': value }))}
                         placeholder={t('ticket.enterTr')}
+                        confidence={ticketData['TR#_Confidence']}
                       />
                       
                       {/* ID */}
@@ -1649,6 +1882,7 @@ export function DashboardDualPane({
                         value={ticketData['ID'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'ID': value }))}
                         placeholder={t('ticket.enterId')}
+                        confidence={ticketData['ID_Confidence']}
                       />
                       
                       {/* Fol_Vta */}
@@ -1657,6 +1891,7 @@ export function DashboardDualPane({
                         value={ticketData['Fol_Vta'] || ''}
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Fol_Vta': value }))}
                         placeholder={t('ticket.enterFolVta')}
+                        confidence={ticketData['Fol_Vta_Confidence']}
                       />
                       
                       {/* Comercio - Full width */}
@@ -1666,6 +1901,7 @@ export function DashboardDualPane({
                         onChange={(value) => setTicketData(prev => ({ ...prev, 'Comercio': value }))}
                         placeholder={t('ticket.enterComercio')}
                         fullWidth={true}
+                        confidence={ticketData['Comercio_Confidence']}
                       />
                     </div>
                     
