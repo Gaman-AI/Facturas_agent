@@ -9,7 +9,9 @@ import healthRoutes from './routes/health.js'
 import authRoutes from './routes/auth.js'
 import taskRoutes from './routes/tasks.js'
 import ticketRoutes from './routes/tickets.js'
+import performanceRoutes from './routes/performance.js'
 import websocketService from './services/websocketService.js'
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js'
 
 import { createServer } from 'http'
 
@@ -57,6 +59,7 @@ app.use(cors({
   app.use('/api/v1/auth', authRoutes)
   app.use('/api/v1/tasks', taskRoutes)
   app.use('/api/v1/tickets', ticketRoutes)
+  app.use('/api/v1/performance', performanceRoutes)
 
   // API root endpoint
   app.get('/api/v1', (req, res) => {
@@ -70,7 +73,9 @@ app.use(cors({
         endpoints: {
           health: '/health',
           auth: '/api/v1/auth',
-          tasks: '/api/v1/tasks'
+          tasks: '/api/v1/tasks',
+          tickets: '/api/v1/tickets',
+          performance: '/api/v1/performance'
         },
         documentation: {
           swagger: '/api/v1/docs',
@@ -96,36 +101,10 @@ app.use(cors({
   })
 
   // 404 handler
-  app.use('*', (req, res) => {
-    res.status(404).json({
-      success: false,
-      error: `Route ${req.method} ${req.originalUrl} not found`,
-      meta: {
-        timestamp: new Date().toISOString(),
-        requestId: req.headers['x-request-id'] || 'unknown'
-      }
-    })
-  })
+  app.use('*', notFoundHandler)
 
   // Global error handler
-  app.use((error, req, res, next) => {
-    console.error('Global error handler:', error)
-    
-    // Don't leak error details in production
-    const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'
-    
-    res.status(error.status || 500).json({
-      success: false,
-      error: isDevelopment 
-        ? error.message || 'Internal Server Error'
-        : 'Internal Server Error',
-      ...(isDevelopment && { stack: error.stack }),
-      meta: {
-        timestamp: new Date().toISOString(),
-        requestId: req.headers['x-request-id'] || 'unknown'
-      }
-    })
-  })
+  app.use(errorHandler)
 
 // Initialize WebSocket Server
 websocketService.initialize(server)

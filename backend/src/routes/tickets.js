@@ -1,356 +1,399 @@
 import express from 'express'
-import path from 'path'
-import fs from 'fs/promises'
-import { fileURLToPath } from 'url'
 import multer from 'multer'
-import { spawn } from 'child_process'
-import { execSync } from 'child_process'
+import ticketStorageService from '../services/ticketStorageService.js'
+import { authenticate } from '../middleware/auth.js'
+import { ValidationError, NotFoundError } from '../middleware/errorHandler.js'
 
 const router = express.Router()
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
-// Temp uploads directory inside backend/tmp/uploads
-const uploadsDir = path.join(__dirname, '..', '..', 'tmp', 'uploads')
-
-// Ensure uploads directory exists
-async function ensureUploadsDir() {
-  await fs.mkdir(uploadsDir, { recursive: true })
-}
-
-// Configure multer storage to save files to uploadsDir
-const storage = multer.diskStorage({
-  destination: async function (req, file, cb) {
-    try {
-      await ensureUploadsDir()
-      cb(null, uploadsDir)
-    } catch (e) {
-      cb(e, uploadsDir)
-    }
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB limit
   },
-  filename: function (req, file, cb) {
-    const timestamp = Date.now()
-    const safeName = file.originalname.replace(/[^a-zA-Z0-9_.-]/g, '_')
-    cb(null, `${timestamp}_${safeName}`)
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/jpg', 
+      'application/pdf',
+      'image/webp'
+    ]
+    
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true)
+    } else {
+      cb(new ValidationError('Invalid file type. Only JPEG, PNG, PDF, and WebP files are allowed.'), false)
+    }
   }
 })
 
-const upload = multer({ storage })
-
-// In-memory store for ticket results (simple temp cache)
-const ticketStore = new Map()
-
-function generateTicketId() {
-  return `ticket_${Math.random().toString(36).slice(2, 10)}${Math.random().toString(36).slice(2, 6)}`
-}
-
-async function runPythonOCR(imagePath) {
+/**
+ * @route POST /api/v1/tickets/upload
+ * @desc Upload a new ticket/invoice file with OCR processing
+ * @access Private
+ */
+router.post('/upload', authenticate, upload.single('file'), async (req, res, next) => {
   try {
-    // Use the standalone Python script
-    const pythonExec = process.env.PYTHON_EXECUTABLE || 'python'
-    const ocrScriptPath = path.resolve(__dirname, '..', 'services', 'run_ocr.py')
-    const backendDir = path.resolve(__dirname, '..')
-    
-    console.log(`[OCR] Script path: ${ocrScriptPath}`)
-    console.log(`[OCR] Backend directory: ${backendDir}`)
-    console.log(`[OCR] Image path: ${imagePath}`)
-    console.log(`[OCR] Current working directory: ${process.cwd()}`)
-    
-    console.log(`[OCR] Executing Python script...`)
-    
-    // Execute the standalone Python script with better encoding handling
-    const result = execSync(`${pythonExec} "${ocrScriptPath}" "${imagePath}"`, { 
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: true,
-      cwd: backendDir, // Use the backend directory as working directory
-      env: { ...process.env, PYTHONIOENCODING: 'utf-8' }, // Force Python to use UTF-8
-      maxBuffer: 10 * 1024 * 1024 // 10MB buffer for large OCR results
+    console.log('📤 Upload request received:', {
+      hasFile: !!req.file,
+      fileName: req.file?.originalname,
+      fileSize: req.file?.size,
+      userId: req.user?.id,
+      body: req.body
     })
-    
-    console.log(`[OCR] Python output: ${result}`)
-    
-    // Check if result is empty or invalid
-    if (!result || result.trim() === '') {
-      throw new Error('Python script returned empty output')
-    }
-    
-    // Try to parse the JSON result with additional safety measures
-    let ocrResult
-    try {
-      // Clean the result string to remove any problematic characters
-      const cleanedResult = result.trim()
-        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '') // Remove control characters
-        .replace(/[\uFFFD]/g, '') // Remove replacement characters
-      
-      ocrResult = JSON.parse(cleanedResult)
-    } catch (parseError) {
-      console.error(`[OCR] JSON parse error: ${parseError.message}`)
-      console.error(`[OCR] Raw output: ${result}`)
-      
-      // Try to extract any useful information from the error
-      if (result.includes('error') || result.includes('Error')) {
-        // Look for error messages in the output
-        const errorMatch = result.match(/error["\s]*:["\s]*([^"\n]+)/i)
-        if (errorMatch) {
-          throw new Error(`Python script error: ${errorMatch[1]}`)
-        }
-      }
-      
-      throw new Error(`Invalid JSON output from Python script: ${parseError.message}`)
-    }
-    
-    // Check if the result contains an error
-    if (ocrResult.error) {
-      throw new Error(`Python script error: ${ocrResult.error}`)
-    }
-    
-    return ocrResult
-    
-  } catch (error) {
-    console.error(`[OCR] Execution error: ${error.message}`)
-    console.error(`[OCR] Error details:`, error)
-    throw new Error(`OCR processing failed: ${error.message}`)
-  }
-}
 
-// POST /api/v1/tickets/upload
-router.post('/upload', upload.single('file'), async (req, res) => {
-  try {
     if (!req.file) {
-      return res.status(400).json({ success: false, error: 'No file uploaded' })
+      throw new ValidationError('No file uploaded')
     }
 
-    const vendorUrl = req.body.vendor_url || null
-    const imagePath = req.file.path
-    const ticketId = generateTicketId()
+    const { vendor_url } = req.body
 
-    let ocrData = null
+    console.log('🔄 Starting file upload to Supabase Storage...')
+    // Upload file to Supabase Storage
+    const uploadResult = await ticketStorageService.uploadTicket(
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype,
+      req.user.id
+    )
+    console.log('✅ File upload successful:', uploadResult)
+
+    // Save initial ticket record to database
+    const ticketData = {
+      userId: req.user.id,
+      fileName: uploadResult.originalName,
+      fileSize: uploadResult.size,
+      fileType: req.file.mimetype,
+      fileUrl: uploadResult.fileUrl,
+      status: 'uploaded',
+      processing_status: 'ocr_processing',
+      comercio: null // Will be filled by OCR
+    }
+
+    const ticket = await ticketStorageService.saveTicketRecord(ticketData)
+    console.log('✅ Ticket record saved:', ticket.id)
+
+    // Process with OCR in the background
     try {
-      ocrData = await runPythonOCR(imagePath)
-    } catch (e) {
-      // If OCR fails, still return minimal info with status FAILED
-      console.error('OCR invocation failed:', e)
-      ticketStore.set(ticketId, {
-        status: 'FAILED',
-        file: {
-          filename: req.file.filename,
-          path: imagePath,
-          mimetype: req.file.mimetype,
-          size: req.file.size
-        },
-        vendor_url: vendorUrl,
-        extracted_data: null,
-        error: e.message,
-        created_at: new Date().toISOString(),
+      console.log('🔄 Starting OCR processing...')
+      const ocrResult = await ticketStorageService.processTicketWithOCR(ticket.id, req.file.buffer, vendor_url)
+      console.log('✅ OCR processing completed:', ocrResult)
+
+      // Update ticket with extracted data - use cleaned data
+      const updateData = {
+        status: 'processed',
+        processing_status: 'completed',
+        ...ocrResult.extractedData,
+        comercio: ocrResult.extractedData.comercio || 'Unknown'
+      }
+      
+      console.log('🔄 Updating ticket with OCR data:', updateData)
+      const updatedTicket = await ticketStorageService.updateTicket(ticket.id, updateData)
+
+      res.status(201).json({
+        success: true,
+        message: 'Ticket uploaded and processed successfully',
+        data: {
+          ticket_id: ticket.id,
+          ticket: updatedTicket,
+          upload: uploadResult,
+          extracted_data: ocrResult.extractedData
+        }
+      })
+    } catch (ocrError) {
+      console.error('❌ OCR processing failed:', ocrError)
+      
+      // Create fallback data with basic information
+      const fallbackData = {
+        comercio: vendor_url.includes('walmart') ? 'Walmart' : 
+                 vendor_url.includes('oxxo') ? 'Oxxo' :
+                 vendor_url.includes('soriana') ? 'Soriana' :
+                 vendor_url.includes('chedraui') ? 'Chedraui' :
+                 vendor_url.includes('aurrera') ? 'Aurrera' : 'Unknown',
+        mesa_folio: null,
+        id_ticket: null,
+        store_branch_plaza: null,
+        payment_type: null,
+        tc_number: null,
+        ticket_id: ticket.id,
+        fecha: null,
+        total: null,
+        register_station_terminal: null,
+        card_last_4_digits: null,
+        tr_number: null,
+        fol_vta: null
+      }
+      
+      // Update ticket with fallback data
+      const updatedTicket = await ticketStorageService.updateTicket(ticket.id, {
+        status: 'processed',
+        processing_status: 'completed',
+        ...fallbackData,
+        error_message: `OCR failed: ${ocrError.message}`
       })
 
-      return res.status(201).json({
+      res.status(201).json({
         success: true,
+        message: 'Ticket uploaded successfully (OCR processing failed)',
         data: {
-          ticket_id: ticketId,
-          status: 'FAILED',
-          file_info: {
-            filename: req.file.originalname,
-            size: req.file.size,
-            type: req.file.mimetype
-          },
-          vendor_url: vendorUrl,
-          extracted_data: null,
-          message: 'OCR processing failed'
+          ticket_id: ticket.id,
+          ticket: updatedTicket,
+          upload: uploadResult,
+          extracted_data: fallbackData,
+          ocr_error: ocrError.message
         }
       })
     }
-
-    // Normalize extracted data keys for frontend convenience
-    const normalized = {
-      // Core fields
-      mesa_folio: ocrData?.Mesa_Folio || ocrData?.mesa_folio || null,
-      fecha: ocrData?.Fecha || ocrData?.fecha || null,
-      id_ticket: ocrData?.ID_Ticket || ocrData?.id_ticket || null,
-      total: ocrData?.Total || ocrData?.total || null,
-      comercio: ocrData?.Comercio || ocrData?.comercio || null,
-      
-      // Vendor-specific fields
-      tc_number: ocrData?.['TC#'] || ocrData?.tc_number || null,
-      tr_number: ocrData?.['TR#'] || ocrData?.tr_number || null,
-      id: ocrData?.ID || ocrData?.id || null,
-      folio_venta: ocrData?.Fol_Vta || ocrData?.folio_venta || null,
-      
-      // New enhanced fields
-      store_branch_plaza: ocrData?.Store_Branch_Plaza || ocrData?.store_branch_plaza || null,
-      register_station_terminal: ocrData?.Register_Station_Terminal || ocrData?.register_station_terminal || null,
-      payment_type: ocrData?.Payment_Type || ocrData?.payment_type || null,
-      card_last_4_digits: ocrData?.Card_Last_4_Digits || ocrData?.card_last_4_digits || null,
-      
-      // Raw text and metadata
-      raw_text: ocrData?.Full_Raw_Text || ocrData?.raw_text || ocrData?.full_text || null,
-      vendor_type: ocrData?.vendor_type || null,
-      extraction_method: ocrData?.extraction_method || null,
-      text_length: ocrData?.text_length || null,
-      
-      // Alternative field names for frontend compatibility
-      Mesa_Folio: ocrData?.Mesa_Folio || null,
-      Fecha: ocrData?.Fecha || null,
-      ID_Ticket: ocrData?.ID_Ticket || null,
-      Total: ocrData?.Total || null,
-      Comercio: ocrData?.Comercio || null,
-      'TC#': ocrData?.['TC#'] || null,
-      'TR#': ocrData?.['TR#'] || null,
-      'ID': ocrData?.ID || null,
-      'Fol_Vta': ocrData?.Fol_Vta || null,
-      
-      // New enhanced fields with alternative names
-      Store_Branch_Plaza: ocrData?.Store_Branch_Plaza || null,
-      Register_Station_Terminal: ocrData?.Register_Station_Terminal || null,
-      Payment_Type: ocrData?.Payment_Type || null,
-      Card_Last_4_Digits: ocrData?.Card_Last_4_Digits || null
-    }
-
-    ticketStore.set(ticketId, {
-      status: 'EXTRACTION_COMPLETE',
-      file: {
-        filename: req.file.filename,
-        path: imagePath,
-        mimetype: req.file.mimetype,
-        size: req.file.size
-      },
-      vendor_url: vendorUrl,
-      extracted_data: normalized,
-      created_at: new Date().toISOString(),
-    })
-
-    return res.status(201).json({
-      success: true,
-      data: {
-        ticket_id: ticketId,
-        status: 'EXTRACTION_COMPLETE',
-        file_info: {
-          filename: req.file.originalname,
-          size: req.file.size,
-          type: req.file.mimetype
-        },
-        vendor_url: vendorUrl,
-        extracted_data: normalized
-      }
-    })
   } catch (error) {
-    console.error('Upload error:', error)
-    return res.status(500).json({ success: false, error: 'Internal Server Error' })
+    next(error)
   }
 })
 
-// GET /api/v1/tickets/test-ocr
-router.get('/test-ocr', async (req, res) => {
+/**
+ * @route GET /api/v1/tickets
+ * @desc Get user's tickets with pagination and filtering
+ * @access Private
+ */
+router.get('/', authenticate, async (req, res, next) => {
   try {
-    console.log('[OCR] Testing OCR functionality...')
-    
-    // Test the Python script execution without actually calling the OCR function
-    const pythonExec = process.env.PYTHON_EXECUTABLE || 'python'
-    const ocrScriptPath = path.resolve(__dirname, '..', 'services', 'ocr_functionality.py')
-    const servicesDir = path.dirname(ocrScriptPath)
-    const backendDir = path.resolve(__dirname, '..')
-    
-    console.log(`[OCR] Script path: ${ocrScriptPath}`)
-    console.log(`[OCR] Services directory: ${servicesDir}`)
-    console.log(`[OCR] Backend directory: ${backendDir}`)
-    
-    const pythonCode = `
-import sys
-import json
-import os
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      processing_status,
+      search,
+      sortBy = 'created_at',
+      sortOrder = 'desc'
+    } = req.query
 
-print("Python script starting...", file=sys.stderr)
-print(f"Current working directory: {os.getcwd()}", file=sys.stderr)
-print(f"Python executable: {sys.executable}", file=sys.stderr)
-print(f"Python version: {sys.version}", file=sys.stderr)
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      status,
+      processing_status,
+      search,
+      sortBy,
+      sortOrder
+    }
 
-# Add the services directory to Python path
-services_dir = r'${servicesDir.replace(/\\/g, '\\\\')}'
-print(f"Adding to path: {services_dir}", file=sys.stderr)
-sys.path.insert(0, services_dir)
+    const result = await ticketStorageService.getUserTickets(req.user.id, options)
 
-try:
-    from ocr_functionality import extract_receipt_data
-    print("Import successful", file=sys.stderr)
-    print(json.dumps({"status": "success", "message": "OCR module imported successfully", "path": services_dir}))
-    
-except ImportError as e:
-    error_msg = f"Import failed: {str(e)}"
-    print(error_msg, file=sys.stderr)
-    print(json.dumps({"error": error_msg, "success": False}))
-    sys.exit(1)
-except Exception as e:
-    error_msg = f"Unexpected error: {str(e)}"
-    print(error_msg, file=sys.stderr)
-    print(json.dumps({"error": error_msg, "success": False}))
-    sys.exit(1)
-`
-    
-    console.log(`[OCR] Executing Python test script...`)
-    
-    const result = execSync(pythonCode, { 
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: true,
-      cwd: backendDir,
-      env: process.env // Pass all environment variables to Python subprocess
-    })
-    
-    console.log(`[OCR] Python test output: ${result}`)
-    
-    // Check if result is empty or invalid
-    if (!result || result.trim() === '') {
-      throw new Error('Python test script returned empty output')
-    }
-    
-    // Try to parse the JSON result
-    let testResult
-    try {
-      testResult = JSON.parse(result.trim())
-    } catch (parseError) {
-      console.error(`[OCR] JSON parse error: ${parseError.message}`)
-      console.error(`[OCR] Raw output: ${result}`)
-      throw new Error(`Invalid JSON output from Python test script: ${parseError.message}`)
-    }
-    
-    // Check if the result contains an error
-    if (testResult.error) {
-      throw new Error(`Python test script error: ${testResult.error}`)
-    }
-    
-    return res.json({
+    res.json({
       success: true,
-      message: 'OCR test completed successfully',
-      result: testResult
+      data: result
     })
-    
   } catch (error) {
-    console.error('[OCR] Test failed:', error)
-    return res.status(500).json({
-      success: false,
-      error: error.message,
-      details: error.stack
-    })
+    next(error)
   }
 })
 
-// GET /api/v1/tickets/:ticketId/status
-router.get('/:ticketId/status', async (req, res) => {
+/**
+ * @route GET /api/v1/tickets/:id
+ * @desc Get a specific ticket by ID
+ * @access Private
+ */
+router.get('/:id', authenticate, async (req, res, next) => {
   try {
-    const { ticketId } = req.params
-    const data = ticketStore.get(ticketId)
-    if (!data) {
-      return res.status(404).json({ success: false, error: 'Ticket not found' })
+    const { id } = req.params
+
+    if (!id) {
+      throw new ValidationError('Ticket ID is required')
     }
-    return res.json({ success: true, data: { ticket_id: ticketId, status: data.status, extracted_data: data.extracted_data } })
+
+    const ticket = await ticketStorageService.getTicketById(id, req.user.id)
+
+    res.json({
+      success: true,
+      data: ticket
+    })
   } catch (error) {
-    console.error('Status error:', error)
-    return res.status(500).json({ success: false, error: 'Internal Server Error' })
+    next(error)
   }
 })
+
+/**
+ * @route PUT /api/v1/tickets/:id
+ * @desc Update a ticket
+ * @access Private
+ */
+router.put('/:id', authenticate, async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const updateData = req.body
+
+    if (!id) {
+      throw new ValidationError('Ticket ID is required')
+    }
+
+    // Remove fields that shouldn't be updated directly
+    delete updateData.id
+    delete updateData.user_id
+    delete updateData.created_at
+    delete updateData.file_url
+    delete updateData.file_name
+    delete updateData.file_size
+    delete updateData.file_type
+
+    const ticket = await ticketStorageService.updateTicket(id, updateData)
+
+    res.json({
+      success: true,
+      message: 'Ticket updated successfully',
+      data: ticket
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+/**
+ * @route DELETE /api/v1/tickets/:id
+ * @desc Delete a ticket and its file
+ * @access Private
+ */
+router.delete('/:id', authenticate, async (req, res, next) => {
+  try {
+    const { id } = req.params
+
+    if (!id) {
+      throw new ValidationError('Ticket ID is required')
+    }
+
+    await ticketStorageService.deleteTicket(id, req.user.id)
+
+    res.json({
+      success: true,
+      message: 'Ticket deleted successfully'
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+/**
+ * @route POST /api/v1/tickets/:id/process
+ * @desc Process a ticket with OCR and data extraction
+ * @access Private
+ */
+router.post('/:id/process', authenticate, async (req, res, next) => {
+  try {
+    const { id } = req.params
+
+    if (!id) {
+      throw new ValidationError('Ticket ID is required')
+    }
+
+    // Verify ticket belongs to user
+    await ticketStorageService.getTicketById(id, req.user.id)
+
+    const result = await ticketStorageService.processTicket(id)
+
+    res.json({
+      success: true,
+      message: 'Ticket processing started',
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+/**
+ * @route GET /api/v1/tickets/stats/overview
+ * @desc Get ticket statistics for the user
+ * @access Private
+ */
+router.get('/stats/overview', authenticate, async (req, res, next) => {
+  try {
+    const stats = await ticketStorageService.getTicketStats(req.user.id)
+
+    res.json({
+      success: true,
+      data: stats
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+/**
+ * @route GET /api/v1/tickets/export
+ * @desc Export tickets data (CSV/JSON)
+ * @access Private
+ */
+router.get('/export', authenticate, async (req, res, next) => {
+  try {
+    const { format = 'json', status, processing_status } = req.query
+
+    const options = {
+      page: 1,
+      limit: 10000, // Large limit for export
+      status,
+      processing_status
+    }
+
+    const result = await ticketStorageService.getUserTickets(req.user.id, options)
+
+    if (format === 'csv') {
+      // Convert to CSV format
+      const csv = convertToCSV(result.tickets)
+      res.setHeader('Content-Type', 'text/csv')
+      res.setHeader('Content-Disposition', 'attachment; filename=tickets.csv')
+      res.send(csv)
+    } else {
+      res.json({
+        success: true,
+        data: result.tickets
+      })
+    }
+  } catch (error) {
+    next(error)
+  }
+})
+
+/**
+ * Helper function to convert tickets to CSV
+ */
+function convertToCSV(tickets) {
+  if (tickets.length === 0) return ''
+
+  const headers = [
+    'ID',
+    'File Name',
+    'Ticket Number',
+    'Vendor Name',
+    'Vendor RFC',
+    'Total Amount',
+    'Currency',
+    'Issue Date',
+    'Due Date',
+    'Status',
+    'Processing Status',
+    'Created At',
+    'Processed At'
+  ]
+
+  const rows = tickets.map(ticket => [
+    ticket.id,
+    ticket.file_name,
+    ticket.ticket_number || '',
+    ticket.vendor_name || '',
+    ticket.vendor_rfc || '',
+    ticket.total_amount || '',
+    ticket.currency || '',
+    ticket.issue_date || '',
+    ticket.due_date || '',
+    ticket.status,
+    ticket.processing_status,
+    ticket.created_at,
+    ticket.processed_at || ''
+  ])
+
+  return [headers, ...rows].map(row => 
+    row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',')
+  ).join('\n')
+}
 
 export default router
-
-

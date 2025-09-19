@@ -100,6 +100,18 @@ function DashboardContent() {
         console.log('📊 OCR data keys:', Object.keys(ocrData));
         console.log('📝 Raw text available:', !!ocrData.raw_text || !!ocrData.Full_Raw_Text);
         setExtractedTicketData(ocrData);
+      } else if (data?.extracted_data) {
+        // Handle case where extracted_data is directly in data
+        const ocrData = data.extracted_data;
+        console.log('✅ OCR data received in dashboard (direct):', ocrData);
+        console.log('📊 OCR data keys:', Object.keys(ocrData));
+        console.log('📝 Raw text available:', !!ocrData.raw_text || !!ocrData.Full_Raw_Text);
+        setExtractedTicketData(ocrData);
+      } else if (data?.data?.ticket) {
+        // Handle case where ticket data is in the ticket object
+        const ticketData = data.data.ticket;
+        console.log('✅ Ticket data received in dashboard:', ticketData);
+        setExtractedTicketData(ticketData);
       } else {
         console.warn('⚠️ No extracted_data found in dashboard response');
         console.log('📋 Full dashboard response:', data);

@@ -260,7 +260,10 @@ def detect_vendor_type(text, merchant_name=""):
         return 'costco'
     
     # **OXXO DETECTION**
-    oxxo_indicators = ['oxxo', 'cadena comercial oxxo']
+    oxxo_indicators = [
+        'oxxo', 'cadena comercial oxxo', 'facturacion electronica',
+        'fecha de venta', 'folio de venta', 'id de venta'
+    ]
     if any(indicator in text_lower or indicator in merchant_lower for indicator in oxxo_indicators):
         return 'oxxo'
     
@@ -270,6 +273,48 @@ def detect_vendor_type(text, merchant_name=""):
         return 'walmart'
     
     return 'generic'
+
+def extract_oxxo_specific_info(text):
+    """
+    Oxxo-specific information extraction based on their facturación portal.
+    Oxxo uses: Fecha de venta, Folio de venta, ID de venta, Total
+    
+    Args:
+        text (str): Full receipt text
+        
+    Returns:
+        dict: Oxxo-specific ticket and folio information
+    """
+    result = {'ticket_id': None, 'folio': None}
+    
+    # **OXXO ID PATTERNS** - Look for "ID de venta" or "ID:" followed by alphanumeric
+    id_patterns = [
+        r'ID\s+de\s+venta[:\s]*([A-Z0-9]+)',
+        r'ID[:\s]*([A-Z0-9]{10,})',
+        r'ID\s+([0-9]{2}[A-Z]{3}[0-9]{2}[A-Z0-9]{4,})',  # Oxxo pattern: 2 digits + 3 letters + 2 digits + 4+ chars
+    ]
+    
+    for pattern in id_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            result['ticket_id'] = matches[0].strip()
+            break
+    
+    # **OXXO FOLIO PATTERNS** - Look for "Folio de venta" or "Folio:"
+    folio_patterns = [
+        r'Folio\s+de\s+venta[:\s]*([0-9]+)',
+        r'Folio[:\s]*([0-9]{4,})',
+        r'Fol_Vta[:\s]*([0-9]+)',
+    ]
+    
+    for pattern in folio_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            result['folio'] = matches[0].strip()
+            break
+    
+    print(f"[ENHANCED-OCR] Oxxo-specific extraction: {result}", file=sys.stderr)
+    return result
 
 def extract_costco_specific_info(text):
     """
@@ -477,12 +522,23 @@ def extract_advanced_ticket_info(text, merchant_name=""):
     
     # **VENDOR DETECTION**
     vendor_type = detect_vendor_type(text, merchant_name)
+    print(f"[ENHANCED-OCR] Detected vendor type: {vendor_type}", file=sys.stderr)
     
     # **ENHANCED TOTAL DETECTION**
     enhanced_total = extract_total_patterns(text)
+    print(f"[ENHANCED-OCR] Enhanced total detected: {enhanced_total}", file=sys.stderr)
     
     # **VENDOR-SPECIFIC EXTRACTION**
-    if vendor_type == 'costco':
+    if vendor_type == 'oxxo':
+        print(f"[ENHANCED-OCR] Using Oxxo-specific extraction", file=sys.stderr)
+        oxxo_info = extract_oxxo_specific_info(text)
+        
+        # For Oxxo: ID de venta is primary, Folio de venta is secondary
+        extracted_id = oxxo_info['ticket_id']
+        extracted_folio = oxxo_info['folio']
+        extraction_method = 'oxxo_specific'
+        
+    elif vendor_type == 'costco':
         print(f"[ENHANCED-OCR] Using Costco-specific extraction", file=sys.stderr)
         costco_info = extract_costco_specific_info(text)
         
@@ -493,6 +549,7 @@ def extract_advanced_ticket_info(text, merchant_name=""):
         
     else:
         # **STANDARD EXTRACTION for other vendors**
+        print(f"[ENHANCED-OCR] Using standard extraction for vendor: {vendor_type}", file=sys.stderr)
         try:
             enhanced_prompt = f"""Extract the ID and Folio numbers from the receipt text. Return ONLY a JSON object with fields 'id' and 'folio'.
 
@@ -504,9 +561,11 @@ ENHANCED DETECTION RULES by VENDOR:
   - Prioritize the longest number sequence as the ticket ID
 
 - If the ticket is from OXXO:
-  - The id is usually labeled as "ID" and follows pattern: 2 numbers, then 3 letters, then 2 numbers, then 4 other characters
-  - The folio is labeled as "Fol_Vta"
+  - The id is usually labeled as "ID" or "ID de venta" and follows pattern: 2 numbers, then 3 letters, then 2 numbers, then 4 other characters
+  - The folio is labeled as "Fol_Vta", "Folio de venta", or "Folio"
+  - Look for patterns like "ID: XX123XX1234567" or "Folio: 12345"
   - If no labeled ID found, look for the longest number sequence (15+ digits) or grouped numbers with spaces
+  - Oxxo tickets typically have: Fecha de venta, Folio de venta, ID de venta, Total
 
 - If the ticket is from WALMART:
   - The id is the number after "TC#"
@@ -580,13 +639,16 @@ Vendor context: {vendor_type} - {merchant_name}"""
                     extracted_folio = potential_folio
                     break
     
-    return {
+    result = {
         'id': extracted_id,
         'folio': extracted_folio,
         'total': enhanced_total,
         'vendor_type': vendor_type,
         'extraction_method': extraction_method
     }
+    
+    print(f"[ENHANCED-OCR] Ticket info extraction result: {result}", file=sys.stderr)
+    return result
 
 def extract_receipt_data(image_path):
     """
@@ -651,7 +713,8 @@ def extract_receipt_data(image_path):
                 merchant_name = merchant_field.value_string
             date_field = receipt.fields.get("TransactionDate")
             if date_field:
-                transaction_date = date_field.value_date.strftime("%d/%m/%Y")
+                # Convert to YYYY-MM-DD format for database compatibility
+                transaction_date = date_field.value_date.strftime("%Y-%m-%d")
             total_field = receipt.fields.get("Total")
             if total_field:
                 azure_total = total_field.value_currency.amount
@@ -694,12 +757,103 @@ def extract_receipt_data(image_path):
     print(f"[ENHANCED-OCR] Text preview (first 200 chars): {full_text[:200]}...", file=sys.stderr)
     print(f"[ENHANCED-OCR] Text preview (last 200 chars): {full_text[-200:] if len(full_text) > 200 else full_text}", file=sys.stderr)
 
+    # **FALLBACK DATE EXTRACTION** if Azure didn't extract date
+    if not transaction_date or transaction_date.strip() == "":
+        print(f"[ENHANCED-OCR] No date from Azure, trying text extraction", file=sys.stderr)
+        try:
+            from datetime import datetime, timedelta
+            # Enhanced date patterns for Oxxo "Fecha de venta"
+            date_patterns = [
+                r'Fecha\s+de\s+venta[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',  # Fecha de venta: DD/MM/YYYY
+                r'Fecha[:\s]*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',  # Fecha: DD/MM/YYYY
+                r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',  # DD/MM/YYYY or DD-MM-YYYY
+                r'(\d{4}[/-]\d{1,2}[/-]\d{1,2})',   # YYYY/MM/DD or YYYY-MM-DD
+            ]
+            
+            for pattern in date_patterns:
+                matches = re.findall(pattern, full_text, re.IGNORECASE)
+                if matches:
+                    raw_date = matches[0]
+                    print(f"[ENHANCED-OCR] Raw date found: {raw_date}", file=sys.stderr)
+                    # Convert DD/MM/YYYY to YYYY-MM-DD for database compatibility
+                    try:
+                        if '/' in raw_date:
+                            parts = raw_date.split('/')
+                            if len(parts) == 3:
+                                # For DD/MM/YYYY format: parts[0]=day, parts[1]=month, parts[2]=year
+                                day, month, year = parts
+                                # Handle 2-digit years
+                                if len(year) == 2:
+                                    year = '20' + year if int(year) < 50 else '19' + year
+                                # Validate date and convert to YYYY-MM-DD (Mexican format: DD/MM/YYYY)
+                                # For Mexican tickets, the format is DD/MM/YYYY, so day=parts[0], month=parts[1], year=parts[2]
+                                # datetime(year, month, day) - so we need to reorder for DD/MM/YYYY
+                                # For DD/MM/YYYY format: day=parts[0], month=parts[1], year=parts[2]
+                                # datetime(year, month, day) - so we need to reorder
+                                # For DD/MM/YYYY: day=parts[0], month=parts[1], year=parts[2]
+                                # datetime(year, month, day) - correct order for DD/MM/YYYY
+                                # datetime(year, month, day) - correct order for DD/MM/YYYY
+                                print(f"[ENHANCED-OCR] Parsing date: {raw_date} -> day={day}, month={month}, year={year}", file=sys.stderr)
+                                parsed_date = datetime(int(year), int(month), int(day))
+                                print(f"[ENHANCED-OCR] Parsed date object: {parsed_date}", file=sys.stderr)
+                                # Check if date is reasonable (not too far in future/past)
+                                current_year = datetime.now().year
+                                current_date = datetime.now()
+                                
+                                # Allow dates from 2020 to current year + 1, but also check if it's not too far in the past
+                                if (2020 <= parsed_date.year <= current_year + 1 and 
+                                    parsed_date >= current_date - timedelta(days=365*2)):  # Allow up to 2 years in the past
+                                    transaction_date = parsed_date.strftime('%Y-%m-%d')
+                                    print(f"[ENHANCED-OCR] Date converted: {raw_date} -> {transaction_date}", file=sys.stderr)
+                                    break
+                                else:
+                                    print(f"[ENHANCED-OCR] Date out of range, skipping: {raw_date} (year: {parsed_date.year}, current: {current_year})", file=sys.stderr)
+                    except ValueError as ve:
+                        print(f"[ENHANCED-OCR] Invalid date format, skipping: {raw_date} - {ve}", file=sys.stderr)
+        except Exception as e:
+            print(f"[ENHANCED-OCR] Fallback date extraction error: {str(e)}", file=sys.stderr)
+
     # **ENHANCED TICKET EXTRACTION with vendor-specific logic**
+    print(f"[ENHANCED-OCR] Merchant name from Azure: '{merchant_name}'", file=sys.stderr)
+    
+    # Enhanced merchant detection - prioritize text-based detection over Azure
+    print(f"[ENHANCED-OCR] Azure detected merchant: '{merchant_name}'", file=sys.stderr)
+    
+    # Check if we should override Azure detection with text-based detection
+    text_based_merchant = None
+    
+    # Enhanced Oxxo detection with multiple patterns
+    oxxo_patterns = [
+        'oxxo', 'oxo', 'oxxo express', 'oxxo expresso', 'oxxo store',
+        'facturacion electronica', 'fecha de venta', 'folio de venta', 'id de venta'
+    ]
+    
+    if any(pattern in full_text.lower() for pattern in oxxo_patterns):
+        text_based_merchant = 'Oxxo'
+        print(f"[ENHANCED-OCR] Detected Oxxo from text patterns", file=sys.stderr)
+    elif 'walmart' in full_text.lower():
+        text_based_merchant = 'Walmart'
+        print(f"[ENHANCED-OCR] Detected Walmart from text", file=sys.stderr)
+    elif 'costco' in full_text.lower():
+        text_based_merchant = 'Costco'
+        print(f"[ENHANCED-OCR] Detected Costco from text", file=sys.stderr)
+    
+    # Use text-based detection if available, otherwise fall back to Azure
+    if text_based_merchant:
+        merchant_name = text_based_merchant
+        print(f"[ENHANCED-OCR] Using text-based merchant detection: {merchant_name}", file=sys.stderr)
+    elif not merchant_name or merchant_name.strip() == "":
+        print(f"[ENHANCED-OCR] No merchant name from Azure or text, using 'Unknown'", file=sys.stderr)
+        merchant_name = 'Unknown'
+    
     ticket_info = extract_advanced_ticket_info(full_text, merchant_name)
     receipt_id = ticket_info['id']
     folio = ticket_info['folio']
     enhanced_total = ticket_info['total']
     vendor_type = ticket_info['vendor_type']
+    
+    print(f"[ENHANCED-OCR] Final merchant name: '{merchant_name}'", file=sys.stderr)
+    print(f"[ENHANCED-OCR] Detected vendor type: '{vendor_type}'", file=sys.stderr)
     
     # **NEW FIELD EXTRACTION: Store/Branch/Plaza, Register/Station/Terminal, Payment Type, Card Last 4 Digits**
     store_branch_plaza = extract_store_branch_plaza(full_text, merchant_name)

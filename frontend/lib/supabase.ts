@@ -14,7 +14,8 @@ export const createSupabaseClient = () => supabase
 export const TABLES = {
   USER_PROFILES: 'user_profiles',
   CFDI_TASKS: 'cfdi_tasks',
-  TASK_STEPS: 'task_steps'
+  TASK_STEPS: 'task_steps',
+  TICKETS: 'tickets'
 } as const
 
 export type Database = {
@@ -115,6 +116,86 @@ export type Database = {
           completed_at?: string | null
           error_message?: string | null
           result?: any | null
+        }
+      }
+      tickets: {
+        Row: {
+          id: string
+          user_id: string
+          file_name: string
+          file_size: number
+          file_type: string
+          file_url: string
+          status: string
+          processing_status: string
+          created_at: string | null
+          updated_at: string | null
+          error_message: string | null
+          mesa_folio: string | null
+          id_ticket: string | null
+          store_branch_plaza: string | null
+          payment_type: string | null
+          tc_number: string | null
+          ticket_id: string | null
+          fecha: string | null
+          total: number | null
+          register_station_terminal: string | null
+          card_last_4_digits: string | null
+          tr_number: string | null
+          fol_vta: string | null
+          comercio: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          file_name: string
+          file_size: number
+          file_type: string
+          file_url: string
+          status?: string
+          processing_status?: string
+          created_at?: string | null
+          updated_at?: string | null
+          error_message?: string | null
+          mesa_folio?: string | null
+          id_ticket?: string | null
+          store_branch_plaza?: string | null
+          payment_type?: string | null
+          tc_number?: string | null
+          ticket_id?: string | null
+          fecha?: string | null
+          total?: number | null
+          register_station_terminal?: string | null
+          card_last_4_digits?: string | null
+          tr_number?: string | null
+          fol_vta?: string | null
+          comercio?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          file_url?: string
+          status?: string
+          processing_status?: string
+          created_at?: string | null
+          updated_at?: string | null
+          error_message?: string | null
+          mesa_folio?: string | null
+          id_ticket?: string | null
+          store_branch_plaza?: string | null
+          payment_type?: string | null
+          tc_number?: string | null
+          ticket_id?: string | null
+          fecha?: string | null
+          total?: number | null
+          register_station_terminal?: string | null
+          card_last_4_digits?: string | null
+          tr_number?: string | null
+          fol_vta?: string | null
+          comercio?: string | null
         }
       }
     }
