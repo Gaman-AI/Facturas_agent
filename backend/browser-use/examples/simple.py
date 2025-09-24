@@ -117,8 +117,8 @@ Forma de Pago: Tarjeta de crédito
 1. Cierra el popup que aparece automaticamente al inicio.
 2. Rellena Fecha de venta: al presionar en el campo, se abrirá un calendario, selecciona la fecha proporcionada.
 3. Rellena Folio de venta, ID de venta y Total (2 Decimales).
-4. Presiona "Validar Ticket": <span style="color:#515659; font:11px Lato,sans-serif; font-weight:bold; float: right; padding-right: 14px">Validar Ticket</span> (luego espera 3 segundos, pues es posible que la página tenga que cargar).
-5. Presiona "Continua   r" (luego espera 3 segundos, pues es posible que la página tenga que cargar).
+4. **Validar Ticket**: Presiona el botón **"Validar Ticket"**. Espera 3 segundos mientras la página carga. Es muy importante presionar este botón correctamente para poder continuar con el proceso.
+5. **Continuar**: Haz clic en el botón **"Continuar"**. Espera otros 3 segundos para la carga de la página. Es muy importante presionar este botón correctamente para poder continuar con el proceso.
 6. Rellena 
   - RFC,
   - Nombre de Razón Social (Selecciona el campo y luego espera 3 segundos, pues es posible que la página tenga que cargar, después vielve a seleccionar el campo y escribe el valor proporcionado), 
@@ -129,12 +129,48 @@ Forma de Pago: Tarjeta de crédito
   - Delegación / Municipio, 
   - Código Postal. (luego espera 3 segundos, selecciona otro campo cualquiera que ya esté rellenado y espera 3 segundos más, pues es posible que la página tenga que cargar).
 
-7. Rellena los siguientes campos (IMPORTANTE: Estos son dropdowns. Once the dropdown list is visible and scrollable, the next step is to scroll inside the dropdown list to locate the correct value and click it to select): 
-  - Estado,
-  - Régimen Fiscal, 
-  - Uso CFDI.
+7. Rellena los siguientes campos con menus desplegables.
 
+  *PROCEDIMIENTO:* El procedimiento para rellenar los menus desplegables es el siguiente: 
+    - Haz click en el menú desplegable, espera un segundo y asegúrate de que el menú se haya desplegado correctamente.
+    - Navega con la flecha hacia abajo hasta que la opción correcta se muestre en la lista y selecciónala. Aunque creas que encontraste la opción correcta y la quieras clickear, esto no servirá, es absolutamente necesario que te desplaces con las flechas hasta estar sobre la opción correcta.
+    - Sigue desplazándote hacia abajo hasta que estes sobre la opción correcta, es posible que tengas que presionar la flecha hacia abajo más de 30 veces, pero continua haciendo esto hasta que estes sobre la opción correcta.
+    - Selecciona la opción correcta.
+
+  Los campos desplegables son los siguientes: 
+    - Estado,
+    - Régimen Fiscal, 
+    - Uso CFDI.
 """
+
+
+oxxo_dd = """
+**Objetivo**:
+Rellenar el campo desplegable de Estado con el valor *SAN LUIS POTOSI* en la página de facturación de OXXO: [https://www4.oxxo.com:9443/facturacionElectronica-web/views/layout/inicio.do](https://www4.oxxo.com:9443/facturacionElectronica-web/views/layout/inicio.do)
+
+**Detalles de facturación**:
+
+* **Fecha de venta**: 15/09/2025
+* **Folio de venta**: 2219205
+* **ID de venta**: 10LGA50YMB1
+* **Total**: 65.50
+* **Estado**: SAN LUIS POTOSI
+
+**Instrucciones**:
+
+1. **Cerrar popup**: Al ingresar al sitio, cierra el popup que aparece automáticamente.
+2. **Rellenar campos de ticket**:
+
+   * Haz clic en el campo de "Fecha de venta" y selecciona la fecha correspondiente del calendario (15/09/2025).
+   * Ingresa el **Folio de venta** (2219205), el **ID de venta** (10LGA50YMB1), y el **Total** (65.50) con 2 decimales.
+3. **Validar Ticket**: Presiona el botón **"Validar Ticket"**. Espera 3 segundos mientras la página carga. Es muy importante presionar este botón correctamente para poder continuar con el proceso.
+4. **Continuar**: Haz clic en el botón **"Continuar"**. Espera otros 3 segundos para la carga de la página. Es muy importante presionar este botón correctamente para poder continuar con el proceso.
+5. **Rellenar el siguiente campo desplegable**:
+
+     * **Estado**: SAN LUIS POTOSI
+       Presiona el índice del menú desplegable de Estado (posiblemente índice 79), luego navega con la flecha hacia abajo hasta que la opción correcta se muestre en la lista y selecciónala. Aunque creas que encontraste la opción correcta y la quieras clickear, esto no servirá, es absolutamente necesario que te desplaces con las flechas hasta estar sobre la opción correcta. Sigue desplazándote hacia abajo hasta quue estes sobre la opción correcta, es posible que tengas que presionar la flecha hacia abajo más de 30 veces, pero continua haciendo esto hasta que estes sobre la opción correcta y selecciónala.
+"""
+
 
 agent = Agent(task=oxxo_task, llm=llm)
 
