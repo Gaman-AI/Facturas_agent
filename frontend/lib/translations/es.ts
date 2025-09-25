@@ -89,9 +89,11 @@ const es: Translations = {
   'nav.home': 'Inicio',
   'nav.dashboard': 'Panel de Control',
   'nav.tasks': 'Tareas',
-  'nav.profile': 'Perfil',
+  'nav.profile': 'Mi Perfil',
   'nav.settings': 'Configuración',
   'nav.logout': 'Cerrar Sesión',
+  'nav.viewHistory': 'Ver Historial',
+  'nav.activeTasks': 'Tareas Activas',
 
   // Authentication
   'auth.login': 'Iniciar Sesión',
@@ -262,6 +264,7 @@ const es: Translations = {
   'error.serverError': 'Error del servidor',
   'error.registrationFailed': 'Error en el registro. Inténtalo de nuevo.',
   'error.loginFailed': 'Error en el inicio de sesión',
+  'error.profileUpdateFailed': 'Error al actualizar el perfil',
 
   // Success Messages
   'success.registrationComplete': 'Registro completado exitosamente',
@@ -288,6 +291,8 @@ const es: Translations = {
   'tasks.automationDescription': 'Automatiza solicitudes de facturas CFDI en portales de proveedores de manera inteligente',
   'tasks.createNewTask': 'Nueva Tarea de Automatización CFDI',
   'tasks.formDescription': 'Completa los datos para automatizar la solicitud de facturación en el portal del proveedor',
+  'tasks.notFound': 'Tarea No Encontrada',
+  'tasks.notFoundDescription': 'La tarea que buscas no existe o ha sido eliminada',
   'tasks.vendorInfo': 'Información del Proveedor',
   'tasks.vendorUrl': 'URL del Portal de Facturación',
   'tasks.vendorUrlPlaceholder': 'https://facturacion.proveedor.com',
@@ -374,8 +379,11 @@ const es: Translations = {
   'tasks.monitor.backToDashboard': 'Volver al Panel de Control',
   'tasks.monitor.description': 'Crear y monitorear tareas de automatización del navegador en tiempo real con interfaz de doble panel',
   'tasks.monitor.activeDescription': 'Monitorea tu tarea de automatización del navegador en tiempo real',
+  'tasks.monitor.monitoring': 'Monitoreo de Tareas',
+  'tasks.monitor.taskId': 'ID de Tarea',
   
   // Monitor Status
+  'monitor.status.title': 'Estado',
   'monitor.status.running': 'En Ejecución',
   'monitor.status.paused': 'Pausada',
   'monitor.status.completed': 'Completada',
@@ -391,6 +399,8 @@ const es: Translations = {
   'monitor.liveView.takeControl': 'Tomar Control',
   'monitor.liveView.resumeAgent': 'Reanudar Agente',
   'monitor.liveView.openExternal': 'Abrir en Nueva Pestaña',
+  'monitor.liveView.fullscreen': 'Pantalla Completa',
+  'monitor.liveView.pressEscToExit': 'Presiona ESC para salir de pantalla completa',
   
   // Monitor Sidebar
   'monitor.sidebar.title': 'Monitor de Tareas',
@@ -403,16 +413,25 @@ const es: Translations = {
   'common.connected': 'Conectado',
   'common.restart': 'Reiniciar',
   'common.retry': 'Reintentar',
+  'common.close': 'Cerrar',
+  'common.notProvided': 'No proporcionado',
   'analytics.title': 'Analíticas de Tareas',
   'analytics.subtitle': 'Perspectivas de rendimiento y métricas para la tarea',
 
   // Profile
   'profile.title': 'Mi Perfil',
+  'profile.subtitle': 'Ver la información de tu empresa y datos fiscales',
   'profile.edit': 'Editar Perfil',
+  'profile.editSubtitle': 'Actualiza la información de tu empresa y datos fiscales',
   'profile.save': 'Guardar Cambios',
+  'profile.personalInfo': 'Información Personal',
   'profile.companyInfo': 'Información de la Empresa',
-  'profile.addressInfo': 'Domicilio Fiscal',
+  'profile.addressInfo': 'Información de Dirección',
   'profile.taxInfo': 'Información Fiscal',
+  'profile.buildingNumbers': 'Números de Edificio',
+  'profile.editCompanyDescription': 'Actualiza los detalles de tu empresa e información de contacto',
+  'profile.editAddressDescription': 'Actualiza la información de dirección de tu negocio',
+  'profile.completeFirst': 'Necesitas completar tu perfil primero antes de poder editarlo',
   'profile.noProfile': 'No se encontró información del perfil',
   'profile.basicFunctions': 'Puedes usar las funciones básicas del sistema sin completar tu perfil',
 

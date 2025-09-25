@@ -143,10 +143,10 @@ export default function TaskMonitorPage() {
           <div className="max-w-4xl mx-auto p-6 flex-1">
             <div className="text-center">
               <h1 className="text-xl font-semibold text-teal-800">
-                Task Not Found
+                {t('tasks.notFound', 'Task Not Found')}
               </h1>
               <p className="text-teal-600">
-                The task you're looking for doesn't exist or has been removed.
+                {t('tasks.notFoundDescription', 'The task you\'re looking for doesn\'t exist or has been removed.')}
               </p>
             </div>
           </div>
@@ -166,19 +166,19 @@ export default function TaskMonitorPage() {
         <div className="max-w-4xl mx-auto p-6">
           <div className="mb-6">
             <h1 className="text-xl font-semibold text-teal-800">
-              Task Monitor
+              {t('tasks.monitor.title', 'Task Monitor')}
             </h1>
             <p className="text-teal-600">
-              Monitor the progress of your automation task.
+              {t('tasks.monitor.description', 'Monitor the progress of your automation task.')}
             </p>
           </div>
 
           <div className="space-y-6">
             <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
               <CardHeader>
-                <h2 className="text-lg font-medium text-teal-700 mb-2">Task Monitoring</h2>
-                <p className="text-teal-500">Task ID: {taskId}</p>
-                <p className="text-teal-500">Status: {taskStatus}</p>
+                <h2 className="text-lg font-medium text-teal-700 mb-2">{t('tasks.monitor.monitoring', 'Task Monitoring')}</h2>
+                <p className="text-teal-500">{t('tasks.monitor.taskId', 'Task ID')}: {taskId}</p>
+                <p className="text-teal-500">{t('monitor.status.title', 'Status')}: {t(`monitor.status.${taskStatus}`, taskStatus)}</p>
               </CardHeader>
             </Card>
           </div>

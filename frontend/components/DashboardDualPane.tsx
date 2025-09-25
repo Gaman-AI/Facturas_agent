@@ -26,6 +26,8 @@ interface FullscreenModalProps {
 }
 
 function FullscreenModal({ isOpen, onClose, url, title = 'Live Browser View' }: FullscreenModalProps) {
+  const { t } = useLanguage()
+  
   if (!isOpen) return null
 
   return (
@@ -36,10 +38,10 @@ function FullscreenModal({ isOpen, onClose, url, title = 'Live Browser View' }: 
              <h2 className="text-lg font-semibold text-[#164F5B]">{title}</h2>
              <div className="flex items-center gap-2">
                <span className="text-sm text-[#527779]">
-                 Press ESC to exit fullscreen
+                 {t('monitor.liveView.pressEscToExit', 'Press ESC to exit fullscreen')}
                </span>
                <Button size="sm" variant="outline" onClick={onClose} className="border-[#208692] text-[#208692] hover:bg-[#E5EADF]">
-                 ✕ Close
+                 ✕ {t('common.close', 'Close')}
                </Button>
              </div>
            </div>
@@ -898,17 +900,17 @@ export function DashboardDualPane({
          <div className="p-3 bg-[#E5EADF] border-b border-[#C7D8D0] flex items-center justify-between flex-shrink-0">
            <div className="flex items-center gap-2">
              <Monitor className="w-4 h-4 text-[#527779]" />
-             <span className="text-sm font-medium text-[#164F5B]">Live Browser View</span>
+             <span className="text-sm font-medium text-[#164F5B]">{t('monitor.liveView.title', 'Live Browser View')}</span>
            </div>
            <div className="flex items-center gap-2">
              <Badge variant="outline" className="text-xs border-[#208692] text-[#208692] bg-[#E5EADF]">
-               {taskState.status}
+               {t(`monitor.status.${taskState.status}`, taskState.status)}
              </Badge>
              <Button size="sm" variant="outline" onClick={handleRefreshView} className="border-[#208692] text-[#208692] hover:bg-[#E5EADF]">
-               🔄 Refresh
+               🔄 {t('common.refresh', 'Refresh')}
              </Button>
              <Button size="sm" variant="outline" onClick={() => setIsFullscreenModal(true)} disabled={!currentLiveViewUrl} className="border-[#208692] text-[#208692] hover:bg-[#E5EADF]">
-               ⛶ Fullscreen
+               ⛶ {t('monitor.liveView.fullscreen', 'Fullscreen')}
              </Button>
              {viewportSize.width > 0 && viewportSize.height > 0 && (
                <Badge variant="secondary" className="text-xs bg-[#C7D8D0] text-[#164F5B]">

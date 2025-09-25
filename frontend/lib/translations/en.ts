@@ -93,9 +93,11 @@ const en: Translations = {
   'nav.home': 'Home',
   'nav.dashboard': 'Dashboard',
   'nav.tasks': 'Tasks',
-  'nav.profile': 'Profile',
+  'nav.profile': 'My Profile',
   'nav.settings': 'Settings',
   'nav.logout': 'Logout',
+  'nav.viewHistory': 'View History',
+  'nav.activeTasks': 'Active Tasks',
 
   // Authentication
   'auth.login': 'Login',
@@ -266,6 +268,7 @@ const en: Translations = {
   'error.serverError': 'Server error',
   'error.registrationFailed': 'Registration failed. Please try again.',
   'error.loginFailed': 'Login failed',
+  'error.profileUpdateFailed': 'Failed to update profile',
 
   // Success Messages
   'success.registrationComplete': 'Registration completed successfully',
@@ -292,6 +295,8 @@ const en: Translations = {
   'tasks.automationDescription': 'Automate CFDI invoice requests on vendor portals intelligently',
   'tasks.createNewTask': 'New CFDI Automation Task',
   'tasks.formDescription': 'Complete the data to automate the billing request on the vendor portal',
+  'tasks.notFound': 'Task Not Found',
+  'tasks.notFoundDescription': 'The task you\'re looking for doesn\'t exist or has been removed.',
   'tasks.vendorInfo': 'Vendor Information',
   'tasks.vendorUrl': 'Billing Portal URL',
   'tasks.vendorUrlPlaceholder': 'https://billing.vendor.com',
@@ -378,8 +383,11 @@ const en: Translations = {
   'tasks.monitor.backToDashboard': 'Back to Dashboard',
   'tasks.monitor.description': 'Create and monitor browser automation tasks in real-time with dual pane interface',
   'tasks.monitor.activeDescription': 'Monitor your browser automation task in real-time',
+  'tasks.monitor.monitoring': 'Task Monitoring',
+  'tasks.monitor.taskId': 'Task ID',
   
   // Monitor Status
+  'monitor.status.title': 'Status',
   'monitor.status.running': 'Running',
   'monitor.status.paused': 'Paused',
   'monitor.status.completed': 'Completed',
@@ -395,6 +403,8 @@ const en: Translations = {
   'monitor.liveView.takeControl': 'Take Control',
   'monitor.liveView.resumeAgent': 'Resume Agent',
   'monitor.liveView.openExternal': 'Open in New Tab',
+  'monitor.liveView.fullscreen': 'Fullscreen',
+  'monitor.liveView.pressEscToExit': 'Press ESC to exit fullscreen',
   
   // Monitor Sidebar
   'monitor.sidebar.title': 'Task Monitor',
@@ -407,16 +417,25 @@ const en: Translations = {
   'common.connected': 'Connected',
   'common.restart': 'Restart',
   'common.retry': 'Retry',
+  'common.close': 'Close',
+  'common.notProvided': 'Not provided',
   'analytics.title': 'Task Analytics',
   'analytics.subtitle': 'Performance insights and metrics for task',
 
   // Profile
   'profile.title': 'My Profile',
+  'profile.subtitle': 'View your company and tax information',
   'profile.edit': 'Edit Profile',
+  'profile.editSubtitle': 'Update your company and tax information',
   'profile.save': 'Save Changes',
+  'profile.personalInfo': 'Personal Information',
   'profile.companyInfo': 'Company Information',
-  'profile.addressInfo': 'Tax Address',
+  'profile.addressInfo': 'Address Information',
   'profile.taxInfo': 'Tax Information',
+  'profile.buildingNumbers': 'Building Numbers',
+  'profile.editCompanyDescription': 'Update your company details and contact information',
+  'profile.editAddressDescription': 'Update your business address information',
+  'profile.completeFirst': 'You need to complete your profile first before you can edit it.',
   'profile.noProfile': 'No profile information found',
   'profile.basicFunctions': 'You can use the basic system functions without completing your profile',
 
