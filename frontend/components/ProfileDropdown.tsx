@@ -100,7 +100,7 @@ export const ProfileDropdown = () => {
                onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
              >
                <User className="w-4 h-4" style={{ color: '#527779' }} />
-               <span>My Profile</span>
+               <span>{t('nav.profile', 'My Profile')}</span>
              </button>
 
             <button
@@ -111,7 +111,7 @@ export const ProfileDropdown = () => {
               onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
             >
               <BarChart3 className="w-4 h-4" style={{ color: '#527779' }} />
-              <span>View History</span>
+              <span>{t('nav.viewHistory', 'View History')}</span>
             </button>
 
             <button
@@ -122,7 +122,7 @@ export const ProfileDropdown = () => {
               onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
             >
               <Monitor className="w-4 h-4" style={{ color: '#527779' }} />
-              <span>Active Tasks</span>
+              <span>{t('nav.activeTasks', 'Active Tasks')}</span>
             </button>
 
             {/* Logout Button */}

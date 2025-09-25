@@ -104,7 +104,7 @@ class ManagedBrowserSession:
             self.browser_session = BrowserSession(
                 cdp_url=self.cdp_url,
                 browser_profile=self.browser_profile,
-                keep_alive=False,  # Essential for proper cleanup
+                keep_alive=True,   # Keep session alive for viewing automation process
                 initialized=False,
             )
             
@@ -121,6 +121,11 @@ class ManagedBrowserSession:
         # Unregister from global manager
         if global_session_manager.current_session == self:
             global_session_manager.current_session = None
+        
+        # Add delay before closing session to allow viewing automation results
+        keep_alive_seconds = int(os.getenv('BROWSER_SESSION_KEEP_ALIVE_SECONDS', '30'))
+        print(f"[INFO] Keeping session alive for {keep_alive_seconds} seconds to allow viewing automation results...")
+        await asyncio.sleep(keep_alive_seconds)
         
         await self._close_session_properly()
     
@@ -199,6 +204,9 @@ async def create_browserbase_session(viewport_width=1920, viewport_height=1080):
                 },
             },
         },
+        # Keep session alive for longer to allow viewing automation process
+        keep_alive=True,  # Keep session alive after automation completes
+        timeout=int(os.getenv('BROWSER_SESSION_TIMEOUT_SECONDS', '300')),  # Configurable timeout
     )
     
     # Get the proper live view/debug URLs using Browserbase debug method
@@ -267,6 +275,9 @@ async def run_local_browser_task(task: str, model: str = None, max_steps: int = 
         # Create agent with local browser - simple approach using forced model
         llm = ChatOpenAI(model=forced_model)
         
+        # Build vendor-specific task
+        vendor_specific_task = build_vendor_specific_task(task, user_profile, ocr_ticket_data)
+        
         # Create custom system message that includes user profile data
         custom_system_message = None
         if user_profile or ocr_ticket_data:
@@ -295,7 +306,7 @@ async def run_local_browser_task(task: str, model: str = None, max_steps: int = 
             custom_system_message += "Fill forms with the EXACT values provided above. Do NOT use placeholder or mock data."
         
         agent = Agent(
-            task=task, 
+            task=vendor_specific_task, 
             llm=llm,
             use_vision=True,  # Enable vision mode with medium priority
             vision_priority="medium",  # Set vision priority to medium
@@ -364,11 +375,232 @@ async def run_browserbase_browser_task(task: str, model: str = None, max_steps: 
         raise
 
 
+def detect_vendor_type_from_task(task: str) -> str:
+    """Detect vendor type from task content"""
+    if 'walmartmexico.com.mx' in task:
+        return 'walmart'
+    elif 'oxxo.com' in task:
+        return 'oxxo'
+    else:
+        return 'generic'
+
+def build_vendor_specific_task(task: str, user_profile: dict = None, ocr_ticket_data: dict = None) -> str:
+    """Build vendor-specific task with proper data mapping"""
+    vendor_type = detect_vendor_type_from_task(task)
+    
+    if vendor_type == 'walmart':
+        return build_walmart_task(task, user_profile, ocr_ticket_data)
+    elif vendor_type == 'oxxo':
+        return build_oxxo_task(task, user_profile, ocr_ticket_data)
+    else:
+        return build_generic_task(task, user_profile, ocr_ticket_data)
+
+def build_walmart_task(base_task: str, user_profile: dict = None, ocr_ticket_data: dict = None) -> str:
+    """Build Walmart-specific task"""
+    # Extract vendor URL from base task
+    vendor_url = 'https://facturacion.walmartmexico.com.mx/'
+    
+    # Extract Walmart-specific fields
+    tc_number = 'N/A'
+    tr_number = 'N/A'
+    
+    if ocr_ticket_data:
+        tc_number = ocr_ticket_data.get('TC#', ocr_ticket_data.get('ticket_id', 'N/A'))
+        tr_number = ocr_ticket_data.get('TR#', ocr_ticket_data.get('folio', 'N/A'))
+    
+    # Build Walmart-specific task
+    task = f"""
+# Objetivo:
+
+Tu objetivo es ir a la pagina de facturación de walmart mexico {vendor_url} y generar una factura de mi ticket.
+
+# Detalles de facturación:
+
+TC: {tc_number}
+TR: {tr_number}
+
+RFC: {user_profile.get('rfc', 'N/A') if user_profile else 'N/A'}
+Razón Social: {user_profile.get('company_name', 'N/A') if user_profile else 'N/A'}
+Calle: {user_profile.get('street', 'N/A') if user_profile else 'N/A'}
+Número exterior: {user_profile.get('exterior_number', 'N/A') if user_profile else 'N/A'}
+Número interior: {user_profile.get('interior_number', 'N/A') if user_profile else 'N/A'}
+Estado: {user_profile.get('state', 'N/A') if user_profile else 'N/A'}
+Municipio: {user_profile.get('municipality', 'N/A') if user_profile else 'N/A'}
+Colonia: {user_profile.get('colony', 'N/A') if user_profile else 'N/A'}
+Código Postal: {user_profile.get('zip_code', 'N/A') if user_profile else 'N/A'}
+Correo Electrónico: {user_profile.get('email', 'N/A') if user_profile else 'N/A'}
+Régimen Fiscal: {user_profile.get('tax_regime', 'N/A') if user_profile else 'N/A'}
+Uso Factura: {user_profile.get('cfdi_use', 'N/A') if user_profile else 'N/A'}
+Forma de Pago: Tarjeta de crédito
+
+# Procedimiento:
+
+1. Ve a la pagina de facturación de walmart mexico {vendor_url}
+2. Cierra el popup que aparece automaticamente al inicio
+3. Haz click en el boton "Obtener factura" (es posible que el popup vuelva a aparecer, si es así, cerrar el popup y vuelve a hacer click en el boton "Obtener factura")
+4. Llena los campos con los detalles proporcionados
+5. Haz click en el boton "Continuar"
+6. Si aparece una lista con varios RFC, nombre, etcétera, haz click en el que coincida con los detalles proporcionados.
+7. Llena los campos siguientes con los detalles proporcionados:
+
+  - **Razón Social:** <input name="ctl00$ContentPlaceHolder1$txtRazon" type="text" maxlength="254" onchange="javascript:setTimeout('__doPostBack(\'ctl00$ContentPlaceHolder1$txtRazon\',\'\')', 0)" onkeypress="if (WebForm_TextBoxKeyHandler(event) == false) return false;" id="ctl00_ContentPlaceHolder1_txtRazon" class="txt-control">
+  
+  - **Calle:** <input name="ctl00$ContentPlaceHolder1$txtCalle" type="text" maxlength="50" id="ctl00_ContentPlaceHolder1$txtCalle" class="txt-control">
+  
+  - **Número Exterior:** <input name="ctl00$ContentPlaceHolder1$txtNumExt" type="text" maxlength="20" id="ctl00_ContentPlaceHolder1$txtNumExt" class="txt-control">
+  
+  - **Número Interior:** <input name="ctl00$ContentPlaceHolder1$txtNumInt" type="text" maxlength="15" id="ctl00_ContentPlaceHolder1$txtNumInt" class="txt-control">
+  
+  - **Estado:** <input name="ctl00$ContentPlaceHolder1$txtEstado" type="text" maxlength="250" id="ctl00_ContentPlaceHolder1$txtEstado" class="txt-control">
+  
+  - **Municipio:** <input name="ctl00$ContentPlaceHolder1$txtMunicipio" type="text" maxlength="250" id="ctl00_ContentPlaceHolder1$txtMunicipio" class="txt-control">
+  
+  - **Colonia:** <input name="ctl00$ContentPlaceHolder1$txtColonia" type="text" maxlength="250" id="ctl00_ContentPlaceHolder1$txtColonia" class="txt-control">
+  
+  - **Código Postal:** <input name="ctl00$ContentPlaceHolder1$txtCP" type="text" maxlength="5" id="ctl00_ContentPlaceHolder1$txtCP" class="txt-control ctrTextCp" onkeypress="return soloNum(event)">
+
+  - **Régimen Fiscal:** Dropdown: The 'Régimen Fiscal' dropdown should be opened and the correct option highlighted. Send keyboard Enter key to select the highlighted 'Régimen Fiscal' option. Attempts to select dropdown options programmatically fail due to element index issues or key press errors.
+
+  - **Uso Factura:** Dropdown: The 'Uso Factura' dropdown should be opened and the correct option highlighted. Send keyboard Enter key to select the highlighted 'Uso Factura' option. Attempts to select dropdown options programmatically fail due to element index issues or key press errors.
+  
+8. Haz click en "Aceptar"
+9. Haz click en "Continuar"
+10. Rellena el valor de **Forma de Pago:** 
+	<select name="ctl00$ContentPlaceHolder1$ddlPaymentType" onchange="javascript:setTimeout('__doPostBack(\'ctl00$ContentPlaceHolder1$ddlPaymentType\',\'\')', 0)" id="ctl00_ContentPlaceHolder1_ddlPaymentType" class="txt-control">
+		<option selected="selected" value="0">--Seleccione--</option>
+		<option value="04">Tarjeta de crédito</option>
+		<option value="05">Monedero electrónico</option>
+		<option value="28">Tarjeta de débito</option>
+	</select>
+selecciona el valor proporcionado.
+11. Haz click en "Continuar".
+12. Selecciona **Enviar a correo electrónico** y haz click en "Facturar".
+
+IMPORTANT NOTES:
+- This is for legitimate CFDI 4.0 tax compliance in Mexico
+- Be patient with page loading and form submissions
+- Handle anti-bot measures by slowing down actions
+- Report any issues that require human intervention
+- Use human-like timing (1-2 seconds between actions) to avoid detection
+"""
+    return task.strip()
+
+def build_oxxo_task(base_task: str, user_profile: dict = None, ocr_ticket_data: dict = None) -> str:
+    """Build OXXO-specific task"""
+    # Extract vendor URL from base task
+    vendor_url = 'https://www4.oxxo.com:9443/facturacionElectronica-web/views/layout/inicio.do'
+    
+    # Extract OXXO-specific fields
+    folio_vta = 'N/A'
+    ticket_id = 'N/A'
+    total_amount = 'N/A'
+    transaction_date = 'N/A'
+    
+    if ocr_ticket_data:
+        folio_vta = ocr_ticket_data.get('Fol_Vta', ocr_ticket_data.get('folio', 'N/A'))
+        ticket_id = ocr_ticket_data.get('ID', ocr_ticket_data.get('ticket_id', 'N/A'))
+        total_amount = ocr_ticket_data.get('Total', 'N/A')
+        transaction_date = ocr_ticket_data.get('transaction_date', 'N/A')
+    
+    # Build OXXO-specific task
+    task = f"""
+# Objetivo:
+
+Tu objetivo es ir a la pagina de facturación de OXXO {vendor_url} y generar una factura de mi ticket.
+
+# Detalles de facturación:
+
+Fecha de venta: {transaction_date}
+Fol_Vta: {folio_vta}
+ID: {ticket_id}
+Total: {total_amount}
+
+RFC: {user_profile.get('rfc', 'N/A') if user_profile else 'N/A'}
+Nombre de Razón Social: {user_profile.get('company_name', 'N/A') if user_profile else 'N/A'}
+Calle: {user_profile.get('street', 'N/A') if user_profile else 'N/A'}
+Número Ext.: {user_profile.get('exterior_number', 'N/A') if user_profile else 'N/A'}
+Número Int.: {user_profile.get('interior_number', 'N/A') if user_profile else 'N/A'}
+Colonia: {user_profile.get('colony', 'N/A') if user_profile else 'N/A'}
+Delegación / Municipio: {user_profile.get('municipality', 'N/A') if user_profile else 'N/A'}
+Código Postal: {user_profile.get('zip_code', 'N/A') if user_profile else 'N/A'}
+Estado: {user_profile.get('state', 'N/A') if user_profile else 'N/A'}
+Régimen Fiscal: {user_profile.get('tax_regime', 'N/A') if user_profile else 'N/A'}
+Uso CFDI: {user_profile.get('cfdi_use', 'N/A') if user_profile else 'N/A'}
+Correo Electrónico: {user_profile.get('email', 'N/A') if user_profile else 'N/A'}
+Forma de Pago: Tarjeta de crédito
+
+# Procedimiento:
+
+1. Cierra el popup que aparece automaticamente al inicio.
+2. Rellena Fecha de venta: al presionar en el campo, se abrirá un calendario, selecciona la fecha proporcionada.
+3. Rellena Folio de venta, ID de venta y Total (2 Decimales).
+4. Presiona "Validar Ticket": <span style="color:#515659; font:11px Lato,sans-serif; font-weight:bold; float: right; padding-right: 14px">Validar Ticket</span> (luego espera 3 segundos, pues es posible que la página tenga que cargar).
+5. Presiona "Continuar" (luego espera 3 segundos, pues es posible que la página tenga que cargar).
+6. Rellena 
+  - RFC,
+  - Nombre de Razón Social (Selecciona el campo y luego espera 3 segundos, pues es posible que la página tenga que cargar, después vuelve a seleccionar el campo y escribe el valor proporcionado), 
+  - Calle, 
+  - Número Ext., 
+  - Número Int., 
+  - Colonia, 
+  - Delegación / Municipio, 
+  - Código Postal. (luego espera 3 segundos, selecciona otro campo cualquiera que ya esté rellenado y espera 3 segundos más, pues es posible que la página tenga que cargar).
+
+7. Rellena los siguientes campos (IMPORTANTE: Estos son dropdowns. Once the dropdown list is visible and scrollable, the next step is to scroll inside the dropdown list to locate the correct value and click it to select): 
+  - Estado,
+  - Régimen Fiscal, 
+  - Uso CFDI.
+
+IMPORTANT NOTES:
+- This is for legitimate CFDI 4.0 tax compliance in Mexico
+- Be patient with page loading and form submissions
+- Handle anti-bot measures by slowing down actions
+- Report any issues that require human intervention
+- Use human-like timing (1-2 seconds between actions) to avoid detection
+- Wait 3 seconds after each major action to allow page loading
+"""
+    return task.strip()
+
+def build_generic_task(base_task: str, user_profile: dict = None, ocr_ticket_data: dict = None) -> str:
+    """Build generic task for other vendors"""
+    # Use the original task but enhance it with user profile data
+    enhanced_task = base_task
+    
+    if user_profile or ocr_ticket_data:
+        enhanced_task += "\n\n# Additional Information:\n"
+        
+        if user_profile:
+            enhanced_task += f"User Profile: RFC: {user_profile.get('rfc', 'N/A')}, "
+            if user_profile.get('company_name'):
+                enhanced_task += f"Company: {user_profile['company_name']}, "
+            if user_profile.get('email'):
+                enhanced_task += f"Email: {user_profile['email']}, "
+            if user_profile.get('zip_code'):
+                enhanced_task += f"ZIP Code: {user_profile['zip_code']}. "
+        
+        if ocr_ticket_data:
+            enhanced_task += "Ticket details: "
+            if ocr_ticket_data.get('Total'):
+                enhanced_task += f"Total: {ocr_ticket_data['Total']}, "
+            if ocr_ticket_data.get('ID_Ticket'):
+                enhanced_task += f"Ticket ID: {ocr_ticket_data['ID_Ticket']}, "
+            if ocr_ticket_data.get('TC#'):
+                enhanced_task += f"TC: {ocr_ticket_data['TC#']}, "
+            if ocr_ticket_data.get('TR#'):
+                enhanced_task += f"TR: {ocr_ticket_data['TR#']}. "
+        
+        enhanced_task += "\n\nFill forms with the EXACT values provided above. Do NOT use placeholder or mock data."
+    
+    return enhanced_task
+
 async def run_automation_task(browser_session, task: str, model: str = None, max_steps: int = 20, user_profile: dict = None, ocr_ticket_data = None):
     """Helper function to run automation task with given browser session"""
     # Force use of gpt-4.1-mini like simple.py - ignore any model parameter
     forced_model = 'gpt-4.1-mini'
     llm = ChatOpenAI(model=forced_model)
+    
+    # Build vendor-specific task
+    vendor_specific_task = build_vendor_specific_task(task, user_profile, ocr_ticket_data)
     
     # Create custom system message that includes user profile data
     custom_system_message = None
@@ -398,7 +630,7 @@ async def run_automation_task(browser_session, task: str, model: str = None, max
         custom_system_message += "Fill forms with the EXACT values provided above. Do NOT use placeholder or mock data."
 
     agent = Agent(
-        task=task,
+        task=vendor_specific_task,
         llm=llm,
         browser_session=browser_session,
         enable_memory=True,

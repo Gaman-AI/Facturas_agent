@@ -157,13 +157,13 @@ export function EditProfile() {
       // Refresh profile data
       await refreshProfile();
       
-      setSuccess('Profile updated successfully!');
+      setSuccess(t('success.profileUpdated', 'Profile updated successfully!'));
       
       // Reset form to consider it clean
       reset(data);
       
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update profile';
+      const message = err instanceof Error ? err.message : t('error.profileUpdateFailed', 'Failed to update profile');
       setError(message);
     } finally {
       if (mountedRef.current) {
@@ -187,13 +187,13 @@ export function EditProfile() {
           <CardContent className="pt-6">
             <div className="text-center">
               <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">No Profile Found</h3>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">{t('profile.noProfile', 'No Profile Found')}</h3>
               <p className="text-slate-600 mb-4">
-                You need to complete your profile first before you can edit it.
+                {t('profile.completeFirst', 'You need to complete your profile first before you can edit it.')}
               </p>
               <Button onClick={handleCancel} variant="outline">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
+                {t('common.back', 'Back')} {t('nav.dashboard', 'to Dashboard')}
               </Button>
             </div>
           </CardContent>
@@ -213,8 +213,8 @@ export function EditProfile() {
                 <User className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-900">Edit Profile</h1>
-                <p className="text-sm text-slate-500">Update your company and tax information</p>
+                <h1 className="text-xl font-bold text-slate-900">{t('profile.edit', 'Edit Profile')}</h1>
+                <p className="text-sm text-slate-500">{t('profile.editSubtitle', 'Update your company and tax information')}</p>
               </div>
             </div>
             
@@ -227,7 +227,7 @@ export function EditProfile() {
                 className="border-slate-200 hover:bg-slate-50"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
+                {t('common.back', 'Back')} {t('nav.dashboard', 'to Dashboard')}
               </Button>
             </div>
           </div>
@@ -261,17 +261,17 @@ export function EditProfile() {
                   <span>{t('profile.companyInfo')}</span>
                 </CardTitle>
                 <CardDescription>
-                  Update your company details and contact information
+                  {t('profile.editCompanyDescription', 'Update your company details and contact information')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="rfc">RFC *</Label>
+                    <Label htmlFor="rfc">{t('register.rfc.label', 'RFC')} *</Label>
                     <Input
                       id="rfc"
                       {...register('rfc')}
-                      placeholder="XAXX010101000"
+                      placeholder={t('register.rfc.placeholder', 'XAXX010101000')}
                       className={errors.rfc ? 'border-red-500' : ''}
                     />
                     {errors.rfc && (
@@ -280,11 +280,11 @@ export function EditProfile() {
                   </div>
                   
                   <div>
-                    <Label htmlFor="company_name">Company Name *</Label>
+                    <Label htmlFor="company_name">{t('register.companyName.label', 'Company Name')} *</Label>
                     <Input
                       id="company_name"
                       {...register('company_name')}
-                      placeholder="Your Company Name"
+                      placeholder={t('register.companyName.placeholder', 'Your Company Name')}
                       className={errors.company_name ? 'border-red-500' : ''}
                     />
                     {errors.company_name && (
@@ -295,13 +295,13 @@ export function EditProfile() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="country">Country *</Label>
+                    <Label htmlFor="country">{t('register.country.label', 'Country')} *</Label>
                     <Select
                       value={watch('country')}
                       onValueChange={(value) => setValue('country', value)}
                     >
                       <SelectTrigger className={errors.country ? 'border-red-500' : ''}>
-                        <SelectValue placeholder="Select country" />
+                        <SelectValue placeholder={t('register.country.placeholder', 'Select country')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="México">México</SelectItem>
@@ -315,11 +315,11 @@ export function EditProfile() {
                   </div>
                   
                   <div>
-                    <Label htmlFor="phone_number">Phone Number *</Label>
+                    <Label htmlFor="phone_number">{t('register.phoneNumber.label', 'Phone Number')} *</Label>
                     <Input
                       id="phone_number"
                       {...register('phone_number')}
-                      placeholder="+52-55-1234-5678"
+                      placeholder={t('register.phoneNumber.placeholder', '+52-55-1234-5678')}
                       className={errors.phone_number ? 'border-red-500' : ''}
                     />
                     {errors.phone_number && (
@@ -329,12 +329,12 @@ export function EditProfile() {
                 </div>
 
                 <div>
-                  <Label htmlFor="email">Email Address *</Label>
+                  <Label htmlFor="email">{t('register.email.label', 'Email Address')} *</Label>
                   <Input
                     id="email"
                     type="email"
                     {...register('email')}
-                    placeholder="your.email@company.com"
+                    placeholder={t('register.email.placeholder', 'your.email@company.com')}
                     className={errors.email ? 'border-red-500' : ''}
                   />
                   {errors.email && (
@@ -352,17 +352,17 @@ export function EditProfile() {
                   <span>{t('profile.addressInfo')}</span>
                 </CardTitle>
                 <CardDescription>
-                  Update your business address information
+                  {t('profile.editAddressDescription', 'Update your business address information')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="street">Street *</Label>
+                    <Label htmlFor="street">{t('register.street.label', 'Street')} *</Label>
                     <Input
                       id="street"
                       {...register('street')}
-                      placeholder="Street name"
+                      placeholder={t('register.street.placeholder', 'Street name')}
                       className={errors.street ? 'border-red-500' : ''}
                     />
                     {errors.street && (

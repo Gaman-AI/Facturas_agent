@@ -95,8 +95,8 @@ export function ViewProfile() {
                 <User className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-900">My Profile</h1>
-                <p className="text-sm text-slate-500">View your company and tax information</p>
+                <h1 className="text-xl font-bold text-slate-900">{t('profile.title', 'My Profile')}</h1>
+                <p className="text-sm text-slate-500">{t('profile.subtitle', 'View your company and tax information')}</p>
               </div>
             </div>
             
@@ -109,7 +109,7 @@ export function ViewProfile() {
                 className="border-slate-200 hover:bg-slate-50"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
+                {t('common.back', 'Back')} {t('nav.dashboard', 'to Dashboard')}
               </Button>
               
               <Button
@@ -117,7 +117,7 @@ export function ViewProfile() {
                 className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700"
               >
                 <Edit className="w-4 h-4 mr-2" />
-                Edit Profile
+                {t('profile.edit', 'Edit Profile')}
               </Button>
             </div>
           </div>
@@ -132,7 +132,7 @@ export function ViewProfile() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <User className="w-5 h-5 text-teal-500" />
-                <span>Personal Information</span>
+                <span>{t('profile.personalInfo', 'Personal Information')}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -156,33 +156,33 @@ export function ViewProfile() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Building2 className="w-5 h-5 text-teal-500" />
-                <span>Company Information</span>
+                <span>{t('profile.companyInfo', 'Company Information')}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-600">RFC</label>
-                  <p className="text-lg font-semibold text-slate-900">{profile.rfc || 'Not provided'}</p>
+                  <label className="text-sm font-medium text-slate-600">{t('register.rfc.label', 'RFC')}</label>
+                  <p className="text-lg font-semibold text-slate-900">{profile.rfc || t('common.notProvided', 'Not provided')}</p>
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium text-slate-600">Company Name</label>
-                  <p className="text-lg font-semibold text-slate-900">{profile.company_name || 'Not provided'}</p>
+                  <label className="text-sm font-medium text-slate-600">{t('register.companyName.label', 'Company Name')}</label>
+                  <p className="text-lg font-semibold text-slate-900">{profile.company_name || t('common.notProvided', 'Not provided')}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-600">Country</label>
-                  <p className="text-lg font-semibold text-slate-900">{profile.country || 'Not provided'}</p>
+                  <label className="text-sm font-medium text-slate-600">{t('register.country.label', 'Country')}</label>
+                  <p className="text-lg font-semibold text-slate-900">{profile.country || t('common.notProvided', 'Not provided')}</p>
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium text-slate-600">Phone Number</label>
+                  <label className="text-sm font-medium text-slate-600">{t('register.phoneNumber.label', 'Phone Number')}</label>
                   <div className="flex items-center space-x-2">
                     <Phone className="w-4 h-4 text-slate-500" />
-                    <p className="text-lg font-semibold text-slate-900">{profile.phone_number || 'Not provided'}</p>
+                    <p className="text-lg font-semibold text-slate-900">{profile.phone_number || t('common.notProvided', 'Not provided')}</p>
                   </div>
                 </div>
               </div>
@@ -194,21 +194,21 @@ export function ViewProfile() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <MapPin className="w-5 h-5 text-teal-500" />
-                <span>Address Information</span>
+                <span>{t('profile.addressInfo', 'Address Information')}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-600">Street</label>
-                  <p className="text-lg font-semibold text-slate-900">{profile.street || 'Not provided'}</p>
+                  <label className="text-sm font-medium text-slate-600">{t('register.street.label', 'Street')}</label>
+                  <p className="text-lg font-semibold text-slate-900">{profile.street || t('common.notProvided', 'Not provided')}</p>
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium text-slate-600">Building Numbers</label>
+                  <label className="text-sm font-medium text-slate-600">{t('profile.buildingNumbers', 'Building Numbers')}</label>
                   <div className="flex items-center space-x-2">
                     <span className="text-lg font-semibold text-slate-900">
-                      {profile.exterior_number || 'Not provided'}
+                      {profile.exterior_number || t('common.notProvided', 'Not provided')}
                     </span>
                     {profile.interior_number && (
                       <>
@@ -222,25 +222,25 @@ export function ViewProfile() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-600">Colony</label>
-                  <p className="text-lg font-semibold text-slate-900">{profile.colony || 'Not provided'}</p>
+                  <label className="text-sm font-medium text-slate-600">{t('register.colony.label', 'Colony')}</label>
+                  <p className="text-lg font-semibold text-slate-900">{profile.colony || t('common.notProvided', 'Not provided')}</p>
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium text-slate-600">Municipality</label>
-                  <p className="text-lg font-semibold text-slate-900">{profile.municipality || 'Not provided'}</p>
+                  <label className="text-sm font-medium text-slate-600">{t('register.municipality.label', 'Municipality')}</label>
+                  <p className="text-lg font-semibold text-slate-900">{profile.municipality || t('common.notProvided', 'Not provided')}</p>
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium text-slate-600">Zip Code</label>
-                  <p className="text-lg font-semibold text-slate-900">{profile.zip_code || 'Not provided'}</p>
+                  <label className="text-sm font-medium text-slate-600">{t('register.zipCode.label', 'Zip Code')}</label>
+                  <p className="text-lg font-semibold text-slate-900">{profile.zip_code || t('common.notProvided', 'Not provided')}</p>
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-slate-600">State</label>
+                <label className="text-sm font-medium text-slate-600">{t('register.state.label', 'State')}</label>
                 <p className="text-lg font-semibold text-slate-900">
-                  {profile.state ? getStateName(profile.state) : 'Not provided'}
+                  {profile.state ? getStateName(profile.state) : t('common.notProvided', 'Not provided')}
                 </p>
               </div>
             </CardContent>
@@ -251,25 +251,25 @@ export function ViewProfile() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <FileText className="w-5 h-5 text-teal-500" />
-                <span>Tax Information</span>
+                <span>{t('profile.taxInfo', 'Tax Information')}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-slate-600">Tax Regime</label>
+                  <label className="text-sm font-medium text-slate-600">{t('register.taxRegime.label', 'Tax Regime')}</label>
                   <div className="mt-1">
                     <Badge variant="secondary" className="text-sm">
-                      {profile.tax_regime ? getTaxRegimeDescription(profile.tax_regime) : 'Not provided'}
+                      {profile.tax_regime ? getTaxRegimeDescription(profile.tax_regime) : t('common.notProvided', 'Not provided')}
                     </Badge>
                   </div>
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium text-slate-600">CFDI Use</label>
+                  <label className="text-sm font-medium text-slate-600">{t('register.cfdiUse.label', 'CFDI Use')}</label>
                   <div className="mt-1">
                     <Badge variant="secondary" className="text-sm">
-                      {profile.cfdi_use ? getCfdiUseDescription(profile.cfdi_use) : 'Not provided'}
+                      {profile.cfdi_use ? getCfdiUseDescription(profile.cfdi_use) : t('common.notProvided', 'Not provided')}
                     </Badge>
                   </div>
                 </div>
@@ -285,7 +285,7 @@ export function ViewProfile() {
               className="bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 px-8"
             >
               <Edit className="w-5 h-5 mr-2" />
-              Edit Profile
+              {t('profile.edit', 'Edit Profile')}
             </Button>
           </div>
         </div>
