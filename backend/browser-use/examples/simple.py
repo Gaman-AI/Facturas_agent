@@ -16,6 +16,8 @@ llm = ChatOpenAI(
 	model='gpt-4.1-mini',
 )
 
+"""TC: 835946320663807473652
+TR: 02577"""
 
 walmart_task = """
 # Objetivo:
@@ -127,20 +129,32 @@ Forma de Pago: Tarjeta de crédito
   - Número Int., 
   - Colonia, 
   - Delegación / Municipio, 
-  - Código Postal. (luego espera 3 segundos, selecciona otro campo cualquiera que ya esté rellenado y espera 3 segundos más, pues es posible que la página tenga que cargar).
+  - Código Postal.
+  
+6.5 Luego espera 3 segundos, selecciona otro campo cualquiera que ya esté rellenado y espera 3 segundos más, pues es posible que la página tenga que cargar.
 
 7. Rellena los siguientes campos con menus desplegables.
 
   *PROCEDIMIENTO:* El procedimiento para rellenar los menus desplegables es el siguiente: 
-    - Haz click en el menú desplegable, espera un segundo y asegúrate de que el menú se haya desplegado correctamente.
+    - Haz click en el menú desplegable, espera un segundo y evalúa que el menú se haya desplegado correctamente.
     - Navega con la flecha hacia abajo hasta que la opción correcta se muestre en la lista y selecciónala. Aunque creas que encontraste la opción correcta y la quieras clickear, esto no servirá, es absolutamente necesario que te desplaces con las flechas hasta estar sobre la opción correcta.
     - Sigue desplazándote hacia abajo hasta que estes sobre la opción correcta, es posible que tengas que presionar la flecha hacia abajo más de 30 veces, pero continua haciendo esto hasta que estes sobre la opción correcta.
+    - Cada que quieras desplazarte por el menú desplegable, tienes que volver a hacer click en el campo desplegable y esperar un segundo y sólo después de eso podrás desplazarte con las flechas hacia abajo.
     - Selecciona la opción correcta.
 
   Los campos desplegables son los siguientes: 
-    - Estado,
-    - Régimen Fiscal, 
-    - Uso CFDI.
+    - Estado:
+      <div class="ui-helper-hidden-accessible">
+        <input id="form:estado_focus" name="form:estado_focus" type="text">
+      </div>
+    - Régimen Fiscal:
+      <div class="ui-helper-hidden-accessible">
+        <input id="form:selectOneMenuRegFis_focus" name="form:selectOneMenuRegFis_focus" type="text">
+      </div>
+    - Uso CFDI:
+      <div class="ui-helper-hidden-accessible">
+        <input id="form:selectOneMenuCFDI_focus" name="form:selectOneMenuCFDI_focus" type="text">
+      </div>
 """
 
 
@@ -172,7 +186,7 @@ Rellenar el campo desplegable de Estado con el valor *SAN LUIS POTOSI* en la pá
 """
 
 
-agent = Agent(task=oxxo_task, llm=llm)
+agent = Agent(task=walmart_task, llm=llm)
 
 
 async def main():
