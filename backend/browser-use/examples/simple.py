@@ -16,9 +16,6 @@ llm = ChatOpenAI(
 	model='gpt-4.1-mini',
 )
 
-"""TC: 835946320663807473652
-TR: 02577"""
-
 walmart_task = """
 # Objetivo:
 
