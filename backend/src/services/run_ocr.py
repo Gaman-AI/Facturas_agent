@@ -17,8 +17,14 @@ def main():
         current_dir = Path(__file__).parent
         sys.path.insert(0, str(current_dir))
         
-        # Import the OCR functionality
-        from ocr_functionality import extract_receipt_data
+        # Import the enhanced OCR functionality with confidence scoring
+        try:
+            from ocr_functionality_with_confidence import extract_receipt_data_with_confidence
+            print(f"[OCR] Using enhanced OCR with confidence scoring", file=sys.stderr)
+        except ImportError:
+            # Fallback to original functionality
+            from ocr_functionality import extract_receipt_data as extract_receipt_data_with_confidence
+            print(f"[OCR] Fallback to original OCR functionality", file=sys.stderr)
         
         # Check if image path was provided
         if len(sys.argv) != 2:
@@ -42,9 +48,9 @@ def main():
             sys.stdout.buffer.write(b'\n')
             sys.exit(1)
         
-        # Process the image
-        print(f"[OCR] Processing image: {image_path}", file=sys.stderr)
-        result = extract_receipt_data(image_path)
+        # Process the image with confidence scoring
+        print(f"[OCR] Processing image with confidence scoring: {image_path}", file=sys.stderr)
+        result = extract_receipt_data_with_confidence(image_path)
         
         # Return successful result using binary-safe output
         json_output = json.dumps(result, ensure_ascii=False)
