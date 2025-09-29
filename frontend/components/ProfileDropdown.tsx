@@ -44,8 +44,7 @@ export const ProfileDropdown = () => {
   };
 
   const handleViewHistory = () => {
-    // TODO: Implement view history functionality
-    console.log('View history clicked');
+    router.push('/history');
     setIsOpen(false);
   };
 
