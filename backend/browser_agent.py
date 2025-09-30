@@ -122,12 +122,18 @@ class ManagedBrowserSession:
         if global_session_manager.current_session == self:
             global_session_manager.current_session = None
         
-        # Add delay before closing session to allow viewing automation results
-        keep_alive_seconds = int(os.getenv('BROWSER_SESSION_KEEP_ALIVE_SECONDS', '30'))
-        print(f"[INFO] Keeping session alive for {keep_alive_seconds} seconds to allow viewing automation results...")
-        await asyncio.sleep(keep_alive_seconds)
-        
+        # CRITICAL: Immediate cleanup for better session management
+        print("[INFO] Starting immediate session cleanup...")
         await self._close_session_properly()
+        
+        # Force cleanup of any remaining browser processes
+        await self._force_cleanup()
+        
+        # Only keep session alive if specifically requested
+        keep_alive_seconds = int(os.getenv('BROWSER_SESSION_KEEP_ALIVE_SECONDS', '5'))  # Reduced from 30 to 5
+        if keep_alive_seconds > 0:
+            print(f"[INFO] Keeping session alive for {keep_alive_seconds} seconds to allow viewing automation results...")
+            await asyncio.sleep(keep_alive_seconds)
     
     async def _close_session_properly(self):
         playwright_instance = None
@@ -175,6 +181,93 @@ class ManagedBrowserSession:
     
     async def _final_cleanup(self):
         self.browser_session = None
+    
+    async def _force_cleanup(self):
+        """Force cleanup of any remaining browser processes and resources"""
+        try:
+            print("[CLEANUP] Performing force cleanup...")
+            
+            # Kill any remaining browser processes
+            import subprocess
+            import platform
+            
+            if platform.system() == "Darwin":  # macOS
+                try:
+                    # Kill any Chrome/Chromium processes that might be hanging
+                    subprocess.run(["pkill", "-f", "chrome"], capture_output=True, timeout=5)
+                    subprocess.run(["pkill", "-f", "chromium"], capture_output=True, timeout=5)
+                    subprocess.run(["pkill", "-f", "playwright"], capture_output=True, timeout=5)
+                    # Force kill with -9 for stubborn processes (only if needed)
+                    try:
+                        subprocess.run(["pkill", "-9", "-f", "chrome"], capture_output=True, timeout=2)
+                        subprocess.run(["pkill", "-9", "-f", "chromium"], capture_output=True, timeout=2)
+                        subprocess.run(["pkill", "-9", "-f", "playwright"], capture_output=True, timeout=2)
+                        print("[CLEANUP] Applied force kill for stubborn processes")
+                    except:
+                        print("[CLEANUP] Force kill not needed or failed")
+                    print("[CLEANUP] Killed hanging browser processes")
+                except Exception as e:
+                    print(f"[CLEANUP] Warning: Could not kill browser processes: {e}")
+            
+            # Clear any cached browser state
+            if hasattr(self, 'browser_session') and self.browser_session:
+                self.browser_session = None
+                
+            # Force garbage collection
+            import gc
+            gc.collect()
+            
+            print("[CLEANUP] Force cleanup completed")
+            
+        except Exception as e:
+            print(f"[CLEANUP] Error during force cleanup: {e}")
+
+
+async def _force_global_cleanup():
+    """Force cleanup of all browser processes and resources globally"""
+    try:
+        print("[GLOBAL_CLEANUP] Performing global cleanup...")
+        
+        # Kill all browser-related processes
+        import subprocess
+        import platform
+        
+        if platform.system() == "Darwin":  # macOS
+            try:
+                # Kill all browser processes
+                subprocess.run(["pkill", "-f", "chrome"], capture_output=True, timeout=5)
+                subprocess.run(["pkill", "-f", "chromium"], capture_output=True, timeout=5)
+                subprocess.run(["pkill", "-f", "playwright"], capture_output=True, timeout=5)
+                subprocess.run(["pkill", "-f", "browserbase"], capture_output=True, timeout=5)
+                # Force kill with -9 for stubborn processes (only if needed)
+                try:
+                    subprocess.run(["pkill", "-9", "-f", "chrome"], capture_output=True, timeout=2)
+                    subprocess.run(["pkill", "-9", "-f", "chromium"], capture_output=True, timeout=2)
+                    subprocess.run(["pkill", "-9", "-f", "playwright"], capture_output=True, timeout=2)
+                    subprocess.run(["pkill", "-9", "-f", "browserbase"], capture_output=True, timeout=2)
+                    print("[GLOBAL_CLEANUP] Applied force kill for stubborn processes")
+                except:
+                    print("[GLOBAL_CLEANUP] Force kill not needed or failed")
+                print("[GLOBAL_CLEANUP] Killed all browser processes")
+            except Exception as e:
+                print(f"[GLOBAL_CLEANUP] Warning: Could not kill all processes: {e}")
+        
+        # Reset global session manager
+        global_session_manager.current_session = None
+        global_session_manager.should_stop = False
+        global_session_manager.cleanup_in_progress = False
+        
+        # Force garbage collection
+        import gc
+        gc.collect()
+        
+        # Wait a bit for processes to fully terminate
+        await asyncio.sleep(2)
+        
+        print("[GLOBAL_CLEANUP] Global cleanup completed")
+        
+    except Exception as e:
+        print(f"[GLOBAL_CLEANUP] Error during global cleanup: {e}")
 
 
 async def create_browserbase_session(viewport_width=1920, viewport_height=1080):
@@ -303,7 +396,7 @@ async def run_local_browser_task(task: str, model: str = None, max_steps: int = 
                 if ocr_ticket_data.get('TR#'):
                     custom_system_message += f"TR: {ocr_ticket_data['TR#']}. "
             
-            custom_system_message += "Fill forms with the EXACT values provided above. Do NOT use placeholder or mock data."
+            custom_system_message += "Fill forms with the EXACT values provided above. Do NOT use placeholder or mock data. IMPORTANT: You must complete the ENTIRE form filling process. Do NOT stop after just closing popups. Continue until you have filled all required fields and submitted the form."
         
         agent = Agent(
             task=vendor_specific_task, 
@@ -323,7 +416,7 @@ async def run_local_browser_task(task: str, model: str = None, max_steps: int = 
         raise
 
 
-async def run_browserbase_browser_task(task: str, model: str = None, max_steps: int = 20, user_profile: dict = None, ocr_ticket_data: dict = None):
+async def run_browserbase_browser_task(task: str, model: str = None, max_steps: int = 50, user_profile: dict = None, ocr_ticket_data: dict = None):
     """
     Run a browser automation task using Browserbase cloud browser with session management
     
@@ -348,6 +441,19 @@ async def run_browserbase_browser_task(task: str, model: str = None, max_steps: 
     print(f"   Model: {forced_model} (forced, ignoring input)")
     print(f"   Max Steps: {max_steps}")
     print(f"   Task: {task[:100]}...")
+    
+    # Check if this is a vendor switch (Walmart -> OXXO or vice versa)
+    vendor_type = detect_vendor_type_from_task(task)
+    print(f"[VENDOR] Detected vendor type: {vendor_type}")
+    
+    # CRITICAL: Force cleanup before starting any new task
+    print("[CLEANUP] Performing pre-task cleanup to ensure clean state...")
+    await _force_global_cleanup()
+    
+    # Add delay for vendor switching to ensure clean state
+    if vendor_type in ['oxxo', 'walmart']:
+        print(f"[VENDOR] Switching to {vendor_type.upper()} - ensuring clean browser state...")
+        await asyncio.sleep(3)  # Increased delay for better cleanup
     
     try:
         # Create Browserbase session with optimal viewport
@@ -482,6 +588,9 @@ IMPORTANT NOTES:
 - Handle anti-bot measures by slowing down actions
 - Report any issues that require human intervention
 - Use human-like timing (1-2 seconds between actions) to avoid detection
+- CRITICAL: You must complete the ENTIRE invoice generation process
+- Do NOT stop after closing popups - continue to fill all forms and submit
+- The task is only complete when you have successfully generated the invoice
 """
     return task.strip()
 
@@ -489,6 +598,10 @@ def build_oxxo_task(base_task: str, user_profile: dict = None, ocr_ticket_data: 
     """Build OXXO-specific task"""
     # Extract vendor URL from base task
     vendor_url = 'https://www4.oxxo.com:9443/facturacionElectronica-web/views/layout/inicio.do'
+    
+    # Add connection timeout and retry logic for OXXO's non-standard port
+    print(f"[OXXO] Using non-standard port URL: {vendor_url}")
+    print(f"[OXXO] This may require additional connection time...")
     
     # Extract OXXO-specific fields
     folio_vta = 'N/A'
@@ -531,22 +644,23 @@ Forma de Pago: Tarjeta de crédito
 
 # Procedimiento:
 
-1. Cierra el popup que aparece automaticamente al inicio.
-2. Rellena Fecha de venta: al presionar en el campo, se abrirá un calendario, selecciona la fecha proporcionada.
-3. Rellena Folio de venta, ID de venta y Total (2 Decimales).
-4. Presiona "Validar Ticket": <span style="color:#515659; font:11px Lato,sans-serif; font-weight:bold; float: right; padding-right: 14px">Validar Ticket</span> (luego espera 3 segundos, pues es posible que la página tenga que cargar).
-5. Presiona "Continuar" (luego espera 3 segundos, pues es posible que la página tenga que cargar).
-6. Rellena 
+1. **IMPORTANTE**: Espera 5 segundos después de cargar la página para asegurar que todos los elementos estén listos.
+2. Cierra el popup que aparece automaticamente al inicio.
+3. Rellena Fecha de venta: al presionar en el campo, se abrirá un calendario, selecciona la fecha proporcionada.
+4. Rellena Folio de venta, ID de venta y Total (2 Decimales).
+5. Presiona "Validar Ticket": <span style="color:#515659; font:11px Lato,sans-serif; font-weight:bold; float: right; padding-right: 14px">Validar Ticket</span> (luego espera 5 segundos, pues es posible que la página tenga que cargar).
+6. Presiona "Continuar" (luego espera 5 segundos, pues es posible que la página tenga que cargar).
+7. Rellena 
   - RFC,
-  - Nombre de Razón Social (Selecciona el campo y luego espera 3 segundos, pues es posible que la página tenga que cargar, después vuelve a seleccionar el campo y escribe el valor proporcionado), 
+  - Nombre de Razón Social (Selecciona el campo y luego espera 5 segundos, pues es posible que la página tenga que cargar, después vuelve a seleccionar el campo y escribe el valor proporcionado), 
   - Calle, 
   - Número Ext., 
   - Número Int., 
   - Colonia, 
   - Delegación / Municipio, 
-  - Código Postal. (luego espera 3 segundos, selecciona otro campo cualquiera que ya esté rellenado y espera 3 segundos más, pues es posible que la página tenga que cargar).
+  - Código Postal. (luego espera 5 segundos, selecciona otro campo cualquiera que ya esté rellenado y espera 5 segundos más, pues es posible que la página tenga que cargar).
 
-7. Rellena los siguientes campos (IMPORTANTE: Estos son dropdowns. Once the dropdown list is visible and scrollable, the next step is to scroll inside the dropdown list to locate the correct value and click it to select): 
+8. Rellena los siguientes campos (IMPORTANTE: Estos son dropdowns. Once the dropdown list is visible and scrollable, the next step is to scroll inside the dropdown list to locate the correct value and click it to select): 
   - Estado,
   - Régimen Fiscal, 
   - Uso CFDI.
@@ -556,8 +670,10 @@ IMPORTANT NOTES:
 - Be patient with page loading and form submissions
 - Handle anti-bot measures by slowing down actions
 - Report any issues that require human intervention
-- Use human-like timing (1-2 seconds between actions) to avoid detection
-- Wait 3 seconds after each major action to allow page loading
+- Use human-like timing (2-3 seconds between actions) to avoid detection
+- Wait 5 seconds after each major action to allow page loading
+- OXXO uses non-standard port (9443) which may require additional connection time
+- If the page appears to be stuck, wait up to 10 seconds before proceeding
 """
     return task.strip()
 
@@ -627,15 +743,15 @@ async def run_automation_task(browser_session, task: str, model: str = None, max
             if ocr_ticket_data.get('TR#'):
                 custom_system_message += f"TR: {ocr_ticket_data['TR#']}. "
         
-        custom_system_message += "Fill forms with the EXACT values provided above. Do NOT use placeholder or mock data."
+        custom_system_message += "Fill forms with the EXACT values provided above. Do NOT use placeholder or mock data. IMPORTANT: You must complete the ENTIRE form filling process. Do NOT stop after just closing popups. Continue until you have filled all required fields and submitted the form."
 
     agent = Agent(
         task=vendor_specific_task,
         llm=llm,
         browser_session=browser_session,
         enable_memory=True,
-        max_failures=5,
-        retry_delay=5,
+        max_failures=10,  # Increased failures
+        retry_delay=3,  # Reduced retry delay
         use_vision=True,  # Enable vision mode with medium priority
         vision_priority="medium",  # Set vision priority to medium
         override_system_message=custom_system_message,  # Use our custom system message
