@@ -351,9 +351,13 @@ class TicketStorageService {
         fs.writeFileSync(tempFilePath, fileBuffer)
 
         const pythonScript = pathModule.join(process.cwd(), 'src', 'services', 'run_ocr.py')
+        
+        // Use Python from virtual environment if available
+        const pythonExecutable = pathModule.join(process.cwd(), '.venv', 'Scripts', 'python.exe')
+        const pythonPath = fs.existsSync(pythonExecutable) ? pythonExecutable : 'python'
 
         const ocrResult = await new Promise((resolve, reject) => {
-          const pythonProcess = spawn('python', [pythonScript, tempFilePath], {
+          const pythonProcess = spawn(pythonPath, [pythonScript, tempFilePath], {
             stdio: ['pipe', 'pipe', 'pipe']
           })
 
@@ -389,11 +393,21 @@ class TicketStorageService {
         const extractedData = this.mapOCRDataToTicketFields(ocrResult, vendorUrl)
         const cleanedData = this.validateAndCleanExtractedData(extractedData)
 
+        console.log('🔍 OCR Result from Python:', {
+          has_geqs_score: !!ocrResult.geqs_score,
+          has_geqs_details: !!ocrResult.geqs_details,
+          has_quality_analysis: !!ocrResult.quality_analysis,
+          geqs_score: ocrResult.geqs_score
+        })
+
         return {
           success: true,
           extractedData: cleanedData,
           rawText: ocrResult.raw_text || ocrResult.Full_Raw_Text || '',
-          confidence: ocrResult.confidence || 0.8
+          confidence: ocrResult.confidence || 0.8,
+          geqsScore: ocrResult.geqs_score || null,
+          geqsDetails: ocrResult.geqs_details || null,
+          qualityAnalysis: ocrResult.quality_analysis || null
         }
       } finally {
         try {

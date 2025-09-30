@@ -26,6 +26,21 @@ const es: Translations = {
   'common.mexicanPeso': 'Peso Mexicano',
   'common.usDollar': 'Dólar Estadounidense',
   'common.euro': 'Euro',
+  'common.close': 'Cerrar',
+
+  // GEQS Quality Score
+  'geqs.title': 'Puntuación de Calidad GEQS',
+  'geqs.description': 'Puntuación Global de Calidad de Extracción - Confiabilidad general de la extracción',
+  'geqs.analysis': 'Análisis de Calidad',
+  'geqs.strengths': 'Fortalezas',
+  'geqs.weaknesses': 'Áreas de Mejora',
+  'geqs.recommendations': 'Recomendaciones',
+  'geqs.components': 'Componentes de Puntuación',
+  'geqs.cfc': 'Confianza de Campo Calibrada',
+  'geqs.cov': 'Cobertura y Completitud',
+  'geqs.cons': 'Verificaciones de Consistencia',
+  'geqs.msa': 'Acuerdo Multi-Señal',
+  'geqs.ilq': 'Calidad de Imagen y Diseño',
 
   // Home Page
   'home.subtitle': 'Automatiza el llenado de formularios CFDI con inteligencia artificial',

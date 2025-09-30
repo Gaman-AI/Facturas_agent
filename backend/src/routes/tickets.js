@@ -94,7 +94,14 @@ router.post('/upload', authenticate, upload.single('file'), async (req, res, nex
       console.log('🔄 Updating ticket with OCR data:', dbUpdateData)
       const updatedTicket = await ticketStorageService.updateTicket(ticket.id, dbUpdateData)
 
-      // Return full extracted data (including confidence scores) to frontend
+      // Return full extracted data (including GEQS scores) to frontend
+      console.log('🔍 API Response GEQS data:', {
+        has_geqsScore: !!ocrResult.geqsScore,
+        has_geqsDetails: !!ocrResult.geqsDetails,
+        has_qualityAnalysis: !!ocrResult.qualityAnalysis,
+        geqsScore: ocrResult.geqsScore
+      })
+
       res.status(201).json({
         success: true,
         message: 'Ticket uploaded and processed successfully',
@@ -102,7 +109,10 @@ router.post('/upload', authenticate, upload.single('file'), async (req, res, nex
           ticket_id: ticket.id,
           ticket: updatedTicket,
           upload: uploadResult,
-          extracted_data: ocrResult.extractedData // Includes confidence scores, raw text, etc.
+          extracted_data: ocrResult.extractedData, // Includes confidence scores, raw text, etc.
+          geqs_score: ocrResult.geqsScore, // GEQS quality score
+          geqs_details: ocrResult.geqsDetails, // Detailed GEQS breakdown
+          quality_analysis: ocrResult.qualityAnalysis // Human-readable quality analysis
         }
       })
     } catch (ocrError) {

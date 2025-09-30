@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Zap, Monitor, Activity, ExternalLink, RefreshCw, Copy, Check, X, Cloud } from 'lucide-react'
+import { Zap, Monitor, Activity, ExternalLink, RefreshCw, Copy, Check, X, Cloud, Eye } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { websocketService } from '@/services/websocket'
 import ApiService from '@/services/api'
@@ -16,6 +16,7 @@ import { BrowserModeSwitch } from '@/components/ui/browser-mode-switch'
 import { tokenManager } from '@/utils/tokenManager'
 import { toast } from 'react-toastify'
 import { LanguageToggle } from '@/components/LanguageToggle'
+import GEQSQualityScore from '@/components/ui/geqs-quality-score'
 
 // Fullscreen Modal Component
 interface FullscreenModalProps {
@@ -75,6 +76,7 @@ export interface DashboardDualPaneProps {
   userProfile?: any
   onBackToUpload?: () => void
   profileDropdown?: React.ReactNode
+  ticketImageUrl?: string
 }
 
 interface TaskState {
@@ -117,6 +119,19 @@ interface TicketData {
   // Overall confidence metadata
   'overall_document_confidence'?: number
   'total_confidence_sources'?: number
+  // GEQS Quality Score data
+  geqs_score?: {
+    total_score: number
+    cfc_score: number
+    cov_score: number
+    cons_score: number
+    msa_score: number
+    ilq_score: number
+    recommendation: string
+    quality_level: string
+  }
+  geqs_details?: any
+  quality_analysis?: any
 }
 
 // Copy Button Component
@@ -173,37 +188,154 @@ interface FieldWithCopyProps {
   className?: string
   fullWidth?: boolean
   confidence?: number
+  geqsFieldConfidence?: number
+  geqsDetails?: any
 }
 
-function FieldWithCopy({ label, value, onChange, placeholder, className = '', fullWidth = false, confidence }: FieldWithCopyProps) {
-  // Determine confidence level and styling
+function FieldWithCopy({ label, value, onChange, placeholder, className = '', fullWidth = false, confidence, geqsFieldConfidence, geqsDetails }: FieldWithCopyProps) {
+  // Determine confidence level and styling with improved color scheme
   const getConfidenceLevel = (conf: number | undefined) => {
-    if (conf === undefined || conf === null) return { level: 'unknown', color: '#9CA3AF', bgColor: '#F3F4F6' }
-    if (conf >= 80) return { level: 'high', color: '#10B981', bgColor: '#D1FAE5' }
-    if (conf >= 50) return { level: 'medium', color: '#F59E0B', bgColor: '#FEF3C7' }
-    return { level: 'low', color: '#EF4444', bgColor: '#FEE2E2' }
+    if (conf === undefined || conf === null) return { 
+      level: 'unknown', 
+      color: '#6B7280', 
+      bgColor: '#F3F4F6',
+      textColor: '#6B7280',
+      borderColor: '#D1D5DB'
+    }
+    
+    if (conf >= 80) return { 
+      level: 'high', 
+      color: '#10B981',           // Emerald-500 - Brighter green for high confidence
+      bgColor: '#D1FAE5',         // Emerald-100 - Light green background
+      textColor: '#047857',       // Emerald-700 - Darker green text for contrast
+      borderColor: '#059669'      // Emerald-600 - Medium green border
+    }
+    
+    if (conf >= 60) return { 
+      level: 'good', 
+      color: '#D97706',           // Amber-600 - Warm yellow for good confidence
+      bgColor: '#FEF3C7',         // Amber-100 - Light yellow background
+      textColor: '#92400E',       // Amber-800 - Dark amber text for contrast
+      borderColor: '#F59E0B'      // Amber-500 - Medium amber border
+    }
+    
+    if (conf >= 40) return { 
+      level: 'moderate', 
+      color: '#F97316',           // Orange-500 - Brighter orange for moderate confidence
+      bgColor: '#FED7AA',         // Orange-100 - Light orange background
+      textColor: '#C2410C',       // Orange-700 - Darker orange text for contrast
+      borderColor: '#EA580C'      // Orange-600 - Medium orange border
+    }
+    
+    return { 
+      level: 'low', 
+      color: '#DC2626',           // Red-600 - Strong red for low confidence
+      bgColor: '#FEE2E2',         // Red-100 - Light red background
+      textColor: '#991B1B',       // Red-800 - Dark red text for contrast
+      borderColor: '#EF4444'      // Red-500 - Medium red border
+    }
   }
 
   const confidenceInfo = getConfidenceLevel(confidence)
+  // Convert decimal confidence to percentage for color calculation
+  const geqsConfidencePercentage = geqsFieldConfidence ? geqsFieldConfidence * 100 : undefined
+  const geqsInfo = getConfidenceLevel(geqsConfidencePercentage)
+
+  // Debug logging
+  console.log(`🔍 Field: ${label}, GEQS Confidence: ${geqsFieldConfidence} (${geqsConfidencePercentage}%), Color: ${geqsInfo.color}`)
+
+  // GEQS field confidence is now passed directly from renderFieldWithGEQS
 
   return (
     <div className={`bg-gradient-to-b from-white to-slate-50/30 border border-[#C7D8D0] rounded-lg p-2 ${fullWidth ? 'col-span-2' : ''} ${className}`}>
       <div className="flex items-center justify-between mb-1">
         <label className="block text-xs font-medium text-[#527779]">{label}</label>
-        {confidence !== undefined && confidence !== null && (
-          <div className="flex items-center gap-1">
-            <div 
-              className="w-2 h-2 rounded-full" 
-              style={{ backgroundColor: confidenceInfo.color }}
-            ></div>
-            <span 
-              className="text-xs font-medium" 
-              style={{ color: confidenceInfo.color }}
-            >
-              {Math.round(confidence)}%
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {/* GEQS Field Confidence - Only show for extracted fields (not N/A) */}
+          {geqsFieldConfidence !== undefined && geqsFieldConfidence !== null && value && value !== 'N/A' && value !== 'Enter Fecha' && (
+            <div className="flex items-center gap-1 group relative">
+              <div 
+                className="w-2 h-2 rounded-full" 
+                style={{ backgroundColor: geqsInfo.color }}
+              ></div>
+              <span 
+                className="text-xs font-medium text-[#527779]" 
+              >
+                {Math.round(geqsFieldConfidence * 100)}%
+              </span>
+              <button
+                className="ml-1 w-3 h-3 rounded-full bg-[#208692] text-white text-[8px] font-bold flex items-center justify-center hover:bg-[#164F5B] transition-colors"
+                title={`Confidence Score: ${Math.round(geqsFieldConfidence * 100)}% - ${geqsInfo.level === 'high' ? 'High Confidence' : geqsInfo.level === 'good' ? 'Good Confidence' : geqsInfo.level === 'moderate' ? 'Moderate Confidence' : 'Low Confidence'}`}
+              >
+                i
+              </button>
+              {/* Tooltip */}
+              <div className="absolute bottom-full right-0 mb-2 px-4 py-3 bg-[#164F5B] text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 w-80">
+                <div className="font-semibold mb-2 text-sm">
+                  {geqsInfo.level === 'high' ? 'High Confidence' : 
+                   geqsInfo.level === 'good' ? 'Good Confidence' : 
+                   geqsInfo.level === 'moderate' ? 'Moderate Confidence' : 
+                   'Low Confidence'} ({Math.round(geqsFieldConfidence * 100)}%)
+                </div>
+                <div className="text-[#C7D8D0] mb-2">
+                  {geqsInfo.level === 'high' ? '✅ Auto-approve - High accuracy' :
+                   geqsInfo.level === 'good' ? '⚠️ Soft-approve - Minor review needed' :
+                   geqsInfo.level === 'moderate' ? '🔍 Review required - Moderate quality' :
+                   '❌ Manual correction needed - Low quality'}
+                </div>
+                <div className="text-[#A8B8B8] text-xs leading-relaxed">
+                  {geqsInfo.level === 'high' ? 'Data extracted with high accuracy. Matches validation rules. Trust and proceed.' :
+                   geqsInfo.level === 'good' ? 'Good extraction quality. Minor issues may exist. Quick review recommended.' :
+                   geqsInfo.level === 'moderate' ? 'Moderate quality detected. Some validation issues. Human review required.' :
+                   'Low quality extraction. Significant issues found. Manual correction required.'}
+                </div>
+                <div className="absolute top-full right-6 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-[#164F5B]"></div>
+              </div>
+            </div>
+          )}
+          {/* Original Confidence - Only show for extracted fields (not N/A) */}
+          {confidence !== undefined && confidence !== null && value && value !== 'N/A' && value !== 'Enter Fecha' && (
+            <div className="flex items-center gap-1 group relative">
+              <div 
+                className="w-2 h-2 rounded-full" 
+                style={{ backgroundColor: confidenceInfo.color }}
+              ></div>
+              <span 
+                className="text-xs font-medium text-[#527779]" 
+              >
+                {Math.round(confidence)}%
+              </span>
+              <button
+                className="ml-1 w-3 h-3 rounded-full bg-[#208692] text-white text-[8px] font-bold flex items-center justify-center hover:bg-[#164F5B] transition-colors"
+                title={`Original Confidence: ${Math.round(confidence)}% - ${confidenceInfo.level === 'high' ? 'High Confidence' : confidenceInfo.level === 'good' ? 'Good Confidence' : confidenceInfo.level === 'moderate' ? 'Moderate Confidence' : 'Low Confidence'}`}
+              >
+                i
+              </button>
+              {/* Tooltip */}
+              <div className="absolute bottom-full right-0 mb-2 px-4 py-3 bg-[#164F5B] text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50 w-80">
+                <div className="font-semibold mb-2 text-sm">
+                  {confidenceInfo.level === 'high' ? 'High Confidence' : 
+                   confidenceInfo.level === 'good' ? 'Good Confidence' : 
+                   confidenceInfo.level === 'moderate' ? 'Moderate Confidence' : 
+                   'Low Confidence'} ({Math.round(confidence)}%)
+                </div>
+                <div className="text-[#C7D8D0] mb-2">
+                  {confidenceInfo.level === 'high' ? '✅ Auto-approve - High accuracy' :
+                   confidenceInfo.level === 'good' ? '⚠️ Soft-approve - Minor review needed' :
+                   confidenceInfo.level === 'moderate' ? '🔍 Review required - Moderate quality' :
+                   '❌ Manual correction needed - Low quality'}
+                </div>
+                <div className="text-[#A8B8B8] text-xs leading-relaxed">
+                  {confidenceInfo.level === 'high' ? 'Data extracted with high accuracy. Matches validation rules. Trust and proceed.' :
+                   confidenceInfo.level === 'good' ? 'Good extraction quality. Minor issues may exist. Quick review recommended.' :
+                   confidenceInfo.level === 'moderate' ? 'Moderate quality detected. Some validation issues. Human review required.' :
+                   'Low quality extraction. Significant issues found. Manual correction required.'}
+                </div>
+                <div className="absolute top-full right-6 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-[#164F5B]"></div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <input
@@ -215,20 +347,56 @@ function FieldWithCopy({ label, value, onChange, placeholder, className = '', fu
         />
         <CopyButton value={value} />
       </div>
-      {confidence !== undefined && confidence !== null && (
-        <div className="mt-1">
-          <div className="w-full bg-gray-200 rounded-full h-1">
-            <div 
-              className="h-1 rounded-full transition-all duration-300" 
-              style={{ 
-                width: `${Math.min(100, Math.max(0, confidence))}%`,
-                backgroundColor: confidenceInfo.color 
-              }}
-            ></div>
-          </div>
-        </div>
-      )}
     </div>
+  )
+}
+
+// Helper function to render FieldWithCopy with GEQS data
+function renderFieldWithGEQS(
+  label: string,
+  value: string,
+  onChange: (value: string) => void,
+  placeholder: string,
+  confidence: number | undefined,
+  geqsDetails: any,
+  fullWidth: boolean = false,
+  className: string = ''
+) {
+  // Get field name for GEQS lookup
+  const getFieldNameForGEQS = (label: string) => {
+    const fieldMap: { [key: string]: string } = {
+      'Mesa/Folio': 'Mesa_Folio',
+      'Fecha': 'Fecha',
+      'ID Ticket': 'ID_Ticket',
+      'Total': 'Total',
+      'Store/Branch/Plaza': 'Store_Branch_Plaza',
+      'Register/Station/Terminal': 'Register_Station_Terminal',
+      'Payment Type': 'Payment_Type',
+      'Card Last 4 Digits': 'Card_Last_4_Digits',
+      'TC#': 'TC#',
+      'TR#': 'TR#',
+      'ID': 'ID',
+      'Fol_Vía': 'Fol_Vta',
+      'Comercio': 'Comercio'
+    }
+    return fieldMap[label] || label
+  }
+
+  const fieldName = getFieldNameForGEQS(label)
+  const geqsFieldConfidence = geqsDetails?.field_confidences?.[fieldName]
+
+  return (
+    <FieldWithCopy
+      label={label}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      confidence={confidence}
+      geqsFieldConfidence={geqsFieldConfidence}
+      geqsDetails={geqsDetails}
+      fullWidth={fullWidth}
+      className={className}
+    />
   )
 }
 
@@ -239,10 +407,12 @@ export function DashboardDualPane({
   vendorUrl = '',
   userProfile,
   onBackToUpload,
-  profileDropdown
+  profileDropdown,
+  ticketImageUrl
 }: DashboardDualPaneProps) {
   const { t } = useLanguage()
   const [isMobile, setIsMobile] = useState(false)
+  const [showTicketPreview, setShowTicketPreview] = useState(false)
   const [taskState, setTaskState] = useState<TaskState>({
     taskId: null,
     sessionId: null,
@@ -511,6 +681,11 @@ export function DashboardDualPane({
       if (data?.data?.extracted_data) {
         const ocrData = data.data.extracted_data
         console.log('✅ OCR data received:', ocrData)
+        console.log('✅ GEQS data received:', {
+          geqs_score: data.data.geqs_score,
+          geqs_details: data.data.geqs_details,
+          quality_analysis: data.data.quality_analysis
+        })
         
         // Set raw text for debugging - check multiple possible field names
         const rawTextData = ocrData.raw_text || 
@@ -554,13 +729,22 @@ export function DashboardDualPane({
           'Card_Last_4_Digits_Confidence': ocrData.card_last_4_digits_confidence || ocrData['Card_Last_4_Digits_Confidence'],
           // Overall confidence metadata
           'overall_document_confidence': ocrData.overall_document_confidence,
-          'total_confidence_sources': ocrData.total_confidence_sources
+          'total_confidence_sources': ocrData.total_confidence_sources,
+          // GEQS Quality Score data (from top-level API response)
+          'geqs_score': data.data.geqs_score,
+          'geqs_details': data.data.geqs_details,
+          'quality_analysis': data.data.quality_analysis
         }
         
         setTicketData(extractedData)
         setOcrSuccess(true)
         setOcrStatus(t('ocr.completed', 'OCR completed successfully!'))
         console.log('✅ Ticket data mapped from OCR:', extractedData)
+        console.log('✅ GEQS data in ticketData:', {
+          geqs_score: extractedData.geqs_score,
+          geqs_details: extractedData.geqs_details,
+          quality_analysis: extractedData.quality_analysis
+        })
         
         // Show success message
         console.log('✅ OCR processing completed successfully')
@@ -632,7 +816,11 @@ export function DashboardDualPane({
         'Card_Last_4_Digits_Confidence': initialTicketData.card_last_4_digits_confidence || initialTicketData['Card_Last_4_Digits_Confidence'],
         // Overall confidence metadata
         'overall_document_confidence': initialTicketData.overall_document_confidence,
-        'total_confidence_sources': initialTicketData.total_confidence_sources
+        'total_confidence_sources': initialTicketData.total_confidence_sources,
+        // GEQS Quality Score data
+        'geqs_score': initialTicketData.geqs_score,
+        'geqs_details': initialTicketData.geqs_details,
+        'quality_analysis': initialTicketData.quality_analysis
       }
       
       setTicketData(mappedData)
@@ -655,6 +843,11 @@ export function DashboardDualPane({
       console.log('✅ Ticket data initialized:', mappedData)
       console.log('✅ Raw text length:', rawTextData.length)
       console.log('✅ OCR success set to true')
+      console.log('✅ GEQS data in initialized ticket data:', {
+        geqs_score: mappedData.geqs_score,
+        geqs_details: mappedData.geqs_details,
+        quality_analysis: mappedData.quality_analysis
+      })
     } else {
       console.log('⚠️ No initialTicketData provided')
     }
@@ -1203,6 +1396,24 @@ export function DashboardDualPane({
                   </div>
                 </div>
               )}
+
+              {/* GEQS Quality Score */}
+              {(() => {
+                console.log('🎯 GEQS render condition check:', {
+                  ocrSuccess,
+                  has_geqs_score: !!ticketData.geqs_score,
+                  geqs_score: ticketData.geqs_score
+                });
+                return ocrSuccess && ticketData.geqs_score && (
+                  <div className="mb-4">
+                    <GEQSQualityScore 
+                      geqsScore={ticketData.geqs_score}
+                      geqsDetails={ticketData.geqs_details}
+                      qualityAnalysis={ticketData.quality_analysis}
+                    />
+                  </div>
+                );
+              })()}
               
               {/* Start Agent Button Section - Mobile - Top of Extracted Details */}
               {ocrSuccess && (
@@ -1243,24 +1454,39 @@ export function DashboardDualPane({
                       </div>
                     </div>
                     
-                    {/* Start Agent Button */}
-                    <Button
-                      onClick={handleStartAgentTask}
-                      disabled={!vendorUrl || !ocrSuccess || isStartingAgent}
-                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
-                    >
-                      {isStartingAgent ? (
-                        <>
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                          Starting Agent...
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-4 h-4 mr-2" />
-                          {t('task.startAgent')}
-                        </>
+                    {/* Action Buttons */}
+                    <div className="space-y-2">
+                      {/* Ticket Preview Button */}
+                      {ticketImageUrl && (
+                        <Button
+                          onClick={() => setShowTicketPreview(true)}
+                          variant="outline"
+                          className="w-full text-[#208692] border-[#208692] hover:bg-[#208692] hover:text-white font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          Ticket Preview
+                        </Button>
                       )}
-                    </Button>
+                      
+                      {/* Start Agent Button */}
+                      <Button
+                        onClick={handleStartAgentTask}
+                        disabled={!vendorUrl || !ocrSuccess || isStartingAgent}
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2 px-4 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
+                      >
+                        {isStartingAgent ? (
+                          <>
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                            Starting Agent...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4 mr-2" />
+                            {t('task.startAgent')}
+                          </>
+                        )}
+                      </Button>
+                    </div>
                     
                     {/* Status Messages */}
                     {!vendorUrl && (
@@ -1326,122 +1552,135 @@ export function DashboardDualPane({
               
               <div className="grid grid-cols-3 gap-2" style={{ backgroundColor: '#F5F5F5' }}>
                 {/* Mesa/Folio */}
-                <FieldWithCopy
-                  label={t('ticket.mesaFolio')}
-                  value={ticketData['Mesa_Folio'] || ''}
-                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': value }))}
-                  placeholder={t('ticket.enterMesaFolio')}
-                  confidence={ticketData['Mesa_Folio_Confidence']}
-                />
+                {renderFieldWithGEQS(
+                  t('ticket.mesaFolio'),
+                  ticketData['Mesa_Folio'] || '',
+                  (value) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': value })),
+                  t('ticket.enterMesaFolio'),
+                  ticketData['Mesa_Folio_Confidence'],
+                  ticketData.geqs_details
+                )}
                 
                 {/* Fecha */}
-                <FieldWithCopy
-                  label={t('ticket.fecha')}
-                  value={ticketData['Fecha'] || ''}
-                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Fecha': value }))}
-                  placeholder={t('ticket.enterFecha')}
-                  confidence={ticketData['Fecha_Confidence']}
-                />
+                {renderFieldWithGEQS(
+                  t('ticket.fecha'),
+                  ticketData['Fecha'] || 'N/A',
+                  (value) => setTicketData(prev => ({ ...prev, 'Fecha': value })),
+                  t('ticket.enterFecha'),
+                  ticketData['Fecha_Confidence'],
+                  ticketData.geqs_details
+                )}
                 
                 {/* ID Ticket */}
-                <FieldWithCopy
-                  label={t('ticket.idTicket')}
-                  value={ticketData['ID_Ticket'] || ''}
-                  onChange={(value) => setTicketData(prev => ({ ...prev, 'ID_Ticket': value }))}
-                  placeholder={t('ticket.enterIdTicket')}
-                  confidence={ticketData['ID_Ticket_Confidence']}
-                />
+                {renderFieldWithGEQS(
+                  t('ticket.idTicket'),
+                  ticketData['ID_Ticket'] || '',
+                  (value) => setTicketData(prev => ({ ...prev, 'ID_Ticket': value })),
+                  t('ticket.enterIdTicket'),
+                  ticketData['ID_Ticket_Confidence'],
+                  ticketData.geqs_details
+                )}
                 
                 {/* Total */}
-                <FieldWithCopy
-                  label={t('ticket.total')}
-                  value={ticketData['Total'] || ''}
-                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Total': value }))}
-                  placeholder={t('ticket.enterTotal')}
-                  confidence={ticketData['Total_Confidence']}
-                />
+                {renderFieldWithGEQS(
+                  t('ticket.total'),
+                  ticketData['Total'] || '',
+                  (value) => setTicketData(prev => ({ ...prev, 'Total': value })),
+                  t('ticket.enterTotal'),
+                  ticketData['Total_Confidence'],
+                  ticketData.geqs_details
+                )}
                 
                 {/* Store/Branch/Plaza */}
-                <FieldWithCopy
-                  label={t('ticket.storeBranchPlaza')}
-                  value={ticketData['Store_Branch_Plaza'] || ''}
-                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': value }))}
-                  placeholder={t('ticket.enterStoreBranchPlaza')}
-                  confidence={ticketData['Store_Branch_Plaza_Confidence']}
-                />
+                {renderFieldWithGEQS(
+                  t('ticket.storeBranchPlaza'),
+                  ticketData['Store_Branch_Plaza'] || '',
+                  (value) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': value })),
+                  t('ticket.enterStoreBranchPlaza'),
+                  ticketData['Store_Branch_Plaza_Confidence'],
+                  ticketData.geqs_details
+                )}
                 
                 {/* Register/Station/Terminal */}
-                <FieldWithCopy
-                  label={t('ticket.registerStationTerminal')}
-                  value={ticketData['Register_Station_Terminal'] || ''}
-                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': value }))}
-                  placeholder={t('ticket.enterRegisterStationTerminal')}
-                  confidence={ticketData['Register_Station_Terminal_Confidence']}
-                />
+                {renderFieldWithGEQS(
+                  t('ticket.registerStationTerminal'),
+                  ticketData['Register_Station_Terminal'] || '',
+                  (value) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': value })),
+                  t('ticket.enterRegisterStationTerminal'),
+                  ticketData['Register_Station_Terminal_Confidence'],
+                  ticketData.geqs_details
+                )}
                 
                 {/* Payment Type */}
-                <FieldWithCopy
-                  label={t('ticket.paymentType')}
-                  value={ticketData['Payment_Type'] || ''}
-                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Payment_Type': value }))}
-                  placeholder={t('ticket.enterPaymentType')}
-                  confidence={ticketData['Payment_Type_Confidence']}
-                />
+                {renderFieldWithGEQS(
+                  t('ticket.paymentType'),
+                  ticketData['Payment_Type'] || '',
+                  (value) => setTicketData(prev => ({ ...prev, 'Payment_Type': value })),
+                  t('ticket.enterPaymentType'),
+                  ticketData['Payment_Type_Confidence'],
+                  ticketData.geqs_details
+                )}
                 
                 {/* Last 4 digits of card */}
-                <FieldWithCopy
-                  label={t('ticket.cardLast4Digits')}
-                  value={ticketData['Card_Last_4_Digits'] || ''}
-                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': value }))}
-                  placeholder={t('ticket.enterCardLast4Digits')}
-                  confidence={ticketData['Card_Last_4_Digits_Confidence']}
-                />
+                {renderFieldWithGEQS(
+                  t('ticket.cardLast4Digits'),
+                  ticketData['Card_Last_4_Digits'] || '',
+                  (value) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': value })),
+                  t('ticket.enterCardLast4Digits'),
+                  ticketData['Card_Last_4_Digits_Confidence'],
+                  ticketData.geqs_details
+                )}
                 
                 {/* TC# */}
-                <FieldWithCopy
-                  label={t('ticket.tc')}
-                  value={ticketData['TC#'] || ''}
-                  onChange={(value) => setTicketData(prev => ({ ...prev, 'TC#': value }))}
-                  placeholder={t('ticket.enterTc')}
-                  confidence={ticketData['TC#_Confidence']}
-                />
+                {renderFieldWithGEQS(
+                  t('ticket.tc'),
+                  ticketData['TC#'] || '',
+                  (value) => setTicketData(prev => ({ ...prev, 'TC#': value })),
+                  t('ticket.enterTc'),
+                  ticketData['TC#_Confidence'],
+                  ticketData.geqs_details
+                )}
                 
                 {/* TR# */}
-                <FieldWithCopy
-                  label={t('ticket.tr')}
-                  value={ticketData['TR#'] || ''}
-                  onChange={(value) => setTicketData(prev => ({ ...prev, 'TR#': value }))}
-                  placeholder={t('ticket.enterTr')}
-                  confidence={ticketData['TR#_Confidence']}
-                />
+                {renderFieldWithGEQS(
+                  t('ticket.tr'),
+                  ticketData['TR#'] || '',
+                  (value) => setTicketData(prev => ({ ...prev, 'TR#': value })),
+                  t('ticket.enterTr'),
+                  ticketData['TR#_Confidence'],
+                  ticketData.geqs_details
+                )}
                 
                 {/* ID */}
-                <FieldWithCopy
-                  label={t('ticket.id')}
-                  value={ticketData['ID'] || ''}
-                  onChange={(value) => setTicketData(prev => ({ ...prev, 'ID': value }))}
-                  placeholder={t('ticket.enterId')}
-                  confidence={ticketData['ID_Confidence']}
-                />
+                {renderFieldWithGEQS(
+                  t('ticket.id'),
+                  ticketData['ID'] || '',
+                  (value) => setTicketData(prev => ({ ...prev, 'ID': value })),
+                  t('ticket.enterId'),
+                  ticketData['ID_Confidence'],
+                  ticketData.geqs_details
+                )}
                 
                 {/* Fol_Vta */}
-                <FieldWithCopy
-                  label={t('ticket.folVta')}
-                  value={ticketData['Fol_Vta'] || ''}
-                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Fol_Vta': value }))}
-                  placeholder={t('ticket.enterFolVta')}
-                  confidence={ticketData['Fol_Vta_Confidence']}
-                />
+                {renderFieldWithGEQS(
+                  t('ticket.folVta'),
+                  ticketData['Fol_Vta'] || '',
+                  (value) => setTicketData(prev => ({ ...prev, 'Fol_Vta': value })),
+                  t('ticket.enterFolVta'),
+                  ticketData['Fol_Vta_Confidence'],
+                  ticketData.geqs_details
+                )}
                 
                 {/* Comercio - Full width */}
-                <FieldWithCopy
-                  label={t('ticket.comercio')}
-                  value={ticketData['Comercio'] || ''}
-                  onChange={(value) => setTicketData(prev => ({ ...prev, 'Comercio': value }))}
-                  placeholder={t('ticket.enterComercio')}
-                  fullWidth={true}
-                  confidence={ticketData['Comercio_Confidence']}
-                />
+                {renderFieldWithGEQS(
+                  t('ticket.comercio'),
+                  ticketData['Comercio'] || '',
+                  (value) => setTicketData(prev => ({ ...prev, 'Comercio': value })),
+                  t('ticket.enterComercio'),
+                  ticketData['Comercio_Confidence'],
+                  ticketData.geqs_details,
+                  true
+                )}
               </div>
               
               {/* Full Raw Text Display - New Component */}
@@ -1540,9 +1779,88 @@ export function DashboardDualPane({
     )
   }
 
+  // Ticket Preview Modal
+  const TicketPreviewModal = () => {
+    const [zoomLevel, setZoomLevel] = useState(1)
+    
+    if (!showTicketPreview || !ticketImageUrl) return null
+
+    const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.25, 3))
+    const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.25, 0.5))
+    const handleResetZoom = () => setZoomLevel(1)
+
+    return (
+      <div className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4">
+        <div className="relative w-full h-full max-w-6xl max-h-[90vh] bg-white rounded-lg overflow-hidden flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 bg-[#E5EADF] border-b border-[#C7D8D0] flex-shrink-0">
+            <h2 className="text-lg font-semibold text-[#164F5B]">Ticket Preview</h2>
+            <div className="flex items-center gap-2">
+              {/* Zoom Controls */}
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleZoomOut}
+                  className="text-[#208692] border-[#208692] hover:bg-[#208692] hover:text-white"
+                >
+                  -
+                </Button>
+                <span className="text-sm text-[#527779] min-w-[3rem] text-center">
+                  {Math.round(zoomLevel * 100)}%
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleZoomIn}
+                  className="text-[#208692] border-[#208692] hover:bg-[#208692] hover:text-white"
+                >
+                  +
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResetZoom}
+                  className="text-[#208692] border-[#208692] hover:bg-[#208692] hover:text-white ml-2"
+                >
+                  Reset
+                </Button>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowTicketPreview(false)}
+                className="text-[#527779] hover:text-[#164F5B]"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
+          
+          {/* Image Content */}
+          <div className="flex-1 flex items-center justify-center p-8 overflow-hidden">
+            <div className="w-full h-full flex items-center justify-center">
+              <img
+                src={ticketImageUrl}
+                alt="Uploaded Ticket"
+                className="max-w-full max-h-full object-contain rounded-lg shadow-lg transition-transform duration-200"
+                style={{ transform: `scale(${zoomLevel})` }}
+                onError={(e) => {
+                  console.error('Failed to load ticket image:', e)
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Desktop layout - dual pane
   return (
     <div className={`h-full w-full overflow-hidden ${className}`}>
+      <TicketPreviewModal />
       <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm h-full w-full rounded-xl overflow-hidden hover:shadow-2xl transition-all duration-300 border-l-4" style={{ borderLeftColor: '#208692' }}>
         <CardHeader className="pb-3 flex-shrink-0 border-b-2" style={{ backgroundColor: '#208692', borderBottomColor: '#C7D8D0' }}>
           <CardTitle className="flex items-center justify-between">
@@ -1633,31 +1951,33 @@ export function DashboardDualPane({
                     </div>
                   )}
                   
-                  {/* Confidence Summary */}
-                  {ocrSuccess && ticketData.overall_document_confidence !== undefined && (
+                  {/* GEQS Quality Summary */}
+                  {ocrSuccess && ticketData.geqs_score && (
                     <div className="p-3 border-b border-slate-200/50 flex-shrink-0">
-                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-3">
+                      <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-lg p-3">
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-sm font-semibold text-blue-800 flex items-center gap-2">
+                          <h4 className="text-sm font-semibold text-teal-800 flex items-center gap-2">
                             <Cloud className="w-4 h-4" />
-                            Document Confidence Summary
+                            Document Quality Summary (GEQS)
                           </h4>
                           <div className="flex items-center gap-2">
                             <div 
                               className="w-3 h-3 rounded-full" 
                               style={{ 
-                                backgroundColor: ticketData.overall_document_confidence >= 80 ? '#10B981' : 
-                                               ticketData.overall_document_confidence >= 50 ? '#F59E0B' : '#EF4444'
+                                backgroundColor: ticketData.geqs_score.total_score >= 85 ? '#10B981' : 
+                                               ticketData.geqs_score.total_score >= 70 ? '#F59E0B' : 
+                                               ticketData.geqs_score.total_score >= 50 ? '#F97316' : '#EF4444'
                               }}
                             ></div>
                             <span 
                               className="text-sm font-bold"
                               style={{ 
-                                color: ticketData.overall_document_confidence >= 80 ? '#10B981' : 
-                                       ticketData.overall_document_confidence >= 50 ? '#F59E0B' : '#EF4444'
+                                color: ticketData.geqs_score.total_score >= 85 ? '#10B981' : 
+                                       ticketData.geqs_score.total_score >= 70 ? '#F59E0B' : 
+                                       ticketData.geqs_score.total_score >= 50 ? '#F97316' : '#EF4444'
                               }}
                             >
-                              {Math.round(ticketData.overall_document_confidence)}%
+                              {Math.round(ticketData.geqs_score.total_score)}%
                             </span>
                           </div>
                         </div>
@@ -1665,55 +1985,95 @@ export function DashboardDualPane({
                           <div 
                             className="h-2 rounded-full transition-all duration-500" 
                             style={{ 
-                              width: `${Math.min(100, Math.max(0, ticketData.overall_document_confidence))}%`,
-                              backgroundColor: ticketData.overall_document_confidence >= 80 ? '#10B981' : 
-                                             ticketData.overall_document_confidence >= 50 ? '#F59E0B' : '#EF4444'
+                              width: `${Math.min(100, Math.max(0, ticketData.geqs_score.total_score))}%`,
+                              backgroundColor: ticketData.geqs_score.total_score >= 85 ? '#10B981' : 
+                                             ticketData.geqs_score.total_score >= 70 ? '#F59E0B' : 
+                                             ticketData.geqs_score.total_score >= 50 ? '#F97316' : '#EF4444'
                             }}
                           ></div>
                         </div>
-                        <div className="flex items-center justify-between text-xs text-blue-600">
+                        <div className="flex items-center justify-between text-xs text-teal-600 mb-1">
                           <span>
-                            {ticketData.overall_document_confidence >= 80 ? 'High Confidence' : 
-                             ticketData.overall_document_confidence >= 50 ? 'Medium Confidence' : 'Low Confidence'}
+                            {ticketData.geqs_score.quality_level === 'EXCELLENT' ? 'Excellent Quality' : 
+                             ticketData.geqs_score.quality_level === 'GOOD' ? 'Good Quality' : 
+                             ticketData.geqs_score.quality_level === 'FAIR' ? 'Fair Quality' : 'Poor Quality'}
                           </span>
-                          {ticketData.total_confidence_sources && (
-                            <span>{ticketData.total_confidence_sources} sources analyzed</span>
-                          )}
+                          <span className="font-medium">
+                            GEQS: {Math.round(ticketData.geqs_score.cov_score)}% coverage, {Math.round(ticketData.geqs_score.cons_score)}% consistency
+                          </span>
                         </div>
+                        {ticketData.total_confidence_sources && (
+                          <div className="text-xs text-teal-600">
+                            {ticketData.total_confidence_sources} sources analyzed
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
+
+                  {/* GEQS Quality Score */}
+                  {(() => {
+                    console.log('🎯 GEQS render condition check (mobile):', {
+                      ocrSuccess,
+                      has_geqs_score: !!ticketData.geqs_score,
+                      geqs_score: ticketData.geqs_score
+                    });
+                    return ocrSuccess && ticketData.geqs_score && (
+                      <div className="p-3 border-b border-slate-200/50 flex-shrink-0">
+                        <GEQSQualityScore 
+                          geqsScore={ticketData.geqs_score}
+                          geqsDetails={ticketData.geqs_details}
+                          qualityAnalysis={ticketData.quality_analysis}
+                        />
+                      </div>
+                    );
+                  })()}
                   
                   {/* Start Agent Button Section - Top of Extracted Details */}
                   {ocrSuccess && (
                     <div className="p-3 border-b border-slate-200/50 flex-shrink-0">
                       <div className="text-center">
-                        {/* Start Agent Button */}
-                        <Button
-                          onClick={handleStartAgentTask}
-                          disabled={!vendorUrl || !ocrSuccess || taskState.status === 'running' || taskState.status === 'connecting'}
-                          className="text-white font-semibold py-2 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
-                          style={{ backgroundColor: '#D4D970' }}
-                          onMouseEnter={(e) => e.target.style.backgroundColor = '#C4C960'}
-                          onMouseLeave={(e) => e.target.style.backgroundColor = '#D4D970'}
-                        >
-                          {taskState.status === 'connecting' ? (
-                            <>
-                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                              Creating Task...
-                            </>
-                          ) : taskState.status === 'running' ? (
-                            <>
-                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
-                              Agent Running...
-                            </>
-                          ) : (
-                            <>
-                              <Zap className="w-4 h-4 mr-2" />
-                              {t('task.startAgent')}
-                            </>
+                        {/* Action Buttons */}
+                        <div className="flex gap-3 justify-center">
+                          {/* Ticket Preview Button */}
+                          {ticketImageUrl && (
+                            <Button
+                              onClick={() => setShowTicketPreview(true)}
+                              variant="outline"
+                              className="text-[#208692] border-[#208692] hover:bg-[#208692] hover:text-white font-semibold py-2 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Ticket Preview
+                            </Button>
                           )}
-                        </Button>
+                          
+                          {/* Start Agent Button */}
+                          <Button
+                            onClick={handleStartAgentTask}
+                            disabled={!vendorUrl || !ocrSuccess || taskState.status === 'running' || taskState.status === 'connecting'}
+                            className="text-white font-semibold py-2 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 text-sm"
+                            style={{ backgroundColor: '#D4D970' }}
+                            onMouseEnter={(e) => e.target.style.backgroundColor = '#C4C960'}
+                            onMouseLeave={(e) => e.target.style.backgroundColor = '#D4D970'}
+                          >
+                            {taskState.status === 'connecting' ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                                Creating Task...
+                              </>
+                            ) : taskState.status === 'running' ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                                Agent Running...
+                              </>
+                            ) : (
+                              <>
+                                <Zap className="w-4 h-4 mr-2" />
+                                {t('task.startAgent')}
+                              </>
+                            )}
+                          </Button>
+                        </div>
                         
                         {/* Status Messages */}
                         {!vendorUrl && (
@@ -1789,122 +2149,135 @@ export function DashboardDualPane({
                     
                     <div className="grid grid-cols-2 gap-2 flex-shrink-0 mb-4">
                       {/* Mesa/Folio */}
-                      <FieldWithCopy
-                        label={t('ticket.mesaFolio')}
-                        value={ticketData['Mesa_Folio'] || ''}
-                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': value }))}
-                        placeholder={t('ticket.enterMesaFolio')}
-                        confidence={ticketData['Mesa_Folio_Confidence']}
-                      />
+                      {renderFieldWithGEQS(
+                        t('ticket.mesaFolio'),
+                        ticketData['Mesa_Folio'] || '',
+                        (value) => setTicketData(prev => ({ ...prev, 'Mesa_Folio': value })),
+                        t('ticket.enterMesaFolio'),
+                        ticketData['Mesa_Folio_Confidence'],
+                        ticketData.geqs_details
+                      )}
                       
                       {/* Fecha */}
-                      <FieldWithCopy
-                        label={t('ticket.fecha')}
-                        value={ticketData['Fecha'] || ''}
-                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Fecha': value }))}
-                        placeholder={t('ticket.enterFecha')}
-                        confidence={ticketData['Fecha_Confidence']}
-                      />
+                      {renderFieldWithGEQS(
+                        t('ticket.fecha'),
+                        ticketData['Fecha'] || 'N/A',
+                        (value) => setTicketData(prev => ({ ...prev, 'Fecha': value })),
+                        t('ticket.enterFecha'),
+                        ticketData['Fecha_Confidence'],
+                        ticketData.geqs_details
+                      )}
                       
                       {/* ID Ticket */}
-                      <FieldWithCopy
-                        label={t('ticket.idTicket')}
-                        value={ticketData['ID_Ticket'] || ''}
-                        onChange={(value) => setTicketData(prev => ({ ...prev, 'ID_Ticket': value }))}
-                        placeholder={t('ticket.enterIdTicket')}
-                        confidence={ticketData['ID_Ticket_Confidence']}
-                      />
+                      {renderFieldWithGEQS(
+                        t('ticket.idTicket'),
+                        ticketData['ID_Ticket'] || '',
+                        (value) => setTicketData(prev => ({ ...prev, 'ID_Ticket': value })),
+                        t('ticket.enterIdTicket'),
+                        ticketData['ID_Ticket_Confidence'],
+                        ticketData.geqs_details
+                      )}
                       
                       {/* Total */}
-                      <FieldWithCopy
-                        label={t('ticket.total')}
-                        value={ticketData['Total'] || ''}
-                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Total': value }))}
-                        placeholder={t('ticket.enterTotal')}
-                        confidence={ticketData['Total_Confidence']}
-                      />
+                      {renderFieldWithGEQS(
+                        t('ticket.total'),
+                        ticketData['Total'] || '',
+                        (value) => setTicketData(prev => ({ ...prev, 'Total': value })),
+                        t('ticket.enterTotal'),
+                        ticketData['Total_Confidence'],
+                        ticketData.geqs_details
+                      )}
                       
                       {/* Store/Branch/Plaza */}
-                      <FieldWithCopy
-                        label={t('ticket.storeBranchPlaza')}
-                        value={ticketData['Store_Branch_Plaza'] || ''}
-                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': value }))}
-                        placeholder={t('ticket.enterStoreBranchPlaza')}
-                        confidence={ticketData['Store_Branch_Plaza_Confidence']}
-                      />
+                      {renderFieldWithGEQS(
+                        t('ticket.storeBranchPlaza'),
+                        ticketData['Store_Branch_Plaza'] || '',
+                        (value) => setTicketData(prev => ({ ...prev, 'Store_Branch_Plaza': value })),
+                        t('ticket.enterStoreBranchPlaza'),
+                        ticketData['Store_Branch_Plaza_Confidence'],
+                        ticketData.geqs_details
+                      )}
                       
                       {/* Register/Station/Terminal */}
-                      <FieldWithCopy
-                        label={t('ticket.registerStationTerminal')}
-                        value={ticketData['Register_Station_Terminal'] || ''}
-                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': value }))}
-                        placeholder={t('ticket.enterRegisterStationTerminal')}
-                        confidence={ticketData['Register_Station_Terminal_Confidence']}
-                      />
+                      {renderFieldWithGEQS(
+                        t('ticket.registerStationTerminal'),
+                        ticketData['Register_Station_Terminal'] || '',
+                        (value) => setTicketData(prev => ({ ...prev, 'Register_Station_Terminal': value })),
+                        t('ticket.enterRegisterStationTerminal'),
+                        ticketData['Register_Station_Terminal_Confidence'],
+                        ticketData.geqs_details
+                      )}
                       
                       {/* Payment Type */}
-                      <FieldWithCopy
-                        label={t('ticket.paymentType')}
-                        value={ticketData['Payment_Type'] || ''}
-                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Payment_Type': value }))}
-                        placeholder={t('ticket.enterPaymentType')}
-                        confidence={ticketData['Payment_Type_Confidence']}
-                      />
+                      {renderFieldWithGEQS(
+                        t('ticket.paymentType'),
+                        ticketData['Payment_Type'] || '',
+                        (value) => setTicketData(prev => ({ ...prev, 'Payment_Type': value })),
+                        t('ticket.enterPaymentType'),
+                        ticketData['Payment_Type_Confidence'],
+                        ticketData.geqs_details
+                      )}
                       
                       {/* Last 4 digits of card */}
-                      <FieldWithCopy
-                        label={t('ticket.cardLast4Digits')}
-                        value={ticketData['Card_Last_4_Digits'] || ''}
-                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': value }))}
-                        placeholder={t('ticket.enterCardLast4Digits')}
-                        confidence={ticketData['Card_Last_4_Digits_Confidence']}
-                      />
+                      {renderFieldWithGEQS(
+                        t('ticket.cardLast4Digits'),
+                        ticketData['Card_Last_4_Digits'] || '',
+                        (value) => setTicketData(prev => ({ ...prev, 'Card_Last_4_Digits': value })),
+                        t('ticket.enterCardLast4Digits'),
+                        ticketData['Card_Last_4_Digits_Confidence'],
+                        ticketData.geqs_details
+                      )}
                       
                       {/* TC# */}
-                      <FieldWithCopy
-                        label={t('ticket.tc')}
-                        value={ticketData['TC#'] || ''}
-                        onChange={(value) => setTicketData(prev => ({ ...prev, 'TC#': value }))}
-                        placeholder={t('ticket.enterTc')}
-                        confidence={ticketData['TC#_Confidence']}
-                      />
+                      {renderFieldWithGEQS(
+                        t('ticket.tc'),
+                        ticketData['TC#'] || '',
+                        (value) => setTicketData(prev => ({ ...prev, 'TC#': value })),
+                        t('ticket.enterTc'),
+                        ticketData['TC#_Confidence'],
+                        ticketData.geqs_details
+                      )}
                       
                       {/* TR# */}
-                      <FieldWithCopy
-                        label={t('ticket.tr')}
-                        value={ticketData['TR#'] || ''}
-                        onChange={(value) => setTicketData(prev => ({ ...prev, 'TR#': value }))}
-                        placeholder={t('ticket.enterTr')}
-                        confidence={ticketData['TR#_Confidence']}
-                      />
+                      {renderFieldWithGEQS(
+                        t('ticket.tr'),
+                        ticketData['TR#'] || '',
+                        (value) => setTicketData(prev => ({ ...prev, 'TR#': value })),
+                        t('ticket.enterTr'),
+                        ticketData['TR#_Confidence'],
+                        ticketData.geqs_details
+                      )}
                       
                       {/* ID */}
-                      <FieldWithCopy
-                        label={t('ticket.id')}
-                        value={ticketData['ID'] || ''}
-                        onChange={(value) => setTicketData(prev => ({ ...prev, 'ID': value }))}
-                        placeholder={t('ticket.enterId')}
-                        confidence={ticketData['ID_Confidence']}
-                      />
+                      {renderFieldWithGEQS(
+                        t('ticket.id'),
+                        ticketData['ID'] || '',
+                        (value) => setTicketData(prev => ({ ...prev, 'ID': value })),
+                        t('ticket.enterId'),
+                        ticketData['ID_Confidence'],
+                        ticketData.geqs_details
+                      )}
                       
                       {/* Fol_Vta */}
-                      <FieldWithCopy
-                        label={t('ticket.folVta')}
-                        value={ticketData['Fol_Vta'] || ''}
-                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Fol_Vta': value }))}
-                        placeholder={t('ticket.enterFolVta')}
-                        confidence={ticketData['Fol_Vta_Confidence']}
-                      />
+                      {renderFieldWithGEQS(
+                        t('ticket.folVta'),
+                        ticketData['Fol_Vta'] || '',
+                        (value) => setTicketData(prev => ({ ...prev, 'Fol_Vta': value })),
+                        t('ticket.enterFolVta'),
+                        ticketData['Fol_Vta_Confidence'],
+                        ticketData.geqs_details
+                      )}
                       
                       {/* Comercio - Full width */}
-                      <FieldWithCopy
-                        label={t('ticket.comercio')}
-                        value={ticketData['Comercio'] || ''}
-                        onChange={(value) => setTicketData(prev => ({ ...prev, 'Comercio': value }))}
-                        placeholder={t('ticket.enterComercio')}
-                        fullWidth={true}
-                        confidence={ticketData['Comercio_Confidence']}
-                      />
+                      {renderFieldWithGEQS(
+                        t('ticket.comercio'),
+                        ticketData['Comercio'] || '',
+                        (value) => setTicketData(prev => ({ ...prev, 'Comercio': value })),
+                        t('ticket.enterComercio'),
+                        ticketData['Comercio_Confidence'],
+                        ticketData.geqs_details,
+                        true
+                      )}
                     </div>
                     
                     {/* Full Raw Text Display - New Component */}

@@ -26,6 +26,21 @@ const en: Translations = {
   'common.mexicanPeso': 'Mexican Peso',
   'common.usDollar': 'US Dollar',
   'common.euro': 'Euro',
+  'common.close': 'Close',
+
+  // GEQS Quality Score
+  'geqs.title': 'GEQS Quality Score',
+  'geqs.description': 'Global Extraction Quality Score - Overall extraction trustworthiness',
+  'geqs.analysis': 'Quality Analysis',
+  'geqs.strengths': 'Strengths',
+  'geqs.weaknesses': 'Areas for Improvement',
+  'geqs.recommendations': 'Recommendations',
+  'geqs.components': 'Score Components',
+  'geqs.cfc': 'Calibrated Field Confidence',
+  'geqs.cov': 'Coverage & Completeness',
+  'geqs.cons': 'Consistency Checks',
+  'geqs.msa': 'Multi-Signal Agreement',
+  'geqs.ilq': 'Image & Layout Quality',
 
   // Home Page
   'home.subtitle': 'Automate CFDI form filling with artificial intelligence',

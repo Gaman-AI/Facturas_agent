@@ -17,14 +17,18 @@ def main():
         current_dir = Path(__file__).parent
         sys.path.insert(0, str(current_dir))
         
-        # Import the enhanced OCR functionality with confidence scoring
+        # Import the enhanced OCR functionality with GEQS scoring
         try:
-            from ocr_functionality_with_confidence import extract_receipt_data_with_confidence
-            print(f"[OCR] Using enhanced OCR with confidence scoring", file=sys.stderr)
+            from enhanced_ocr_with_geqs import extract_receipt_data_with_geqs
+            print(f"[OCR] Using enhanced OCR with GEQS quality scoring", file=sys.stderr)
         except ImportError:
-            # Fallback to original functionality
-            from ocr_functionality import extract_receipt_data as extract_receipt_data_with_confidence
-            print(f"[OCR] Fallback to original OCR functionality", file=sys.stderr)
+            try:
+                from ocr_functionality_with_confidence import extract_receipt_data_with_confidence as extract_receipt_data_with_geqs
+                print(f"[OCR] Fallback to OCR with confidence scoring", file=sys.stderr)
+            except ImportError:
+                # Final fallback to original functionality
+                from ocr_functionality import extract_receipt_data as extract_receipt_data_with_geqs
+                print(f"[OCR] Final fallback to original OCR functionality", file=sys.stderr)
         
         # Check if image path was provided
         if len(sys.argv) != 2:
@@ -48,9 +52,9 @@ def main():
             sys.stdout.buffer.write(b'\n')
             sys.exit(1)
         
-        # Process the image with confidence scoring
-        print(f"[OCR] Processing image with confidence scoring: {image_path}", file=sys.stderr)
-        result = extract_receipt_data_with_confidence(image_path)
+        # Process the image with GEQS quality scoring
+        print(f"[OCR] Processing image with GEQS quality scoring: {image_path}", file=sys.stderr)
+        result = extract_receipt_data_with_geqs(image_path)
         
         # Return successful result using binary-safe output
         json_output = json.dumps(result, ensure_ascii=False)

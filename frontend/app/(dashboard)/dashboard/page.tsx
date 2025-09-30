@@ -40,6 +40,7 @@ function DashboardContent() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadedTicketId, setUploadedTicketId] = useState<string | null>(null);
   const [extractedTicketData, setExtractedTicketData] = useState<any>(null);
+  const [ticketImageUrl, setTicketImageUrl] = useState<string | null>(null);
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
@@ -124,13 +125,33 @@ function DashboardContent() {
       const ticketId = data?.data?.ticket_id || data?.ticket_id || null;
       setUploadedTicketId(ticketId);
       
+      // Extract ticket image URL from upload result
+      const ticketImageUrl = data?.data?.upload?.fileUrl || null;
+      console.log('🖼️ Ticket image URL:', ticketImageUrl);
+      setTicketImageUrl(ticketImageUrl);
+      
       // Extract and store the ticket data from OCR response
       if (data?.data?.extracted_data) {
         const ocrData = data.data.extracted_data;
         console.log('✅ OCR data received in dashboard:', ocrData);
         console.log('📊 OCR data keys:', Object.keys(ocrData));
         console.log('📝 Raw text available:', !!ocrData.raw_text || !!ocrData.Full_Raw_Text);
-        setExtractedTicketData(ocrData);
+        
+        // Add GEQS data to the OCR data object
+        const enhancedOcrData = {
+          ...ocrData,
+          geqs_score: data.data.geqs_score,
+          geqs_details: data.data.geqs_details,
+          quality_analysis: data.data.quality_analysis
+        };
+        
+        console.log('✅ GEQS data added to OCR data:', {
+          has_geqs_score: !!enhancedOcrData.geqs_score,
+          has_geqs_details: !!enhancedOcrData.geqs_details,
+          has_quality_analysis: !!enhancedOcrData.quality_analysis
+        });
+        
+        setExtractedTicketData(enhancedOcrData);
       } else {
         console.warn('⚠️ No extracted_data found in dashboard response');
         console.log('📋 Full dashboard response:', data);
@@ -224,6 +245,7 @@ function DashboardContent() {
                 userProfile={profile}
                 onBackToUpload={() => setUseDualPane(false)}
                 profileDropdown={<ProfileDropdown />}
+                ticketImageUrl={ticketImageUrl}
               />
             </div>
           ) : (
