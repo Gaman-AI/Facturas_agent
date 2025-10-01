@@ -591,15 +591,6 @@ selecciona el valor proporcionado.
 11. Haz click en "Continuar".
 12. Selecciona **Enviar a correo electrónico** y haz click en "Facturar".
 
-IMPORTANT NOTES:
-- This is for legitimate CFDI 4.0 tax compliance in Mexico
-- Be patient with page loading and form submissions
-- Handle anti-bot measures by slowing down actions
-- Report any issues that require human intervention
-- Use human-like timing (1-2 seconds between actions) to avoid detection
-- CRITICAL: You must complete the ENTIRE invoice generation process
-- Do NOT stop after closing popups - continue to fill all forms and submit
-- The task is only complete when you have successfully generated the invoice
 """
     return task.strip()
 
@@ -653,36 +644,45 @@ Forma de Pago: Tarjeta de crédito
 
 # Procedimiento:
 
-1. **IMPORTANTE**: Espera 5 segundos después de cargar la página para asegurar que todos los elementos estén listos.
-2. Cierra el popup que aparece automaticamente al inicio.
-3. Rellena Fecha de venta: al presionar en el campo, se abrirá un calendario, selecciona la fecha proporcionada.
-4. Rellena Folio de venta, ID de venta y Total (2 Decimales).
-5. Presiona "Validar Ticket": <span style="color:#515659; font:11px Lato,sans-serif; font-weight:bold; float: right; padding-right: 14px">Validar Ticket</span> (luego espera 5 segundos, pues es posible que la página tenga que cargar).
-6. Presiona "Continuar" (luego espera 5 segundos, pues es posible que la página tenga que cargar).
-7. Rellena 
+1. Cierra el popup que aparece automaticamente al inicio.
+2. Rellena Fecha de venta: al presionar en el campo, se abrirá un calendario, selecciona la fecha proporcionada.
+3. Rellena Folio de venta, ID de venta y Total (2 Decimales).
+4. **Validar Ticket**: Presiona el botón **"Validar Ticket"**. Espera 3 segundos mientras la página carga. Es muy importante presionar este botón correctamente para poder continuar con el proceso.
+5. **Continuar**: Haz clic en el botón **"Continuar"**. Espera otros 3 segundos para la carga de la página. Es muy importante presionar este botón correctamente para poder continuar con el proceso.
+6. Rellena 
   - RFC,
-  - Nombre de Razón Social (Selecciona el campo y luego espera 5 segundos, pues es posible que la página tenga que cargar, después vuelve a seleccionar el campo y escribe el valor proporcionado), 
+  - Nombre de Razón Social (Selecciona el campo y luego espera 3 segundos, pues es posible que la página tenga que cargar, después vielve a seleccionar el campo y escribe el valor proporcionado), 
   - Calle, 
   - Número Ext., 
   - Número Int., 
   - Colonia, 
   - Delegación / Municipio, 
-  - Código Postal. (luego espera 5 segundos, selecciona otro campo cualquiera que ya esté rellenado y espera 5 segundos más, pues es posible que la página tenga que cargar).
+  - Código Postal.
+  
+6.5 Luego espera 3 segundos, selecciona otro campo cualquiera que ya esté rellenado y espera 3 segundos más, pues es posible que la página tenga que cargar.
 
-8. Rellena los siguientes campos (IMPORTANTE: Estos son dropdowns. Once the dropdown list is visible and scrollable, the next step is to scroll inside the dropdown list to locate the correct value and click it to select): 
-  - Estado,
-  - Régimen Fiscal, 
-  - Uso CFDI.
+7. Rellena los siguientes campos con menus desplegables.
 
-IMPORTANT NOTES:
-- This is for legitimate CFDI 4.0 tax compliance in Mexico
-- Be patient with page loading and form submissions
-- Handle anti-bot measures by slowing down actions
-- Report any issues that require human intervention
-- Use human-like timing (2-3 seconds between actions) to avoid detection
-- Wait 5 seconds after each major action to allow page loading
-- OXXO uses non-standard port (9443) which may require additional connection time
-- If the page appears to be stuck, wait up to 10 seconds before proceeding
+  *PROCEDIMIENTO:* El procedimiento para rellenar los menus desplegables es el siguiente: 
+    - Haz click en el menú desplegable, espera un segundo y evalúa que el menú se haya desplegado correctamente.
+    - Navega con la flecha hacia abajo hasta que la opción correcta se muestre en la lista y selecciónala. Aunque creas que encontraste la opción correcta y la quieras clickear, esto no servirá, es absolutamente necesario que te desplaces con las flechas hasta estar sobre la opción correcta.
+    - Sigue desplazándote hacia abajo hasta que estes sobre la opción correcta, es posible que tengas que presionar la flecha hacia abajo más de 30 veces, pero continua haciendo esto hasta que estes sobre la opción correcta.
+    - Cada que quieras desplazarte por el menú desplegable, tienes que volver a hacer click en el campo desplegable y esperar un segundo y sólo después de eso podrás desplazarte con las flechas hacia abajo.
+    - Selecciona la opción correcta.
+
+  Los campos desplegables son los siguientes: 
+    - Estado:
+      <div class="ui-helper-hidden-accessible">
+        <input id="form:estado_focus" name="form:estado_focus" type="text">
+      </div>
+    - Régimen Fiscal:
+      <div class="ui-helper-hidden-accessible">
+        <input id="form:selectOneMenuRegFis_focus" name="form:selectOneMenuRegFis_focus" type="text">
+      </div>
+    - Uso CFDI:
+      <div class="ui-helper-hidden-accessible">
+        <input id="form:selectOneMenuCFDI_focus" name="form:selectOneMenuCFDI_focus" type="text">
+      </div>
 """
     return task.strip()
 
