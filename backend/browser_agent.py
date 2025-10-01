@@ -332,7 +332,7 @@ def create_browser_profile() -> BrowserProfile:
     """Create optimized browser profile for automation tasks"""
     return BrowserProfile(
         keep_alive=False,  # Essential for proper cleanup
-        wait_between_actions=2.0,
+        wait_between_actions=0.5,  # Faster execution - matches local mode speed
         default_timeout=30000,
         default_navigation_timeout=30000,
     )
@@ -404,7 +404,15 @@ async def run_local_browser_task(task: str, model: str = None, max_steps: int = 
             use_vision=True,  # Enable vision mode with medium priority
             vision_priority="medium",  # Set vision priority to medium
             override_system_message=custom_system_message,  # Use our custom system message
-            browser_profile=BrowserProfile(headless=False)  # Show browser window in local mode
+            browser_profile=BrowserProfile(
+                headless=False,  # Show browser window in local mode
+                wait_between_actions=0.5,  # Faster execution, match Browserbase speed
+                default_timeout=30000,
+                default_navigation_timeout=30000,
+            ),
+            enable_memory=True,  # Enable memory like Browserbase mode
+            max_failures=10,  # Allow retries like Browserbase mode
+            retry_delay=3  # Retry delay like Browserbase mode
         )
         
         # Execute task
@@ -417,7 +425,7 @@ async def run_local_browser_task(task: str, model: str = None, max_steps: int = 
         raise
 
 
-async def run_browserbase_browser_task(task: str, model: str = None, max_steps: int = 50, user_profile: dict = None, ocr_ticket_data: dict = None):
+async def run_browserbase_browser_task(task: str, model: str = None, max_steps: int = 100, user_profile: dict = None, ocr_ticket_data: dict = None):
     """
     Run a browser automation task using Browserbase cloud browser with session management
     
@@ -710,7 +718,7 @@ def build_generic_task(base_task: str, user_profile: dict = None, ocr_ticket_dat
     
     return enhanced_task
 
-async def run_automation_task(browser_session, task: str, model: str = None, max_steps: int = 20, user_profile: dict = None, ocr_ticket_data = None):
+async def run_automation_task(browser_session, task: str, model: str = None, max_steps: int = 100, user_profile: dict = None, ocr_ticket_data = None):
     """Helper function to run automation task with given browser session"""
     # Force use of gpt-4.1-mini like simple.py - ignore any model parameter
     forced_model = 'gpt-4.1-mini'
