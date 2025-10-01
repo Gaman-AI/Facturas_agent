@@ -1320,7 +1320,7 @@ export function DashboardDualPane({
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span className="text-xs font-medium">Verify and validate extracted details, update if neccessary</span>
+                  <span className="text-xs font-medium">{t('task.verifyDetails')}</span>
                 </div>
               </div>
               
@@ -1783,7 +1783,7 @@ export function DashboardDualPane({
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span className="text-xs font-medium">Verify and validate extracted details, update if neccessary</span>
+                        <span className="text-xs font-medium">{t('task.verifyDetails')}</span>
                       </div>
                     </div>
                     
@@ -2008,11 +2008,10 @@ export function DashboardDualPane({
                           <div className="text-center max-w-md">
                             <Monitor className="mx-auto h-16 w-16 text-primary mb-4" />
                             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                              Local Browser Mode
+                              {t('browser.localMode')}
                             </h3>
                             <p className="text-sm text-gray-600 mb-4">
-                              Task will run on your local machine using your system browser. 
-                              No live view available, but execution is typically faster.
+                              {t('browser.localModeDescription')}
                             </p>
                             
 
