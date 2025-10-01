@@ -414,7 +414,19 @@ export function DashboardDualPane({
   
 
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
+  const API_BASE_URL = React.useMemo(() => {
+    const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL
+    if (envUrl && envUrl.trim().length > 0) return envUrl
+    if (typeof window !== 'undefined') {
+      try {
+        const { protocol, hostname, port } = window.location
+        const defaultPort = port || (protocol === 'https:' ? '443' : '3000')
+        const effectivePort = port ? port : defaultPort
+        return `${protocol}//${hostname}:${effectivePort}`
+      } catch (_) {}
+    }
+    return 'http://localhost:3000'
+  }, [])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null
@@ -926,8 +938,16 @@ export function DashboardDualPane({
           taskId: response.data.task_id,
           sessionId: null,
           liveViewUrl: null,
-          status: 'connecting'
+          status: browserMode === 'local' ? 'running' : 'connecting'
         });
+
+        if (browserMode === 'local') {
+          setTaskMessage({
+            type: 'info',
+            message: 'Local mode: task is running in your system browser (no live view)'
+          })
+          clearTaskMessage(6000)
+        }
         
         console.log(`🔄 Task state updated to 'connecting' for task: ${response.data.task_id}`);
         

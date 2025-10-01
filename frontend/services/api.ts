@@ -1,7 +1,25 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { tokenManager } from '@/utils/tokenManager';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+// Resolve API base URL dynamically to avoid port/env mismatches in dev
+function resolveApiBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (envUrl && envUrl.trim().length > 0) return envUrl;
+  if (typeof window !== 'undefined') {
+    try {
+      const { protocol, hostname, port } = window.location;
+      const defaultPort = port || (protocol === 'https:' ? '443' : '3000');
+      // Prefer current origin; if no explicit port, use 3000 in dev
+      const effectivePort = port ? port : defaultPort;
+      return `${protocol}//${hostname}:${effectivePort}`;
+    } catch (_) {
+      // fallthrough
+    }
+  }
+  // Fallback to common backend dev port
+  return 'http://localhost:3000';
+}
+const API_BASE_URL = resolveApiBaseUrl();
 const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '30000');
 
 // Request queue for handling concurrent requests during token refresh

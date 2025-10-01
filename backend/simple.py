@@ -27,7 +27,6 @@ total: 128.0
 
 Dont need to use all the details, just the ones that are necessary.
 
-
 """,
         llm=ChatOpenAI(model="gpt-4o-mini", temperature=1.0),
         browser_profile=BrowserProfile(headless=False)  # Show browser window

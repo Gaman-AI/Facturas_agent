@@ -403,7 +403,8 @@ async def run_local_browser_task(task: str, model: str = None, max_steps: int = 
             llm=llm,
             use_vision=True,  # Enable vision mode with medium priority
             vision_priority="medium",  # Set vision priority to medium
-            override_system_message=custom_system_message  # Use our custom system message
+            override_system_message=custom_system_message,  # Use our custom system message
+            browser_profile=BrowserProfile(headless=False)  # Show browser window in local mode
         )
         
         # Execute task

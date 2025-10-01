@@ -7,7 +7,23 @@
  * @file purpose: Real-time task monitoring with WebSocket connections
  */
 
-const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_BASE_URL || 'ws://localhost:8000';
+function resolveWsBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_WS_BASE_URL;
+  if (envUrl && envUrl.trim().length > 0) return envUrl;
+  if (typeof window !== 'undefined') {
+    try {
+      const isHttps = window.location.protocol === 'https:';
+      const wsProto = isHttps ? 'wss:' : 'ws:';
+      const host = window.location.hostname;
+      const port = window.location.port || (isHttps ? '443' : '3000');
+      return `${wsProto}//${host}:${port}`;
+    } catch (_) {
+      // fallthrough
+    }
+  }
+  return 'ws://localhost:3000';
+}
+const WS_BASE_URL = resolveWsBaseUrl();
 
 export interface TaskUpdate {
   type: 'step_update' | 'status_change' | 'error' | 'task_completed' | 'task_start' | 'task_error' | 'log_update' | 'url_generated' | 'session_created' | 'live_view_ready' | 'automation_progress';
