@@ -590,7 +590,6 @@ Forma de Pago: Tarjeta de crédito
 selecciona el valor proporcionado.
 11. Haz click en "Continuar".
 12. Selecciona **Enviar a correo electrónico** y haz click en "Facturar".
-
 """
     return task.strip()
 
